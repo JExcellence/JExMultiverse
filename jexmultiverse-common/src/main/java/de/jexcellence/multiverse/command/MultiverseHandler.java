@@ -15,9 +15,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.Locale;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 /**
  * JExCommand 2.0 handler collection for {@code /multiverse}.
@@ -79,28 +77,8 @@ public final class MultiverseHandler {
     private void onCreate(@NotNull CommandContext ctx) {
         var sender = ctx.sender();
         var name = ctx.require("name", String.class);
-        var envRaw = ctx.get("environment", String.class).orElse("NORMAL");
-        var typeRaw = ctx.get("type", String.class).orElse("DEFAULT");
-
-        World.Environment environment;
-        try {
-            environment = World.Environment.valueOf(envRaw.toUpperCase(Locale.ROOT));
-        } catch (IllegalArgumentException e) {
-            r18n().msg("multiverse.invalid_environment").prefix()
-                    .with("environment", envRaw)
-                    .send(sender);
-            return;
-        }
-
-        MVWorldType worldType;
-        try {
-            worldType = MVWorldType.valueOf(typeRaw.toUpperCase(Locale.ROOT));
-        } catch (IllegalArgumentException e) {
-            r18n().msg("multiverse.invalid_type").prefix()
-                    .with("type", typeRaw)
-                    .send(sender);
-            return;
-        }
+        var environment = ctx.get("environment", World.Environment.class).orElse(World.Environment.NORMAL);
+        var worldType = ctx.get("type", MVWorldType.class).orElse(MVWorldType.DEFAULT);
 
         if (!service.isWorldTypeAvailable(worldType)) {
             r18n().msg("multiverse.type_not_available").prefix()

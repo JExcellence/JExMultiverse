@@ -33,6 +33,11 @@ public class SpawnHandler {
         this.plugin = plugin;
     }
 
+    /**
+     * Returns the command handler map for this handler, mapping {@code "spawn"} to its executor.
+     *
+     * @return map of command name to {@link CommandHandler}
+     */
     public @NotNull Map<String, CommandHandler> handlerMap() {
         return Map.of("spawn", this::onSpawn);
     }

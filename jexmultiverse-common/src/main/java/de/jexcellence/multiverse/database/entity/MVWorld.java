@@ -198,10 +198,18 @@ public class MVWorld extends LongIdEntity {
 
     // ── Builder ─────────────────────────────────────────────────────────
 
+    /**
+     * Returns a new {@link Builder} for constructing {@link MVWorld} instances.
+     *
+     * @return a fresh builder
+     */
     public static @NotNull Builder builder() {
         return new Builder();
     }
 
+    /**
+     * Fluent builder for {@link MVWorld}.
+     */
     public static final class Builder {
         private String identifier;
         private MVWorldType type;
@@ -213,41 +221,88 @@ public class MVWorld extends LongIdEntity {
 
         private Builder() {}
 
+        /**
+         * Sets the world identifier.
+         *
+         * @param identifier the unique world name
+         * @return this builder
+         */
         public @NotNull Builder identifier(@NotNull String identifier) {
             this.identifier = identifier;
             return this;
         }
 
+        /**
+         * Sets the world generation type.
+         *
+         * @param type the {@link MVWorldType}
+         * @return this builder
+         */
         public @NotNull Builder type(@NotNull MVWorldType type) {
             this.type = type;
             return this;
         }
 
+        /**
+         * Sets the world environment.
+         *
+         * @param environment the Bukkit {@link World.Environment}
+         * @return this builder
+         */
         public @NotNull Builder environment(World.@NotNull Environment environment) {
             this.environment = environment;
             return this;
         }
 
+        /**
+         * Sets the spawn location.
+         *
+         * @param spawnLocation the spawn {@link Location}, or {@code null} to leave unset
+         * @return this builder
+         */
         public @NotNull Builder spawnLocation(@Nullable Location spawnLocation) {
             this.spawnLocation = spawnLocation;
             return this;
         }
 
+        /**
+         * Sets whether this world is the global spawn.
+         *
+         * @param globalizedSpawn {@code true} to mark as global spawn
+         * @return this builder
+         */
         public @NotNull Builder globalizedSpawn(boolean globalizedSpawn) {
             this.globalizedSpawn = globalizedSpawn;
             return this;
         }
 
+        /**
+         * Sets whether PvP is enabled in this world.
+         *
+         * @param pvpEnabled {@code true} to enable PvP
+         * @return this builder
+         */
         public @NotNull Builder pvpEnabled(boolean pvpEnabled) {
             this.pvpEnabled = pvpEnabled;
             return this;
         }
 
+        /**
+         * Sets the permission required to enter this world.
+         *
+         * @param enterPermission the permission node, or {@code null} for unrestricted access
+         * @return this builder
+         */
         public @NotNull Builder enterPermission(@Nullable String enterPermission) {
             this.enterPermission = enterPermission;
             return this;
         }
 
+        /**
+         * Builds and returns the configured {@link MVWorld} instance.
+         *
+         * @return a new {@link MVWorld}
+         */
         public @NotNull MVWorld build() {
             return new MVWorld(this);
         }

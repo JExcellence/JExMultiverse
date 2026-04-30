@@ -15,6 +15,13 @@ import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+/**
+ * JPA {@link AttributeConverter} that serializes and deserializes a Bukkit {@link Location}
+ * to and from a JSON string for database storage.
+ *
+ * @author JExcellence
+ * @since 3.0.0
+ */
 @Converter
 public class LocationConverter implements AttributeConverter<Location, String> {
     private static final Logger LOGGER = Logger.getLogger(LocationConverter.class.getName());

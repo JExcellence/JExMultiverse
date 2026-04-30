@@ -14,9 +14,9 @@ subcommands:
     permission: "jexmultiverse.command.create"
     senders: [player]
     argumentSchema:
-      - { name: name,        type: string, required: true,  description: "World name" }
-      - { name: environment, type: string, required: false, description: "World environment (NORMAL, NETHER, THE_END)" }
-      - { name: type,        type: string, required: false, description: "World type (DEFAULT, VOID, PLOT)" }
+      - { name: name,        type: string,                                                        required: true,  description: "World name" }
+      - { name: environment, type: "enum(org.bukkit.World$Environment)",                          required: false, description: "World environment" }
+      - { name: type,        type: "enum(de.jexcellence.multiverse.api.MVWorldType)",             required: false, description: "World type" }
 
   - name: delete
     description: "Delete a world"
