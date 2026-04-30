@@ -134,7 +134,7 @@ public class MultiverseService implements MultiverseProvider {
                 logger.info("Created and persisted world '{}'", name);
                 future.complete(Optional.of(saved));
             }).exceptionally(ex -> {
-                logger.error("Failed to persist world '{}'", ex);
+                logger.error("Failed to persist world '{}'", name, ex);
                 future.complete(Optional.empty());
                 return null;
             });
@@ -171,7 +171,7 @@ public class MultiverseService implements MultiverseProvider {
                         future.complete(success);
                     })
                     .exceptionally(ex -> {
-                        logger.error("Failed to delete world '{}'", ex);
+                        logger.error("Failed to delete world '{}'", identifier, ex);
                         future.complete(false);
                         return null;
                     });
@@ -362,7 +362,7 @@ public class MultiverseService implements MultiverseProvider {
             Bukkit.getScheduler().runTask(plugin, () -> player.teleport(location));
             return true;
         }).exceptionally(ex -> {
-            logger.error("Failed to teleport player '{}' to spawn", ex);
+            logger.error("Failed to teleport player '{}' to spawn", player.getName(), ex);
             return false;
         });
     }

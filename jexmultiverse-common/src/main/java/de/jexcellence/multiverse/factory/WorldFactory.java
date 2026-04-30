@@ -82,7 +82,7 @@ public class WorldFactory {
             }
             return world;
         } catch (Exception e) {
-            logger.error("Failed to create Bukkit world '{}'", e);
+            logger.error("Failed to create Bukkit world '{}'", name, e);
             return null;
         }
     }
@@ -218,7 +218,7 @@ public class WorldFactory {
                 logger.info("Deleted world folder '{}'", worldName);
                 return true;
             } catch (IOException e) {
-                logger.error("Failed to walk world directory '{}'", e);
+                logger.error("Failed to walk world directory '{}'", worldName, e);
                 return false;
             }
         });

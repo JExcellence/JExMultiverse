@@ -7,6 +7,7 @@ import de.jexcellence.jexplatform.JExPlatform;
 import de.jexcellence.jexplatform.logging.JExLogger;
 import de.jexcellence.jexplatform.logging.LogLevel;
 import de.jexcellence.multiverse.api.MultiverseProvider;
+import de.jexcellence.multiverse.command.EnvironmentArgumentType;
 import de.jexcellence.multiverse.command.R18nCommandMessages;
 import de.jexcellence.multiverse.command.WorldArgumentType;
 import de.jexcellence.multiverse.database.repository.MVWorldRepository;
@@ -192,7 +193,8 @@ public abstract class JExMultiverse {
 
         // Shared argument type registry — defaults + the plugin-specific "world" type.
         var registry = ArgumentTypeRegistry.defaults()
-                .register(WorldArgumentType.of(worldFactory));
+                .register(WorldArgumentType.of(worldFactory))
+                .register(EnvironmentArgumentType.create());
 
         // Shared i18n bridge — all framework & plugin keys route through R18nManager.
         var messages = new R18nCommandMessages();

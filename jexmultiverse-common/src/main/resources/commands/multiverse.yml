@@ -15,7 +15,7 @@ subcommands:
     senders: [player]
     argumentSchema:
       - { name: name,        type: string,                                                        required: true,  description: "World name" }
-      - { name: environment, type: "enum(org.bukkit.World$Environment)",                          required: false, description: "World environment" }
+      - { name: environment, type: environment,                                                   required: false, description: "World environment (NORMAL, NETHER, THE_END)" }
       - { name: type,        type: "enum(de.jexcellence.multiverse.api.MVWorldType)",             required: false, description: "World type" }
 
   - name: delete
