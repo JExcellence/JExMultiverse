@@ -8,6 +8,7 @@ import de.jexcellence.multiverse.database.entity.MVWorld;
 import de.jexcellence.multiverse.factory.WorldFactory;
 import de.jexcellence.multiverse.service.MultiverseService;
 import de.jexcellence.multiverse.view.MultiverseEditorView;
+import de.jexcellence.multiverse.view.MultiverseListView;
 import me.devnatan.inventoryframework.ViewFrame;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
@@ -163,7 +164,7 @@ public final class MultiverseHandler {
         viewFrame.open(MultiverseEditorView.class, player, Map.of(
                 "plugin", plugin,
                 "world", world,
-                "repository", service
+                "service", service
         ));
     }
 
@@ -237,6 +238,17 @@ public final class MultiverseHandler {
 
         if (worlds.isEmpty()) {
             r18n().msg("multiverse.list_empty").prefix().send(sender);
+            return;
+        }
+
+        // Players see the paginated GUI; console gets the text fallback.
+        var playerOpt = ctx.asPlayer();
+        if (playerOpt.isPresent()) {
+            viewFrame.open(MultiverseListView.class, playerOpt.get(), Map.of(
+                    "plugin",  plugin,
+                    "service", service,
+                    "factory", worldFactory
+            ));
             return;
         }
 

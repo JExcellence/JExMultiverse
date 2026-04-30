@@ -78,6 +78,11 @@ public class WorldFactory {
 
             var world = creator.createWorld();
             if (world != null) {
+                // Free spawn chunks once creation completes — vanilla worldgen
+                // forcibly loads spawn chunks during create which costs memory
+                // and tick time after creation. Custom generators (VOID/PLOT)
+                // benefit too since their spawn chunks contain little of value.
+                world.setKeepSpawnInMemory(false);
                 logger.info("Created Bukkit world '{}' (env={}, type={})", name, environment, type);
             }
             return world;

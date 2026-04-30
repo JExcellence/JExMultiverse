@@ -16,6 +16,7 @@ import de.jexcellence.multiverse.listener.SpawnListener;
 import de.jexcellence.multiverse.service.MultiverseEdition;
 import de.jexcellence.multiverse.service.MultiverseService;
 import de.jexcellence.multiverse.view.MultiverseEditorView;
+import de.jexcellence.multiverse.view.MultiverseListView;
 import me.devnatan.inventoryframework.ViewFrame;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.ServicePriority;
@@ -176,6 +177,7 @@ public abstract class JExMultiverse {
         viewFrame = ViewFrame
                 .create(plugin)
                 .with(new MultiverseEditorView())
+                .with(new MultiverseListView())
                 .defaultConfig(config -> {
                     config.cancelOnClick();
                     config.cancelOnDrag();

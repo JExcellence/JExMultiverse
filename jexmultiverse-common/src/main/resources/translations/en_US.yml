@@ -49,6 +49,7 @@ multiverse_editor_ui:
       - ""
       - "<gradient:#ff7f50:#ff4500>Click</gradient> <gray>to set spawn to your location</gray>"
     updated: "<gradient:#32cd32:#228b22>Spawn Updated:</gradient> <white>Spawn for <gradient:#ff7f50:#ff4500>{world_name}</gradient> set to your location.</white>"
+    wrong_world: "<gradient:#dc143c:#b22222>Error:</gradient> <white>You must be in <gradient:#ff7f50:#ff4500>{world_name}</gradient> to set its spawn point.</white>"
   global_spawn:
     name: "<gradient:#ff7f50:#ff4500>Global Spawn</gradient> <dark_gray>({value})</dark_gray>"
     lore:
@@ -60,6 +61,7 @@ multiverse_editor_ui:
       - ""
       - "<gradient:#ff7f50:#ff4500>Click</gradient> <gray>to toggle</gray>"
     toggled: "<gradient:#32cd32:#228b22>Global Spawn:</gradient> <white><gradient:#ff7f50:#ff4500>{world_name}</gradient> is now <gradient:#ffa500:#ff6347>{value}</gradient>.</white>"
+    replaced: "<gradient:#ffa500:#ff8c00>Global Spawn:</gradient> <white>Replaced previous global spawn (<gradient:#ff7f50:#ff4500>{previous}</gradient>) with <gradient:#ff7f50:#ff4500>{world_name}</gradient>.</white>"
   pvp:
     name: "<gradient:#ff7f50:#ff4500>PvP Toggle</gradient> <dark_gray>({value})</dark_gray>"
     lore:
@@ -81,8 +83,53 @@ multiverse_editor_ui:
     success: "<gradient:#32cd32:#228b22>Saved:</gradient> <white>Changes to <gradient:#ff7f50:#ff4500>{world_name}</gradient> saved.</white>"
     failed: "<gradient:#dc143c:#b22222>Save Failed:</gradient> <white>Failed to save <gradient:#ff7f50:#ff4500>{world_name}</gradient>.</white>"
 
+multiverse_list_ui:
+  title: "<gradient:#ff7f50:#ff4500>Managed Worlds</gradient>"
+  entry:
+    name: "<gradient:#ffa500:#ff6347>{world_name}</gradient>"
+    lore:
+      - ""
+      - "<gray>Type:</gray> <white>{type}</white>"
+      - "<gray>Environment:</gray> <white>{environment}</white>"
+      - "<gray>Status:</gray> <white>{status}</white>"
+      - "<gray>Global spawn:</gray> <white>{global_spawn}</white>"
+      - "<gray>PvP:</gray> <white>{pvp}</white>"
+      - "<gray>Spawn:</gray> <white>{spawn}</white>"
+      - ""
+      - "<gradient:#ff7f50:#ff4500>Left-click</gradient> <gray>- teleport here</gray>"
+      - "<gradient:#ff7f50:#ff4500>Right-click</gradient> <gray>- edit settings</gray>"
+  page:
+    name: "<gradient:#ff7f50:#ff4500>Page {page}/{total_pages}</gradient>"
+    lore:
+      - "<gray>Showing page {current_page} of {max_page}</gray>"
+  previous: "<gradient:#ff7f50:#ff4500>← Previous</gradient>"
+  next: "<gradient:#ff7f50:#ff4500>Next →</gradient>"
+  loading: "<gray>Loading...</gray>"
+
 spawn:
   teleporting_to_spawn: "<gradient:#ffa500:#ff8c00>Teleporting:</gradient> <white>Teleporting to spawn...</white>"
   spawn_not_found: "<gradient:#dc143c:#b22222>Error:</gradient> <white>No spawn location configured.</white>"
   teleported: "<gradient:#32cd32:#228b22>Teleported:</gradient> <white>You have been teleported to spawn.</white>"
   teleport_failed: "<gradient:#dc143c:#b22222>Error:</gradient> <white>Failed to teleport to spawn. Please try again.</white>"
+
+# ── JExCommand framework keys (parse errors, usage, permission denials) ─────
+jexcommand:
+  usage: "<gradient:#ff7f50:#ff4500>Usage:</gradient> <white>{usage}</white>"
+  error:
+    missing-argument: "<gradient:#dc143c:#b22222>Missing argument:</gradient> <gold>{name}</gold> <dark_gray>(<gray>{type}</gray>)</dark_gray>"
+    too-many-arguments: "<gradient:#dc143c:#b22222>Too many arguments.</gradient>"
+    unknown-subcommand: "<gradient:#dc143c:#b22222>Unknown subcommand:</gradient> <gold>{name}</gold>"
+    no-permission: "<gradient:#dc143c:#b22222>No permission.</gradient> <dark_gray>(<gray>{permission}</gray>)</dark_gray>"
+    not-a-player: "<gradient:#dc143c:#b22222>Players only.</gradient>"
+    not-a-console: "<gradient:#dc143c:#b22222>Console only.</gradient>"
+    unknown-type: "<gradient:#dc143c:#b22222>Unknown argument type:</gradient> <gold>{type}</gold>"
+    internal: "<gradient:#dc143c:#b22222>Internal error:</gradient> <white>{message}</white>"
+    invalid-long: "<gradient:#dc143c:#b22222>Invalid integer:</gradient> <white>{value}</white>"
+    invalid-double: "<gradient:#dc143c:#b22222>Invalid number:</gradient> <white>{value}</white>"
+    not-positive-long: "<gradient:#dc143c:#b22222>Must be positive:</gradient> <white>{value}</white>"
+    not-positive-double: "<gradient:#dc143c:#b22222>Must be positive:</gradient> <white>{value}</white>"
+    player-not-online: "<gradient:#dc143c:#b22222>Not online:</gradient> <white>{value}</white>"
+    player-unknown: "<gradient:#dc143c:#b22222>Unknown player:</gradient> <white>{value}</white>"
+    invalid-enum: "<gradient:#dc143c:#b22222>Invalid value:</gradient> <white>{value}</white> <gray>(allowed: {options})</gray>"
+    invalid-uuid: "<gradient:#dc143c:#b22222>Invalid UUID:</gradient> <white>{value}</white>"
+    expected-single-word: "<gradient:#dc143c:#b22222>Expected a single word without spaces.</gradient>"
