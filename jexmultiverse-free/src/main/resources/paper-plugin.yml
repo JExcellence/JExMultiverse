@@ -1,0 +1,9 @@
+name: JExMultiverse
+version: '3.0.0'
+main: de.jexcellence.multiverse.JExMultiverseFree
+description: World management system (Free Edition)
+api-version: '1.19'
+author: JExcellence
+website: https://jexcellence.de
+loader: de.jexcellence.dependency.loader.PaperPluginLoader
+folia-supported: true

@@ -1,0 +1,9 @@
+# JExCommand 2.0 tree — /spawn
+# Player-facing spawn teleport command.
+
+name: spawn
+description: "Teleport to spawn"
+aliases:
+  - pspawn
+permission: "jexmultiverse.spawn"
+senders: [player]
