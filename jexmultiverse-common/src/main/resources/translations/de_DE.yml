@@ -73,6 +73,39 @@ multiverse_editor_ui:
       - ""
       - "<gradient:#ff7f50:#ff4500>Klick</gradient> <gray>zum Umschalten</gray>"
     toggled: "<gradient:#32cd32:#228b22>PvP:</gradient> <white>PvP in <gradient:#ff7f50:#ff4500>{world_name}</gradient> ist jetzt <gradient:#ffa500:#ff6347>{value}</gradient>.</white>"
+  time:
+    name: "<gradient:#ff7f50:#ff4500>Tageszeit</gradient> <dark_gray>({value})</dark_gray>"
+    lore:
+      - ""
+      - "<gray>Aktuell:</gray> <gradient:#ffa500:#ff6347>{value}</gradient>"
+      - ""
+      - "<gray>Wechselt Morgen → Mittag → Abend → Nacht.</gray>"
+      - "<gray>Nur Live-Welt — nicht gespeichert.</gray>"
+      - ""
+      - "<gradient:#ff7f50:#ff4500>Klick</gradient> <gray>um weiterzuschalten</gray>"
+    updated: "<gradient:#32cd32:#228b22>Zeit:</gradient> <white>Tageszeit in <gradient:#ff7f50:#ff4500>{world_name}</gradient> auf <gradient:#ffa500:#ff6347>{value}</gradient> gesetzt.</white>"
+  weather:
+    name: "<gradient:#ff7f50:#ff4500>Wetter</gradient> <dark_gray>({value})</dark_gray>"
+    lore:
+      - ""
+      - "<gray>Aktuell:</gray> <gradient:#ffa500:#ff6347>{value}</gradient>"
+      - ""
+      - "<gray>Wechselt klar → Regen → Sturm.</gray>"
+      - "<gray>Nur Live-Welt — nicht gespeichert.</gray>"
+      - ""
+      - "<gradient:#ff7f50:#ff4500>Klick</gradient> <gray>um weiterzuschalten</gray>"
+    updated: "<gradient:#32cd32:#228b22>Wetter:</gradient> <white>Wetter in <gradient:#ff7f50:#ff4500>{world_name}</gradient> auf <gradient:#ffa500:#ff6347>{value}</gradient> gesetzt.</white>"
+  difficulty:
+    name: "<gradient:#ff7f50:#ff4500>Schwierigkeit</gradient> <dark_gray>({value})</dark_gray>"
+    lore:
+      - ""
+      - "<gray>Aktuell:</gray> <gradient:#ffa500:#ff6347>{value}</gradient>"
+      - ""
+      - "<gray>Wechselt friedlich → einfach → normal → schwer.</gray>"
+      - "<gray>Nur Live-Welt — nicht gespeichert.</gray>"
+      - ""
+      - "<gradient:#ff7f50:#ff4500>Klick</gradient> <gray>um weiterzuschalten</gray>"
+    updated: "<gradient:#32cd32:#228b22>Schwierigkeit:</gradient> <white>Schwierigkeit in <gradient:#ff7f50:#ff4500>{world_name}</gradient> auf <gradient:#ffa500:#ff6347>{value}</gradient> gesetzt.</white>"
   save:
     name: "<gradient:#32cd32:#228b22>Änderungen speichern</gradient>"
     lore:

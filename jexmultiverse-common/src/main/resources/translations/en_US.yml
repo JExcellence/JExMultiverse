@@ -73,6 +73,39 @@ multiverse_editor_ui:
       - ""
       - "<gradient:#ff7f50:#ff4500>Click</gradient> <gray>to toggle</gray>"
     toggled: "<gradient:#32cd32:#228b22>PvP:</gradient> <white>PvP in <gradient:#ff7f50:#ff4500>{world_name}</gradient> is now <gradient:#ffa500:#ff6347>{value}</gradient>.</white>"
+  time:
+    name: "<gradient:#ff7f50:#ff4500>Time of Day</gradient> <dark_gray>({value})</dark_gray>"
+    lore:
+      - ""
+      - "<gray>Current:</gray> <gradient:#ffa500:#ff6347>{value}</gradient>"
+      - ""
+      - "<gray>Cycles morning → noon → evening → night.</gray>"
+      - "<gray>Live world only — not persisted.</gray>"
+      - ""
+      - "<gradient:#ff7f50:#ff4500>Click</gradient> <gray>to advance</gray>"
+    updated: "<gradient:#32cd32:#228b22>Time:</gradient> <white>Time in <gradient:#ff7f50:#ff4500>{world_name}</gradient> set to <gradient:#ffa500:#ff6347>{value}</gradient>.</white>"
+  weather:
+    name: "<gradient:#ff7f50:#ff4500>Weather</gradient> <dark_gray>({value})</dark_gray>"
+    lore:
+      - ""
+      - "<gray>Current:</gray> <gradient:#ffa500:#ff6347>{value}</gradient>"
+      - ""
+      - "<gray>Cycles clear → rain → storm.</gray>"
+      - "<gray>Live world only — not persisted.</gray>"
+      - ""
+      - "<gradient:#ff7f50:#ff4500>Click</gradient> <gray>to advance</gray>"
+    updated: "<gradient:#32cd32:#228b22>Weather:</gradient> <white>Weather in <gradient:#ff7f50:#ff4500>{world_name}</gradient> set to <gradient:#ffa500:#ff6347>{value}</gradient>.</white>"
+  difficulty:
+    name: "<gradient:#ff7f50:#ff4500>Difficulty</gradient> <dark_gray>({value})</dark_gray>"
+    lore:
+      - ""
+      - "<gray>Current:</gray> <gradient:#ffa500:#ff6347>{value}</gradient>"
+      - ""
+      - "<gray>Cycles peaceful → easy → normal → hard.</gray>"
+      - "<gray>Live world only — not persisted.</gray>"
+      - ""
+      - "<gradient:#ff7f50:#ff4500>Click</gradient> <gray>to advance</gray>"
+    updated: "<gradient:#32cd32:#228b22>Difficulty:</gradient> <white>Difficulty in <gradient:#ff7f50:#ff4500>{world_name}</gradient> set to <gradient:#ffa500:#ff6347>{value}</gradient>.</white>"
   save:
     name: "<gradient:#32cd32:#228b22>Save Changes</gradient>"
     lore:

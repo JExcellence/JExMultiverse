@@ -236,19 +236,32 @@ public final class MultiverseHandler {
         var sender = ctx.sender();
         var worlds = worldFactory.getAllCachedWorlds();
 
-        if (worlds.isEmpty()) {
-            r18n().msg("multiverse.list_empty").prefix().send(sender);
+        // Players: open the paginated GUI even when empty — pagination handles
+        // the empty state gracefully and the user can see they have 0 worlds.
+        // Console: print the text view.
+        var playerOpt = ctx.asPlayer();
+        if (playerOpt.isPresent()) {
+            try {
+                viewFrame.open(MultiverseListView.class, playerOpt.get(), Map.of(
+                        "plugin",  plugin,
+                        "service", service,
+                        "factory", worldFactory
+                ));
+            } catch (Throwable t) {
+                plugin.getLogger().log(java.util.logging.Level.SEVERE,
+                        "Failed to open multiverse list view", t);
+                r18n().msg("multiverse.list_header").prefix()
+                        .with("count", String.valueOf(worlds.size()))
+                        .send(sender);
+                if (worlds.isEmpty()) {
+                    r18n().msg("multiverse.list_empty").prefix().send(sender);
+                }
+            }
             return;
         }
 
-        // Players see the paginated GUI; console gets the text fallback.
-        var playerOpt = ctx.asPlayer();
-        if (playerOpt.isPresent()) {
-            viewFrame.open(MultiverseListView.class, playerOpt.get(), Map.of(
-                    "plugin",  plugin,
-                    "service", service,
-                    "factory", worldFactory
-            ));
+        if (worlds.isEmpty()) {
+            r18n().msg("multiverse.list_empty").prefix().send(sender);
             return;
         }
 

@@ -49,7 +49,7 @@ subcommands:
   - name: list
     description: "List all managed worlds"
     permission: "jexmultiverse.command.list"
-    senders: [player]
+    senders: [player, console]
 
   - name: help
     description: "Show help"

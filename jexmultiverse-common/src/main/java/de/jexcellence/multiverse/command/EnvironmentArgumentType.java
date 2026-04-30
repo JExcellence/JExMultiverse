@@ -29,6 +29,12 @@ public final class EnvironmentArgumentType {
 
     private EnvironmentArgumentType() {}
 
+    /**
+     * Creates and returns the {@link ArgumentType} for {@link World.Environment}, excluding
+     * {@link World.Environment#CUSTOM}.
+     *
+     * @return the configured {@link ArgumentType}
+     */
     public static @NotNull ArgumentType<World.Environment> create() {
         return ArgumentType.custom(
                 "environment",
