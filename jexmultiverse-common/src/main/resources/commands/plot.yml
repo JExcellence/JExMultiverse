@@ -79,6 +79,13 @@ subcommands:
     permission: "jexplots.command.menu"
     senders: [player]
 
+  - name: border
+    description: "Change the wall material around your plot"
+    permission: "jexplots.command.border"
+    senders: [player]
+    argumentSchema:
+      - { name: material, type: wall_material, required: false, description: "Wall material name (omit to reset to default)" }
+
   - name: merge
     description: "Merge with the adjacent plot in the direction you're facing"
     permission: "jexplots.command.merge"

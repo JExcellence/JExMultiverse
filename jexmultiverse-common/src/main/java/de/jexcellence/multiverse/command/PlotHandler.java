@@ -66,6 +66,7 @@ public final class PlotHandler {
                 Map.entry("plot.merge",    this::onMerge),
                 Map.entry("plot.unmerge",  this::onUnmerge),
                 Map.entry("plot.menu",     this::onMenu),
+                Map.entry("plot.border",   this::onBorder),
                 Map.entry("plot.help",     this::onHelp)
         );
     }
@@ -389,6 +390,36 @@ public final class PlotHandler {
         };
     }
 
+    // ── Border ──────────────────────────────────────────────────────────────────
+
+    private void onBorder(@NotNull CommandContext ctx) {
+        var player = ctx.asPlayer().orElse(null);
+        if (player == null) return;
+        var plot = plots.getPlotAt(player.getLocation()).orElse(null);
+        if (plot == null) {
+            r18n().msg("plot.error.not_on_plot").prefix().send(player);
+            return;
+        }
+        if (!plot.isOwner(player.getUniqueId()) && !player.hasPermission("jexplots.bypass.protect")) {
+            r18n().msg("plot.error.not_owner").prefix().with("owner_name", plot.getOwnerName()).send(player);
+            return;
+        }
+
+        var material = ctx.get("material", org.bukkit.Material.class).orElse(null);
+        plots.setBorder(plot, material).thenAccept(ok -> Bukkit.getScheduler().runTask(plugin, () -> {
+            if (!ok) {
+                r18n().msg("plot.error.border_failed").prefix().send(player);
+                return;
+            }
+            if (material == null) {
+                r18n().msg("plot.border_reset").prefix().send(player);
+            } else {
+                r18n().msg("plot.border_set").prefix()
+                        .with("material", material.name().toLowerCase()).send(player);
+            }
+        }));
+    }
+
     // ── Menu ────────────────────────────────────────────────────────────────────
 
     private void onMenu(@NotNull CommandContext ctx) {
@@ -476,6 +507,7 @@ public final class PlotHandler {
         if (hasPerm(sender, "jexplots.command.merge"))   r18n().msg("plot.help_merge").with("alias", alias).send(sender);
         if (hasPerm(sender, "jexplots.command.unmerge")) r18n().msg("plot.help_unmerge").with("alias", alias).send(sender);
         if (hasPerm(sender, "jexplots.command.menu"))    r18n().msg("plot.help_menu").with("alias", alias).send(sender);
+        if (hasPerm(sender, "jexplots.command.border"))  r18n().msg("plot.help_border").with("alias", alias).send(sender);
         r18n().msg("plot.help_footer").send(sender);
     }
 

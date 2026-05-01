@@ -32,7 +32,26 @@ public enum PlotFlag {
     EXPLOSION("explosion", false),
 
     /** Allow fire to spread inside the plot. Default: false. */
-    FIRE_SPREAD("fire-spread", false);
+    FIRE_SPREAD("fire-spread", false),
+
+    /** Keep player inventory on death inside the plot. Default: false. */
+    KEEP_INVENTORY("keep-inventory", false),
+
+    /**
+     * Allow non-trusted players to enter the plot. Default: true. When
+     * {@code false}, only the owner and trusted members can enter; everyone
+     * else is teleported back when they cross the boundary.
+     */
+    ENTRY("entry", true),
+
+    /** Allow water / lava to flow inside the plot. Default: false. */
+    LIQUID_FLOW("liquid-flow", false),
+
+    /**
+     * Allow ice / snow to form or melt inside the plot. Default: false (so
+     * ice and snow stay where the owner placed them regardless of biome).
+     */
+    ICE_FORM_MELT("ice-form-melt", false);
 
     private final String key;
     private final boolean defaultValue;

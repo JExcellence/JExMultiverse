@@ -150,6 +150,8 @@ plot:
     merge_failed: "<gradient:#dc143c:#b22222>Fehler:</gradient> <white>Plots konnten nicht zusammengefügt werden.</white>"
     unmerge_not_merged: "<gradient:#dc143c:#b22222>Fehler:</gradient> <white>Dieser Plot ist nicht Teil einer Merge-Gruppe.</white>"
     unmerge_failed: "<gradient:#dc143c:#b22222>Fehler:</gradient> <white>Plot konnte nicht getrennt werden.</white>"
+    invalid_material: "<gradient:#dc143c:#b22222>Fehler:</gradient> <white><gradient:#ff7f50:#ff4500>{material}</gradient> ist kein gültiges Blockmaterial.</white>"
+    border_failed: "<gradient:#dc143c:#b22222>Fehler:</gradient> <white>Plot-Border konnte nicht aktualisiert werden.</white>"
 
   claimed: "<gradient:#32cd32:#228b22>Beansprucht:</gradient> <white>Plot <gradient:#ff7f50:#ff4500>{grid_x},{grid_z}</gradient> in <gradient:#ff7f50:#ff4500>{world_name}</gradient> gehört dir.</white>"
   unclaimed: "<gradient:#ffa500:#ff8c00>Freigegeben:</gradient> <white>Plot <gradient:#ff7f50:#ff4500>{grid_x},{grid_z}</gradient> freigegeben.</white>"
@@ -189,6 +191,10 @@ plot:
   help_merge:   "<gradient:#ffa500:#ff6347>/{alias} merge</gradient> <gray>- mit dem Plot in Blickrichtung verbinden</gray>"
   help_unmerge: "<gradient:#ffa500:#ff6347>/{alias} unmerge</gradient> <gray>- diesen Plot aus der Merge-Gruppe lösen</gray>"
   help_menu:    "<gradient:#ffa500:#ff6347>/{alias} menu</gradient> <gray>- Plot-Verwaltung als GUI öffnen</gray>"
+  help_border:  "<gradient:#ffa500:#ff6347>/{alias} border [material]</gradient> <gray>- Wandmaterial deines Plots ändern</gray>"
+
+  border_set:    "<gradient:#32cd32:#228b22>Border:</gradient> <white>Plot-Wand auf <gradient:#ff7f50:#ff4500>{material}</gradient> gesetzt.</white>"
+  border_reset:  "<gradient:#ffa500:#ff8c00>Border:</gradient> <white>Plot-Wand auf das Standard-Material zurückgesetzt.</white>"
 
 plot_menu_ui:
   title: "<gradient:#ff7f50:#ff4500>Plot</gradient> <dark_gray>{world_name} @ {grid_x},{grid_z}</dark_gray>"
@@ -268,6 +274,47 @@ plot_flags_ui:
         - ""
         - "<gray>Wenn deaktiviert, breitet sich</gray>"
         - "<gray>Feuer nicht aus und brennt nichts.</gray>"
+        - ""
+        - "<gradient:#ff7f50:#ff4500>Klick</gradient> <gray>zum Umschalten</gray>"
+    keep-inventory:
+      name: "<gradient:#ff7f50:#ff4500>Inventar behalten</gradient> <dark_gray>({value})</dark_gray>"
+      lore:
+        - ""
+        - "<gray>Status:</gray> <white>{value}</white> <dark_gray>({source})</dark_gray>"
+        - ""
+        - "<gray>Wenn aktiviert, behalten Spieler</gray>"
+        - "<gray>ihre Items + XP beim Tod hier.</gray>"
+        - ""
+        - "<gradient:#ff7f50:#ff4500>Klick</gradient> <gray>zum Umschalten</gray>"
+    entry:
+      name: "<gradient:#ff7f50:#ff4500>Öffentlicher Zugang</gradient> <dark_gray>({value})</dark_gray>"
+      lore:
+        - ""
+        - "<gray>Status:</gray> <white>{value}</white> <dark_gray>({source})</dark_gray>"
+        - ""
+        - "<gray>Wenn deaktiviert, dürfen nur</gray>"
+        - "<gray>Besitzer + Vertraute betreten.</gray>"
+        - ""
+        - "<gradient:#ff7f50:#ff4500>Klick</gradient> <gray>zum Umschalten</gray>"
+    liquid-flow:
+      name: "<gradient:#ff7f50:#ff4500>Flüssigkeitsfluss</gradient> <dark_gray>({value})</dark_gray>"
+      lore:
+        - ""
+        - "<gray>Status:</gray> <white>{value}</white> <dark_gray>({source})</dark_gray>"
+        - ""
+        - "<gray>Wenn deaktiviert, fließen Wasser</gray>"
+        - "<gray>und Lava nicht in diesem Plot.</gray>"
+        - ""
+        - "<gradient:#ff7f50:#ff4500>Klick</gradient> <gray>zum Umschalten</gray>"
+    ice-form-melt:
+      name: "<gradient:#ff7f50:#ff4500>Eis / Schnee bilden & schmelzen</gradient> <dark_gray>({value})</dark_gray>"
+      lore:
+        - ""
+        - "<gray>Status:</gray> <white>{value}</white> <dark_gray>({source})</dark_gray>"
+        - ""
+        - "<gray>Wenn deaktiviert, bleiben Eis und</gray>"
+        - "<gray>Schnee unabhängig von Biom oder</gray>"
+        - "<gray>Lichtstärke wo platziert.</gray>"
         - ""
         - "<gradient:#ff7f50:#ff4500>Klick</gradient> <gray>zum Umschalten</gray>"
 

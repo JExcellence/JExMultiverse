@@ -47,16 +47,24 @@ public final class PlotMergeOps {
         if (!areAdjacent(a, b)) return;
         var slice = roadSlice(a, b, plotSize, roadWidth);
         fillPlotTerrain(world, slice, config.plotHeight(), config.layers());
-        clearWallsBetween(world, a, b, plotSize, roadWidth, config.plotHeight());
+        clearWallsBetween(world, a, b, plotSize, roadWidth, config.plotHeight(), config.wallHeight());
     }
 
-    /** Applies the visual unmerge: restores road surface + walls between two plots. */
+    /**
+     * Applies the visual unmerge: restores road surface + walls between two
+     * plots. Wall material is the {@code claimedWallMaterial} the caller
+     * passes — typically each plot's own owner-chosen border material, since
+     * both plots involved in an unmerge are still claimed.
+     */
     public static void applyUnmerge(@NotNull World world, @NotNull Plot a, @NotNull Plot b,
-                                     int plotSize, int roadWidth, @NotNull PlotWorldConfig config) {
+                                     int plotSize, int roadWidth,
+                                     @NotNull PlotWorldConfig config,
+                                     @NotNull Material claimedWallMaterial) {
         if (!areAdjacent(a, b)) return;
         var slice = roadSlice(a, b, plotSize, roadWidth);
         restoreRoad(world, slice, config.plotHeight(), config.roadMaterial());
-        restoreWallsBetween(world, a, b, plotSize, roadWidth, config.plotHeight(), config.wallMaterial());
+        restoreWallsBetween(world, a, b, plotSize, roadWidth, config.plotHeight(),
+                config.wallHeight(), claimedWallMaterial);
     }
 
     // ── Geometry ────────────────────────────────────────────────────────────────
@@ -120,23 +128,24 @@ public final class PlotMergeOps {
     }
 
     /**
-     * Clears the 3-block-tall wall stripes that A and B placed along the
-     * edge that faces the other plot.
+     * Clears the wall stripes that A and B placed along the edge that faces
+     * the other plot. Stripe height comes from the world config.
      */
     private static void clearWallsBetween(@NotNull World world, @NotNull Plot a, @NotNull Plot b,
-                                           int plotSize, int roadWidth, int plotHeight) {
-        applyWallsBetween(world, a, b, plotSize, roadWidth, plotHeight, Material.AIR);
+                                           int plotSize, int roadWidth, int plotHeight,
+                                           int wallHeight) {
+        applyWallsBetween(world, a, b, plotSize, roadWidth, plotHeight, wallHeight, Material.AIR);
     }
 
     private static void restoreWallsBetween(@NotNull World world, @NotNull Plot a, @NotNull Plot b,
                                              int plotSize, int roadWidth, int plotHeight,
-                                             @NotNull Material wallMaterial) {
-        applyWallsBetween(world, a, b, plotSize, roadWidth, plotHeight, wallMaterial);
+                                             int wallHeight, @NotNull Material wallMaterial) {
+        applyWallsBetween(world, a, b, plotSize, roadWidth, plotHeight, wallHeight, wallMaterial);
     }
 
     private static void applyWallsBetween(@NotNull World world, @NotNull Plot a, @NotNull Plot b,
                                            int plotSize, int roadWidth, int plotHeight,
-                                           @NotNull Material material) {
+                                           int wallHeight, @NotNull Material material) {
         int interval = plotSize + roadWidth;
         // Edge column on A facing B + edge column on B facing A.
         int aEdgeX, aMinZ, aMaxZ, bEdgeX, bMinZ, bMaxZ;
@@ -152,8 +161,8 @@ public final class PlotMergeOps {
             aMaxX = aMinX + plotSize - 1;
             bMinX = b.getGridX() * interval;
             bMaxX = bMinX + plotSize - 1;
-            applyWallStripeZ(world, aEdgeZ, aMinX, aMaxX, plotHeight, material);
-            applyWallStripeZ(world, bEdgeZ, bMinX, bMaxX, plotHeight, material);
+            applyWallStripeZ(world, aEdgeZ, aMinX, aMaxX, plotHeight, wallHeight, material);
+            applyWallStripeZ(world, bEdgeZ, bMinX, bMaxX, plotHeight, wallHeight, material);
         } else {
             // East-west: edge is along X axis.
             int aX0 = a.getGridX() * interval;
@@ -164,24 +173,24 @@ public final class PlotMergeOps {
             aMaxZ = aMinZ + plotSize - 1;
             bMinZ = b.getGridZ() * interval;
             bMaxZ = bMinZ + plotSize - 1;
-            applyWallStripeX(world, aEdgeX, aMinZ, aMaxZ, plotHeight, material);
-            applyWallStripeX(world, bEdgeX, bMinZ, bMaxZ, plotHeight, material);
+            applyWallStripeX(world, aEdgeX, aMinZ, aMaxZ, plotHeight, wallHeight, material);
+            applyWallStripeX(world, bEdgeX, bMinZ, bMaxZ, plotHeight, wallHeight, material);
         }
     }
 
     private static void applyWallStripeX(@NotNull World world, int x, int minZ, int maxZ,
-                                          int plotHeight, @NotNull Material material) {
+                                          int plotHeight, int wallHeight, @NotNull Material material) {
         for (int z = minZ; z <= maxZ; z++) {
-            for (int dy = 1; dy <= 3; dy++) {
+            for (int dy = 1; dy <= wallHeight; dy++) {
                 world.getBlockAt(x, plotHeight + dy, z).setType(material, false);
             }
         }
     }
 
     private static void applyWallStripeZ(@NotNull World world, int z, int minX, int maxX,
-                                          int plotHeight, @NotNull Material material) {
+                                          int plotHeight, int wallHeight, @NotNull Material material) {
         for (int x = minX; x <= maxX; x++) {
-            for (int dy = 1; dy <= 3; dy++) {
+            for (int dy = 1; dy <= wallHeight; dy++) {
                 world.getBlockAt(x, plotHeight + dy, z).setType(material, false);
             }
         }

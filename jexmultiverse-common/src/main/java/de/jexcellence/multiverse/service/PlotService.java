@@ -12,6 +12,7 @@ import de.jexcellence.multiverse.database.repository.PlotRepository;
 import de.jexcellence.multiverse.factory.WorldFactory;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -302,12 +303,66 @@ public class PlotService {
                 .build();
         return plots.createAsync(plot).thenApply(saved -> {
             cachePlot(saved);
+            applyClaimedWalls(saved);
             logger.info("Player {} claimed plot {}/{},{}", player.getName(),
                     coord.world(), coord.gridX(), coord.gridZ());
             return Optional.of(saved);
         }).exceptionally(ex -> {
             logger.error("Failed to claim plot for {}", player.getName(), ex);
             return Optional.empty();
+        });
+    }
+
+    // ── Wall material helpers ───────────────────────────────────────────────────
+
+    /** Returns the effective wall material for a claimed plot: override OR config default. */
+    public @NotNull Material effectiveClaimedWall(@NotNull Plot plot) {
+        var override = plot.getWallMaterialOverride();
+        if (override != null) {
+            var mat = Material.matchMaterial(override);
+            if (mat != null) return mat;
+        }
+        return worldFactory.plotConfig().wallMaterialClaimed();
+    }
+
+    /** Schedules a perimeter-wall repaint with the plot's claimed material. */
+    public void applyClaimedWalls(@NotNull Plot plot) {
+        applyPerimeterWalls(plot, effectiveClaimedWall(plot));
+    }
+
+    /** Schedules a perimeter-wall repaint with the global unclaimed material. */
+    public void applyUnclaimedWalls(@NotNull Plot plot) {
+        applyPerimeterWalls(plot, worldFactory.plotConfig().wallMaterialUnclaimed());
+    }
+
+    private void applyPerimeterWalls(@NotNull Plot plot, @NotNull Material material) {
+        var bukkit = Bukkit.getWorld(plot.getWorldName());
+        var mvWorld = worldFactory.getCachedWorld(plot.getWorldName()).orElse(null);
+        if (bukkit == null || mvWorld == null) return;
+        int plotSize = worldFactory.effectivePlotSize(mvWorld);
+        int roadWidth = worldFactory.effectiveRoadWidth(mvWorld);
+        var config = worldFactory.plotConfig();
+        var mergedIds = new java.util.HashSet<Long>();
+        if (plot.getMergedGroupIdString() != null) {
+            for (var p : getMergeGroup(plot)) {
+                if (p.getId() != plot.getId()) mergedIds.add(p.getId());
+            }
+        }
+        Bukkit.getScheduler().runTask(plugin, () ->
+                PlotWallOps.applyWalls(bukkit, plot, plotSize, roadWidth, config, material,
+                        mergedIds,
+                        coords -> getPlot(plot.getWorldName(), coords[0], coords[1]).orElse(null)));
+    }
+
+    /** Updates the owner-customised border material and repaints perimeter walls. */
+    public @NotNull CompletableFuture<Boolean> setBorder(@NotNull Plot plot, @Nullable Material material) {
+        plot.setWallMaterialOverride(material == null ? null : material.name());
+        return plots.updateAsync(plot).thenApply(v -> {
+            applyClaimedWalls(plot);
+            return true;
+        }).exceptionally(ex -> {
+            logger.error("Failed to set border for plot {}", plot.getId(), ex);
+            return false;
         });
     }
 
@@ -323,6 +378,9 @@ public class PlotService {
             }
             return all.thenCompose(v -> plots.deleteAsync(plot.getId()));
         }).thenAccept(v -> {
+            // Snapshot owner data before uncaching so wall ops still know
+            // the plot's geometry (and merge group, if any).
+            applyUnclaimedWalls(plot);
             uncachePlot(plot);
             future.complete(true);
         }).exceptionally(ex -> {
@@ -537,8 +595,12 @@ public class PlotService {
                 int roadWidth = worldFactory.effectiveRoadWidth(mvWorld);
                 Bukkit.getScheduler().runTask(plugin, () -> {
                     for (var other : others) {
+                        // Use the claimed material — both plots in this unmerge
+                        // are still claimed, so the restored wall stripe should
+                        // wear the claimed colour, not the unclaimed default.
                         PlotMergeOps.applyUnmerge(bukkitWorld, plot, other,
-                                plotSize, roadWidth, worldFactory.plotConfig());
+                                plotSize, roadWidth, worldFactory.plotConfig(),
+                                effectiveClaimedWall(other));
                     }
                 });
             }

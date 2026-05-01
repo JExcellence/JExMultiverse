@@ -63,9 +63,11 @@ public class WorldFactory {
                 plotConfig.plotSize(),
                 plotConfig.roadWidth(),
                 plotConfig.plotHeight(),
+                plotConfig.wallHeight(),
                 plotConfig.roadMaterial(),
-                plotConfig.wallMaterial(),
-                plotConfig.layers());
+                plotConfig.wallMaterialUnclaimed(),
+                plotConfig.layers(),
+                null, null);
         logger.info("Plot generator: plot={}, road={}, height={}, road={}, wall={}, layers={}",
                 plotConfig.plotSize(), plotConfig.roadWidth(), plotConfig.plotHeight(),
                 plotConfig.roadMaterial(), plotConfig.wallMaterial(), plotConfig.layers().size());
@@ -164,8 +166,8 @@ public class WorldFactory {
                 int ps = plotSizeOverride != null ? plotSizeOverride : plotConfig.plotSize();
                 int rw = roadWidthOverride != null ? roadWidthOverride : plotConfig.roadWidth();
                 yield new PlotChunkGenerator(
-                        ps, rw, plotConfig.plotHeight(),
-                        plotConfig.roadMaterial(), plotConfig.wallMaterial(),
+                        ps, rw, plotConfig.plotHeight(), plotConfig.wallHeight(),
+                        plotConfig.roadMaterial(), plotConfig.wallMaterialUnclaimed(),
                         plotConfig.layers(),
                         schematics, schematicName);
             }

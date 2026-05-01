@@ -16,15 +16,21 @@ import java.util.Map;
  * <p>Falls back to sensible defaults for any missing key so a corrupted or
  * partially-edited file still produces a valid generator.
  *
- * @param plotSize         edge length of each plot
- * @param roadWidth        width of road between plots
- * @param plotHeight       y-coordinate of the plot surface
- * @param roadMaterial     top-layer material of roads
- * @param wallMaterial     material edging each plot
- * @param layers           terrain layers within plots
- * @param schematicOffsetX X offset for schematic pastes, relative to plot NW corner
- * @param schematicOffsetY Y offset for schematic pastes, relative to plotHeight
- * @param schematicOffsetZ Z offset for schematic pastes, relative to plot NW corner
+ * @param plotSize             edge length of each plot
+ * @param roadWidth            width of road between plots
+ * @param plotHeight           y-coordinate of the plot surface
+ * @param wallHeight           wall height in blocks above the plot surface (0 disables)
+ * @param roadMaterial         top-layer material of roads
+ * @param wallMaterial         legacy default wall material (used as fallback for the
+ *                             two specific variants below when the YAML uses the
+ *                             pre-3.2 single-material schema)
+ * @param wallMaterialUnclaimed wall material for unclaimed plots (chunk-gen default)
+ * @param wallMaterialClaimed  wall material for claimed plots whose owner hasn't
+ *                             picked a custom border via {@code /plot border}
+ * @param layers               terrain layers within plots
+ * @param schematicOffsetX     X offset for schematic pastes, relative to plot NW corner
+ * @param schematicOffsetY     Y offset for schematic pastes, relative to plotHeight
+ * @param schematicOffsetZ     Z offset for schematic pastes, relative to plot NW corner
  *
  * @author JExcellence
  * @since 3.0.0
@@ -33,8 +39,11 @@ public record PlotWorldConfig(
         int plotSize,
         int roadWidth,
         int plotHeight,
+        int wallHeight,
         @NotNull Material roadMaterial,
         @NotNull Material wallMaterial,
+        @NotNull Material wallMaterialUnclaimed,
+        @NotNull Material wallMaterialClaimed,
         @NotNull List<PlotLayer> layers,
         int schematicOffsetX,
         int schematicOffsetY,
@@ -42,8 +51,11 @@ public record PlotWorldConfig(
 ) {
 
     private static final PlotWorldConfig DEFAULT = new PlotWorldConfig(
-            16, 5, 64,
-            Material.STONE_BRICKS, Material.STONE_BRICK_WALL,
+            16, 5, 64, 1,
+            Material.STONE_BRICKS,
+            Material.STONE_BRICK_WALL,
+            Material.STONE_BRICK_WALL,
+            Material.MOSSY_STONE_BRICK_WALL,
             List.of(
                     new PlotLayer(Material.DIRT, 1, 62),
                     new PlotLayer(Material.GRASS_BLOCK, 63, 63)
@@ -66,8 +78,13 @@ public record PlotWorldConfig(
         var plotSize  = section.getInt("plot-size", DEFAULT.plotSize);
         var roadWidth = section.getInt("road-width", DEFAULT.roadWidth);
         var plotHeight = section.getInt("plot-height", DEFAULT.plotHeight);
+        var wallHeight = section.getInt("wall-height", DEFAULT.wallHeight);
         var roadMat   = parseMaterial(section.getString("road-material"), DEFAULT.roadMaterial);
-        var wallMat   = parseMaterial(section.getString("wall-material"), DEFAULT.wallMaterial);
+        // Backwards-compat: pre-3.2 configs only had `wall-material`; treat that as
+        // the unclaimed default. The explicit *-unclaimed / *-claimed keys override.
+        var legacyWall  = parseMaterial(section.getString("wall-material"), DEFAULT.wallMaterial);
+        var unclaimedWall = parseMaterial(section.getString("wall-material-unclaimed"), legacyWall);
+        var claimedWall = parseMaterial(section.getString("wall-material-claimed"), DEFAULT.wallMaterialClaimed);
         var offX      = section.getInt("schematic-offset-x", DEFAULT.schematicOffsetX);
         var offY      = section.getInt("schematic-offset-y", DEFAULT.schematicOffsetY);
         var offZ      = section.getInt("schematic-offset-z", DEFAULT.schematicOffsetZ);
@@ -85,7 +102,8 @@ public record PlotWorldConfig(
         }
         if (layers.isEmpty()) layers = DEFAULT.layers;
 
-        return new PlotWorldConfig(plotSize, roadWidth, plotHeight, roadMat, wallMat, layers,
+        return new PlotWorldConfig(plotSize, roadWidth, plotHeight, wallHeight,
+                roadMat, legacyWall, unclaimedWall, claimedWall, layers,
                 offX, offY, offZ);
     }
 

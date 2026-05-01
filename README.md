@@ -7,7 +7,8 @@ World management + plot ownership plugin for Paper servers. Custom generators (v
 - Schematic import — Bukkit `.nbt` (native, no deps) + WorldEdit/FAWE `.schem`/`.schematic` (soft-dep)
 - Plot ownership — claim, unclaim, trust/untrust, deny/undeny, home, list
 - Plot merging by player facing — joins adjacent same-owner plots, fills the road, removes walls; permission-capped group size
-- 4 enforced plot flags — `pvp`, `mob-spawning`, `explosion`, `fire-spread` — per-plot override or default
+- 8 enforced plot flags — `pvp`, `mob-spawning`, `explosion`, `fire-spread`, `keep-inventory`, `entry`, `liquid-flow`, `ice-form-melt` — per-plot override or default
+- Owner-customisable plot border via `/plot border <material>` — visual signal that a plot is claimed (default border colour differs from unclaimed walls)
 - Per-world spawn locations + global spawn — `/spawn` resolves global → current-world MV spawn → default world
 - Inventory-Framework GUIs everywhere — `/mv edit`, `/mv list`, `/plot menu` (members + flags + home + unclaim)
 - MiniMessage translations with per-player locales (en_US, de_DE shipped) via JExTranslate / R18n
@@ -31,6 +32,7 @@ World management + plot ownership plugin for Paper servers. Custom generators (v
   - [Claiming](#claiming)
   - [Trusted / denied members](#trusted--denied-members)
   - [Flags](#flags)
+  - [Custom border](#custom-border)
   - [Merging](#merging)
   - [GUI menu](#gui-menu)
 - [Schematics](#schematics)
@@ -63,18 +65,26 @@ Plot-world generation defaults — applied to every plot world unless overridden
 
 ```yaml
 plot-world:
-  plot-size: 16          # edge length of each plot in blocks
-  road-width: 5          # width of road grid between plots
-  plot-height: 64        # y-coordinate of the plot surface
+  plot-size: 16              # edge length of each plot in blocks
+  road-width: 5              # width of road grid between plots
+  plot-height: 64            # y-coordinate of the plot surface
+  wall-height: 1             # 0 disables walls entirely
   road-material: STONE_BRICKS
-  wall-material: STONE_BRICK_WALL
+  wall-material-unclaimed: STONE_BRICK_WALL        # default for unclaimed plots
+  wall-material-claimed:   MOSSY_STONE_BRICK_WALL  # default after a plot is claimed
   layers:
     - { material: DIRT,        min-y: 1,  max-y: 62 }
     - { material: GRASS_BLOCK, min-y: 63, max-y: 63 }
-  schematic-offset-x: 0  # paste offset relative to plot NW corner
+  schematic-offset-x: 0      # paste offset relative to plot NW corner
   schematic-offset-y: 1
   schematic-offset-z: 0
 ```
+
+When a plot is claimed, JExMultiverse repaints the plot's perimeter with the
+claimed wall material — by default `MOSSY_STONE_BRICK_WALL` so it visually
+differs from the surrounding unclaimed `STONE_BRICK_WALL`. Owners can
+override with `/plot border <material>` (see below). The wall stripes
+between merged plots are cleared automatically.
 
 ### Translations
 
@@ -143,6 +153,7 @@ Aliases: `/p`, `/plots`.
 | `/plot home [n]` | Teleport to your nth owned plot |
 | `/plot list` | List your owned plots (count vs. cap) |
 | `/plot flag <set\|remove\|list> [flag] [value]` | Manage plot flags |
+| `/plot border [material]` | Change your plot's wall material (omit material to reset) |
 | `/plot merge` | Merge with the plot you're facing |
 | `/plot unmerge` | Split this plot off the merge group |
 | `/plot help` | Show command help |
@@ -177,6 +188,7 @@ Aliases: `/p`, `/plots`.
 | `jexplots.command.home` | Teleport to owned plots |
 | `jexplots.command.list` | List owned plots |
 | `jexplots.command.flag` | Manage plot flags |
+| `jexplots.command.border` | Change a plot's wall material |
 | `jexplots.command.merge` / `.unmerge` | Merge / unmerge plots |
 | `jexplots.command.menu` | Open the plot menu GUI |
 | `jexplots.claim.<n>` | Allow up to `n` claimed plots (highest matching wins) |
@@ -211,8 +223,21 @@ Boolean overrides per plot. Default is the listed value when no override is set.
 | `mob-spawning` | `true` | When `false`, hostile mobs (creepers, zombies, phantoms, slimes, ghasts, etc.) don't naturally spawn. Spawn eggs / spawners still work. |
 | `explosion` | `false` | When `false`, blocks inside this plot survive creeper, TNT, wither, and end-crystal explosions. Other plots / terrain in the same blast still take damage. |
 | `fire-spread` | `false` | When `false`, fire won't spread or burn blocks. You can still light fires; they just don't propagate. |
+| `keep-inventory` | `false` | When `true`, players who die inside the plot keep their items + XP. Drops are cleared and dropped XP is zeroed. |
+| `entry` | `true` | When `false`, only the owner and trusted members can enter — others are pushed back when they cross the plot boundary. Denied players are always blocked regardless of this flag. |
+| `liquid-flow` | `false` | When `false`, water and lava can't flow into the plot — useful for protected builds adjacent to fluids. |
+| `ice-form-melt` | `false` | When `false`, ice and snow stay where they're placed — they neither melt in warm biomes nor form in cold ones. |
 
-CLI: `/plot flag set pvp true`, `/plot flag remove pvp`, `/plot flag list`. GUI: `/plot menu` → flags slot.
+CLI: `/plot flag set pvp true`, `/plot flag remove pvp`, `/plot flag list`. GUI: `/plot menu` → flags slot (4×2 grid of toggle slots).
+
+### Custom border
+
+`/plot border <material>` repaints the plot's perimeter walls with the
+chosen block. Tab completion suggests typical wall / fence materials
+(`stone_brick_wall`, `mossy_stone_brick_wall`, `cobblestone_wall`,
+`oak_fence`, `iron_bars`, `glass`, etc.) but accepts any solid block. Run
+`/plot border` with no argument to reset to the default claimed material
+from `config.yml`. Walls between merged plots stay cleared regardless.
 
 ### Merging
 
@@ -312,11 +337,23 @@ mv.plotBounds("city", 3, 5).ifPresent(b -> {
     // b.minX/Z, b.maxX/Z, b.surfaceY, b.size(), b.centerX(), b.centerZ()
 });
 if (mv.isRoadOrBorder(loc)) { /* loc is on a plot road */ }
+
+// Plot ownership lookups (synchronous — listener-safe)
+mv.plotOwnership(loc).ifPresent(o -> {
+    // o.ownerUuid(), o.ownerName(), o.mergedGroupId(), o.claimedAt()
+});
+
+// Protection check — true if the player can build here under JExMultiverse
+// plot rules (owner / trusted / bypass / unclaimed).
+boolean allowed = mv.canBuild(player, loc);
+
+// Effective flag value at a location — empty if no plot is claimed there.
+mv.getPlotFlag(loc, "pvp").ifPresent(pvpEnabled -> { /* ... */ });
 ```
 
-The plot-grid API is intended for external plugins that want to integrate with JExMultiverse plot worlds — claim systems, plot-merging tools, region overlays, etc. It exposes stable `(world, gridX, gridZ)` identifiers and exact bounds without forcing consumers to know the underlying generation parameters.
+The plot-grid + ownership API is intended for external plugins that want to integrate with JExMultiverse plot worlds — claim systems, plot-merging tools, region overlays, anti-grief integrations, etc. It exposes stable `(world, gridX, gridZ)` identifiers, exact bounds, ownership snapshots, and effective flag values without forcing consumers to know the underlying generation parameters or schema.
 
-`MVWorldSnapshot` is a Java 21 record exposing the world's id, identifier, type, environment name, spawn coordinates, global-spawn flag, PvP flag, and optional enter-permission. `PlotCoord` and `PlotBounds` are also records.
+`MVWorldSnapshot`, `PlotCoord`, `PlotBounds`, and `PlotOwnership` are all Java 21 records.
 
 Heavy work happens off the main thread; schedule any Bukkit API calls back onto the primary thread.
 

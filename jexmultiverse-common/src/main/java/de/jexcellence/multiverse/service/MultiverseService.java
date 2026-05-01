@@ -6,6 +6,7 @@ import de.jexcellence.multiverse.api.MVWorldType;
 import de.jexcellence.multiverse.api.MultiverseProvider;
 import de.jexcellence.multiverse.api.PlotBounds;
 import de.jexcellence.multiverse.api.PlotCoord;
+import de.jexcellence.multiverse.api.PlotOwnership;
 import de.jexcellence.multiverse.database.entity.MVWorld;
 import de.jexcellence.multiverse.database.repository.MVWorldRepository;
 import de.jexcellence.multiverse.factory.WorldFactory;
@@ -40,6 +41,9 @@ public class MultiverseService implements MultiverseProvider {
     private final WorldFactory worldFactory;
     private final JExLogger logger;
     private final JavaPlugin plugin;
+
+    /** Late-bound: PlotService is wired after both services are constructed. */
+    private @Nullable PlotService plotService;
 
     public MultiverseService(@NotNull MultiverseEdition edition,
                              @NotNull MVWorldRepository repository,
@@ -472,6 +476,39 @@ public class MultiverseService implements MultiverseProvider {
         int maxZ = minZ + plotSize - 1;
         return Optional.of(new PlotBounds(worldIdentifier, gridX, gridZ, minX, minZ, maxX, maxZ,
                 worldFactory.plotConfig().plotHeight()));
+    }
+
+    /**
+     * Wires the plot service after both services are constructed (breaking the
+     * construction-time cycle since PlotService also takes MultiverseService).
+     */
+    public void attachPlotService(@NotNull PlotService plotService) {
+        this.plotService = plotService;
+    }
+
+    @Override
+    public @NotNull Optional<PlotOwnership> plotOwnership(@NotNull Location location) {
+        if (plotService == null) return Optional.empty();
+        return plotService.getPlotAt(location).map(p -> new PlotOwnership(
+                p.getWorldName(), p.getGridX(), p.getGridZ(),
+                p.getOwnerUuid(), p.getOwnerName(),
+                p.getMergedGroupId(), p.getClaimedAt()));
+    }
+
+    @Override
+    public boolean canBuild(@NotNull Player player, @NotNull Location location) {
+        if (plotService == null) return true; // plots not initialized — fail open
+        var plot = plotService.getPlotAt(location).orElse(null);
+        if (plot == null) return true; // unclaimed / road / non-plot world
+        return plotService.canBuild(player, plot);
+    }
+
+    @Override
+    public @NotNull Optional<Boolean> getPlotFlag(@NotNull Location location, @NotNull String flagKey) {
+        if (plotService == null) return Optional.empty();
+        var plot = plotService.getPlotAt(location).orElse(null);
+        if (plot == null) return Optional.empty();
+        return PlotFlag.byKey(flagKey).map(flag -> plotService.getFlag(plot, flag));
     }
 
     @Override

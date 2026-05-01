@@ -96,4 +96,40 @@ public interface MultiverseProvider {
      * @since 3.1.0
      */
     boolean isRoadOrBorder(@NotNull Location location);
+
+    // ── Plot ownership (PLOT-type worlds, claimed plots only) ─────────────────
+
+    /**
+     * Returns ownership info for the claimed plot at the given location, or
+     * empty if the location is on a road / unclaimed plot / non-plot world.
+     *
+     * @param location world-space location
+     * @return plot ownership snapshot, or empty
+     * @since 3.2.0
+     */
+    @NotNull java.util.Optional<PlotOwnership> plotOwnership(@NotNull Location location);
+
+    /**
+     * Returns whether the player is permitted to modify blocks at the given
+     * location under JExMultiverse plot protection: owner / trusted member /
+     * holds {@code jexplots.bypass.protect}, or the location isn't on a
+     * claimed plot at all.
+     *
+     * <p>Listener-safe — synchronous read against the in-memory plot cache.
+     *
+     * @since 3.2.0
+     */
+    boolean canBuild(@NotNull org.bukkit.entity.Player player, @NotNull Location location);
+
+    /**
+     * Returns the effective boolean value of a plot flag at the given
+     * location, or empty if no plot is claimed there. Flag keys match the
+     * names used by {@code /plot flag set <key> <value>}: {@code pvp},
+     * {@code mob-spawning}, {@code explosion}, {@code fire-spread},
+     * {@code keep-inventory}, {@code entry}, {@code liquid-flow},
+     * {@code ice-form-melt}.
+     *
+     * @since 3.2.0
+     */
+    @NotNull java.util.Optional<Boolean> getPlotFlag(@NotNull Location location, @NotNull String flagKey);
 }

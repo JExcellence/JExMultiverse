@@ -60,6 +60,14 @@ public class Plot extends LongIdEntity {
     @Column(name = "merged_group_id", length = 36)
     private String mergedGroupId;
 
+    /**
+     * Owner-customised border material (Bukkit {@link org.bukkit.Material#name()}).
+     * When non-null this supersedes the global config's
+     * {@code wall-material-claimed} on this plot's perimeter walls.
+     */
+    @Column(name = "wall_material_override", length = 64)
+    private String wallMaterialOverride;
+
     public Plot() {
         // JPA
     }
@@ -99,6 +107,11 @@ public class Plot extends LongIdEntity {
     public @Nullable String getMergedGroupIdString() { return mergedGroupId; }
     public void setMergedGroupId(@Nullable UUID id) {
         this.mergedGroupId = id == null ? null : id.toString();
+    }
+
+    public @Nullable String getWallMaterialOverride() { return wallMaterialOverride; }
+    public void setWallMaterialOverride(@Nullable String wallMaterialOverride) {
+        this.wallMaterialOverride = wallMaterialOverride;
     }
 
     /** Returns whether the given UUID is this plot's owner. */

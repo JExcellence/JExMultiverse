@@ -150,6 +150,8 @@ plot:
     merge_failed: "<gradient:#dc143c:#b22222>Error:</gradient> <white>Failed to merge plots.</white>"
     unmerge_not_merged: "<gradient:#dc143c:#b22222>Error:</gradient> <white>This plot isn't part of a merge group.</white>"
     unmerge_failed: "<gradient:#dc143c:#b22222>Error:</gradient> <white>Failed to unmerge plot.</white>"
+    invalid_material: "<gradient:#dc143c:#b22222>Error:</gradient> <white><gradient:#ff7f50:#ff4500>{material}</gradient> is not a valid block material.</white>"
+    border_failed: "<gradient:#dc143c:#b22222>Error:</gradient> <white>Failed to update plot border.</white>"
 
   claimed: "<gradient:#32cd32:#228b22>Claimed:</gradient> <white>Plot <gradient:#ff7f50:#ff4500>{grid_x},{grid_z}</gradient> in <gradient:#ff7f50:#ff4500>{world_name}</gradient> is yours.</white>"
   unclaimed: "<gradient:#ffa500:#ff8c00>Unclaimed:</gradient> <white>Plot <gradient:#ff7f50:#ff4500>{grid_x},{grid_z}</gradient> released.</white>"
@@ -189,6 +191,10 @@ plot:
   help_merge:   "<gradient:#ffa500:#ff6347>/{alias} merge</gradient> <gray>- merge with the plot you're facing</gray>"
   help_unmerge: "<gradient:#ffa500:#ff6347>/{alias} unmerge</gradient> <gray>- split this plot off the merge group</gray>"
   help_menu:    "<gradient:#ffa500:#ff6347>/{alias} menu</gradient> <gray>- open the plot management GUI</gray>"
+  help_border:  "<gradient:#ffa500:#ff6347>/{alias} border [material]</gradient> <gray>- change your plot's wall material</gray>"
+
+  border_set:    "<gradient:#32cd32:#228b22>Border:</gradient> <white>Plot wall set to <gradient:#ff7f50:#ff4500>{material}</gradient>.</white>"
+  border_reset:  "<gradient:#ffa500:#ff8c00>Border:</gradient> <white>Plot wall reset to the default claimed material.</white>"
 
 plot_menu_ui:
   title: "<gradient:#ff7f50:#ff4500>Plot</gradient> <dark_gray>{world_name} @ {grid_x},{grid_z}</dark_gray>"
@@ -268,6 +274,47 @@ plot_flags_ui:
         - ""
         - "<gray>When disabled, fire won't</gray>"
         - "<gray>spread or burn blocks.</gray>"
+        - ""
+        - "<gradient:#ff7f50:#ff4500>Click</gradient> <gray>to toggle</gray>"
+    keep-inventory:
+      name: "<gradient:#ff7f50:#ff4500>Keep inventory</gradient> <dark_gray>({value})</dark_gray>"
+      lore:
+        - ""
+        - "<gray>Status:</gray> <white>{value}</white> <dark_gray>({source})</dark_gray>"
+        - ""
+        - "<gray>When enabled, players keep their</gray>"
+        - "<gray>items and XP if they die here.</gray>"
+        - ""
+        - "<gradient:#ff7f50:#ff4500>Click</gradient> <gray>to toggle</gray>"
+    entry:
+      name: "<gradient:#ff7f50:#ff4500>Public entry</gradient> <dark_gray>({value})</dark_gray>"
+      lore:
+        - ""
+        - "<gray>Status:</gray> <white>{value}</white> <dark_gray>({source})</dark_gray>"
+        - ""
+        - "<gray>When disabled, only the owner</gray>"
+        - "<gray>and trusted members can enter.</gray>"
+        - ""
+        - "<gradient:#ff7f50:#ff4500>Click</gradient> <gray>to toggle</gray>"
+    liquid-flow:
+      name: "<gradient:#ff7f50:#ff4500>Liquid flow</gradient> <dark_gray>({value})</dark_gray>"
+      lore:
+        - ""
+        - "<gray>Status:</gray> <white>{value}</white> <dark_gray>({source})</dark_gray>"
+        - ""
+        - "<gray>When disabled, water and lava</gray>"
+        - "<gray>can't flow inside this plot.</gray>"
+        - ""
+        - "<gradient:#ff7f50:#ff4500>Click</gradient> <gray>to toggle</gray>"
+    ice-form-melt:
+      name: "<gradient:#ff7f50:#ff4500>Ice / snow form & melt</gradient> <dark_gray>({value})</dark_gray>"
+      lore:
+        - ""
+        - "<gray>Status:</gray> <white>{value}</white> <dark_gray>({source})</dark_gray>"
+        - ""
+        - "<gray>When disabled, ice and snow stay</gray>"
+        - "<gray>where you placed them regardless</gray>"
+        - "<gray>of biome / light level.</gray>"
         - ""
         - "<gradient:#ff7f50:#ff4500>Click</gradient> <gray>to toggle</gray>"
 

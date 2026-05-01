@@ -12,6 +12,7 @@ import de.jexcellence.multiverse.command.PlotArgumentType;
 import de.jexcellence.multiverse.command.PlotFlagArgumentType;
 import de.jexcellence.multiverse.command.PlotHandler;
 import de.jexcellence.multiverse.command.R18nCommandMessages;
+import de.jexcellence.multiverse.command.WallMaterialArgumentType;
 import de.jexcellence.multiverse.command.WorldArgumentType;
 import de.jexcellence.multiverse.config.TranslationKeyMerger;
 import de.jexcellence.multiverse.database.repository.PlotFlagRepository;
@@ -204,6 +205,9 @@ public abstract class JExMultiverse {
                 edition(), worldRepository, worldFactory, logger, plugin);
         plotService = new PlotService(multiverseService, worldFactory, plotRepository,
                 plotMemberRepository, plotFlagRepository, logger, plugin);
+        // Late-bind plot service into the multiverse service so the public
+        // API can answer plotOwnership / canBuild / getPlotFlag.
+        multiverseService.attachPlotService(plotService);
 
         Bukkit.getServicesManager().register(
                 MultiverseProvider.class, multiverseService, plugin, ServicePriority.Normal);
@@ -242,7 +246,8 @@ public abstract class JExMultiverse {
                 .register(WorldArgumentType.of(worldFactory))
                 .register(EnvironmentArgumentType.create())
                 .register(PlotArgumentType.of(plotService))
-                .register(PlotFlagArgumentType.create());
+                .register(PlotFlagArgumentType.create())
+                .register(WallMaterialArgumentType.create());
 
         // Shared i18n bridge — all framework & plugin keys route through R18nManager.
         var messages = new R18nCommandMessages();

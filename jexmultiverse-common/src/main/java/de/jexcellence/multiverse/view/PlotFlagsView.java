@@ -49,6 +49,7 @@ public class PlotFlagsView extends BaseView {
         return new String[]{
                 "         ",
                 " P M E F ",
+                " K N L I ",
                 "    <    "
         };
     }
@@ -71,6 +72,10 @@ public class PlotFlagsView extends BaseView {
         renderFlag(render, player, plot, service, 'M', PlotFlag.MOB_SPAWNING);
         renderFlag(render, player, plot, service, 'E', PlotFlag.EXPLOSION);
         renderFlag(render, player, plot, service, 'F', PlotFlag.FIRE_SPREAD);
+        renderFlag(render, player, plot, service, 'K', PlotFlag.KEEP_INVENTORY);
+        renderFlag(render, player, plot, service, 'N', PlotFlag.ENTRY);
+        renderFlag(render, player, plot, service, 'L', PlotFlag.LIQUID_FLOW);
+        renderFlag(render, player, plot, service, 'I', PlotFlag.ICE_FORM_MELT);
     }
 
     private void renderFlag(@NotNull RenderContext render, @NotNull Player player,
@@ -105,6 +110,10 @@ public class PlotFlagsView extends BaseView {
             case MOB_SPAWNING -> on ? Material.ZOMBIE_HEAD : Material.BONE;
             case EXPLOSION -> on ? Material.TNT : Material.GUNPOWDER;
             case FIRE_SPREAD -> on ? Material.FIRE_CHARGE : Material.WATER_BUCKET;
+            case KEEP_INVENTORY -> on ? Material.TOTEM_OF_UNDYING : Material.SKELETON_SKULL;
+            case ENTRY -> on ? Material.OAK_DOOR : Material.IRON_DOOR;
+            case LIQUID_FLOW -> on ? Material.WATER_BUCKET : Material.BUCKET;
+            case ICE_FORM_MELT -> on ? Material.ICE : Material.PACKED_ICE;
         };
         return createItem(
                 material,

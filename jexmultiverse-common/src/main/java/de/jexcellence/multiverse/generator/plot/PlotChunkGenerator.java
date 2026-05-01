@@ -25,6 +25,7 @@ public class PlotChunkGenerator extends ChunkGenerator {
     private final int plotSize;
     private final int roadWidth;
     private final int plotHeight;
+    private final int wallHeight;
     private final Material roadMaterial;
     private final Material wallMaterial;
     private final List<PlotLayer> layers;
@@ -35,10 +36,10 @@ public class PlotChunkGenerator extends ChunkGenerator {
     public PlotChunkGenerator(int plotSize, int roadWidth, int plotHeight,
                               @NotNull Material roadMaterial, @NotNull Material wallMaterial,
                               @NotNull List<PlotLayer> layers) {
-        this(plotSize, roadWidth, plotHeight, roadMaterial, wallMaterial, layers, null, null);
+        this(plotSize, roadWidth, plotHeight, 1, roadMaterial, wallMaterial, layers, null, null);
     }
 
-    public PlotChunkGenerator(int plotSize, int roadWidth, int plotHeight,
+    public PlotChunkGenerator(int plotSize, int roadWidth, int plotHeight, int wallHeight,
                               @NotNull Material roadMaterial, @NotNull Material wallMaterial,
                               @NotNull List<PlotLayer> layers,
                               @Nullable SchematicService schematics,
@@ -46,6 +47,7 @@ public class PlotChunkGenerator extends ChunkGenerator {
         this.plotSize = plotSize;
         this.roadWidth = roadWidth;
         this.plotHeight = plotHeight;
+        this.wallHeight = wallHeight;
         this.roadMaterial = roadMaterial;
         this.wallMaterial = wallMaterial;
         this.layers = layers;
@@ -92,11 +94,11 @@ public class PlotChunkGenerator extends ChunkGenerator {
                             chunkData.setBlock(x, y, z, layer.material());
                         }
                     }
-                    // Wall on the plot's outer edge (3 blocks tall), only on
-                    // edges that actually face a road — so corners between
-                    // two plots stay open if there's no road there.
-                    if (isPlotEdgeX || isPlotEdgeZ) {
-                        for (int dy = 1; dy <= 3; dy++) {
+                    // Wall on the plot's outer edge, only on edges that
+                    // actually face a road — corners between two plots stay
+                    // open if there's no road there.
+                    if (wallHeight > 0 && (isPlotEdgeX || isPlotEdgeZ)) {
+                        for (int dy = 1; dy <= wallHeight; dy++) {
                             chunkData.setBlock(x, plotHeight + dy, z, wallMaterial);
                         }
                     }

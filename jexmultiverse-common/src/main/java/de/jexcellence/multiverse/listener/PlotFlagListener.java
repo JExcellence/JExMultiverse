@@ -12,8 +12,13 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBurnEvent;
 import org.bukkit.event.block.BlockExplodeEvent;
 import org.bukkit.event.block.BlockSpreadEvent;
+import org.bukkit.event.block.BlockFadeEvent;
+import org.bukkit.event.block.BlockFormEvent;
+import org.bukkit.event.block.BlockFromToEvent;
 import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
+import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.player.PlayerMoveEvent;
 import org.jetbrains.annotations.NotNull;
 
 /**
@@ -112,6 +117,83 @@ public class PlotFlagListener implements Listener {
         if (plot == null) return;
         if (!plots.getFlag(plot, PlotFlag.FIRE_SPREAD)) {
             event.setCancelled(true);
+        }
+    }
+
+    // ── Keep inventory ──────────────────────────────────────────────────────────
+
+    @EventHandler(priority = EventPriority.NORMAL)
+    public void onPlayerDeath(@NotNull PlayerDeathEvent event) {
+        var plot = plots.getPlotAt(event.getEntity().getLocation()).orElse(null);
+        if (plot == null) return;
+        if (plots.getFlag(plot, PlotFlag.KEEP_INVENTORY)) {
+            event.setKeepInventory(true);
+            event.getDrops().clear();
+            event.setKeepLevel(true);
+            event.setDroppedExp(0);
+        }
+    }
+
+    // ── Liquid flow (water + lava) ──────────────────────────────────────────────
+
+    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+    public void onLiquidFlow(@NotNull BlockFromToEvent event) {
+        var plot = plots.getPlotAt(event.getToBlock().getLocation()).orElse(null);
+        if (plot == null) return;
+        if (!plots.getFlag(plot, PlotFlag.LIQUID_FLOW)) {
+            event.setCancelled(true);
+        }
+    }
+
+    // ── Ice / snow form + melt ──────────────────────────────────────────────────
+
+    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+    public void onIceMelt(@NotNull BlockFadeEvent event) {
+        var type = event.getBlock().getType();
+        if (type != Material.ICE && type != Material.FROSTED_ICE && type != Material.SNOW
+                && type != Material.SNOW_BLOCK) return;
+        var plot = plots.getPlotAt(event.getBlock().getLocation()).orElse(null);
+        if (plot == null) return;
+        if (!plots.getFlag(plot, PlotFlag.ICE_FORM_MELT)) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+    public void onIceForm(@NotNull BlockFormEvent event) {
+        var newType = event.getNewState().getType();
+        if (newType != Material.ICE && newType != Material.SNOW
+                && newType != Material.SNOW_BLOCK) return;
+        var plot = plots.getPlotAt(event.getBlock().getLocation()).orElse(null);
+        if (plot == null) return;
+        if (!plots.getFlag(plot, PlotFlag.ICE_FORM_MELT)) {
+            event.setCancelled(true);
+        }
+    }
+
+    // ── Entry blocking ──────────────────────────────────────────────────────────
+    //
+    // Player movement fires every tick, so we only do the cross-plot lookup
+    // when the block-x or block-z actually changes. Players who can't enter
+    // are pushed back to their previous location.
+
+    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+    public void onPlayerMove(@NotNull PlayerMoveEvent event) {
+        var to = event.getTo();
+        var from = event.getFrom();
+        if (to.getBlockX() == from.getBlockX() && to.getBlockZ() == from.getBlockZ()) return;
+
+        var plot = plots.getPlotAt(to).orElse(null);
+        if (plot == null) return;
+
+        var player = event.getPlayer();
+        if (plots.canBuild(player, plot)) return; // owner / trusted / bypass
+        if (plots.isDenied(player, plot)) {
+            event.setTo(from);
+            return;
+        }
+        if (!plots.getFlag(plot, PlotFlag.ENTRY)) {
+            event.setTo(from);
         }
     }
 }
