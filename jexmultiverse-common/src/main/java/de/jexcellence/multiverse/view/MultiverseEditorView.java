@@ -305,16 +305,25 @@ public class MultiverseEditorView extends BaseView {
     private void handleSave(SlotClickContext click, MVWorld world, MultiverseService service) {
         click.setCancelled(true);
         var p = click.getPlayer();
+        var plugin = pluginState.get(click);
         service.updateWorld(world).thenAccept(saved ->
-                R18nManager.getInstance()
-                        .msg("multiverse_editor_ui.save.success").prefix()
-                        .with("world_name", saved.getIdentifier())
-                        .send(p)
+                Bukkit.getScheduler().runTask(plugin, () ->
+                        R18nManager.getInstance()
+                                .msg("multiverse_editor_ui.save.success").prefix()
+                                .with("world_name", saved.getIdentifier())
+                                .send(p))
         ).exceptionally(ex -> {
-            R18nManager.getInstance()
-                    .msg("multiverse_editor_ui.save.failed").prefix()
-                    .with("world_name", world.getIdentifier())
-                    .send(p);
+            plugin.getLogger().log(java.util.logging.Level.SEVERE,
+                    "Failed to save world '" + world.getIdentifier() + "'", ex);
+            var rootCause = ex.getCause() != null ? ex.getCause() : ex;
+            var msg = rootCause.getClass().getSimpleName()
+                    + (rootCause.getMessage() != null ? ": " + rootCause.getMessage() : "");
+            Bukkit.getScheduler().runTask(plugin, () ->
+                    R18nManager.getInstance()
+                            .msg("multiverse_editor_ui.save.failed").prefix()
+                            .with("world_name", world.getIdentifier())
+                            .with("error", msg)
+                            .send(p));
             return null;
         });
         click.closeForPlayer();

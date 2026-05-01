@@ -95,6 +95,14 @@ public final class MultiverseHandler {
             return;
         }
 
+        if (worldFactory.getCachedWorld(name).isPresent()
+                || Bukkit.getWorld(name) != null) {
+            r18n().msg("multiverse.world_already_exists").prefix()
+                    .with("world_name", name)
+                    .send(sender);
+            return;
+        }
+
         r18n().msg("multiverse.creating_world").prefix()
                 .with("world_name", name)
                 .send(sender);

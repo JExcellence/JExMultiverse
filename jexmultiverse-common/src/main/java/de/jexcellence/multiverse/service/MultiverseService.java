@@ -210,12 +210,25 @@ public class MultiverseService implements MultiverseProvider {
      * @param world the world to update
      * @return a future containing the updated world
      */
-    public @NotNull CompletableFuture<MVWorld> updateWorld(@NotNull MVWorld world) {
-        return repository.saveWorld(world).thenApply(saved -> {
-            worldFactory.cacheWorld(saved);
-            logger.debug("Updated world '{}'", saved.getIdentifier());
-            return saved;
-        });
+    public @NotNull CompletableFuture<MVWorld> updateWorld(@NotNull MVWorld changes) {
+        // Re-fetch a fresh entity by identifier and copy persisted fields onto
+        // it, so we never hand Hibernate a stale/detached instance whose
+        // session was closed (which can manifest as
+        // "LogicalConnectionManagedImpl is closed" during transaction work).
+        return repository.findByIdentifierAsync(changes.getIdentifier())
+                .thenCompose(opt -> {
+                    var target = opt.orElse(changes);
+                    target.setSpawnLocation(changes.getSpawnLocation());
+                    target.setGlobalizedSpawn(changes.isGlobalizedSpawn());
+                    target.setPvpEnabled(changes.isPvpEnabled());
+                    target.setEnterPermission(changes.getEnterPermission());
+                    return repository.saveWorld(target);
+                })
+                .thenApply(saved -> {
+                    worldFactory.cacheWorld(saved);
+                    logger.debug("Updated world '{}'", saved.getIdentifier());
+                    return saved;
+                });
     }
 
     // ── Spawn management ────────────────────────────────────────────────────────

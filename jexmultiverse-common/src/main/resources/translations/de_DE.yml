@@ -7,6 +7,7 @@ multiverse:
   type_not_available: "<gradient:#dc143c:#b22222>Fehler:</gradient> <white>Welttyp <gradient:#ff7f50:#ff4500>{type}</gradient> ist in dieser Edition nicht verfügbar.</white>"
   world_limit_reached: "<gradient:#dc143c:#b22222>Limit erreicht:</gradient> <white>Maximale Welt-Anzahl erreicht (<gradient:#ff7f50:#ff4500>{max}</gradient>).</white>"
   world_does_not_exist: "<gradient:#dc143c:#b22222>Fehler:</gradient> <white>Welt <gradient:#ff7f50:#ff4500>{world_name}</gradient> existiert nicht.</white>"
+  world_already_exists: "<gradient:#dc143c:#b22222>Fehler:</gradient> <white>Welt <gradient:#ff7f50:#ff4500>{world_name}</gradient> existiert bereits.</white>"
 
   creating_world: "<gradient:#ffa500:#ff8c00>Erstelle:</gradient> <white>Erstelle Welt <gradient:#ff7f50:#ff4500>{world_name}</gradient>...</white>"
   create_success: "<gradient:#32cd32:#228b22>Erstellt:</gradient> <white>Welt <gradient:#ff7f50:#ff4500>{world_name}</gradient> erstellt. <gray>(Typ: {type}, Env: {environment})</gray></white>"
@@ -114,7 +115,7 @@ multiverse_editor_ui:
       - ""
       - "<gradient:#32cd32:#228b22>Klick</gradient> <gray>zum Speichern</gray>"
     success: "<gradient:#32cd32:#228b22>Gespeichert:</gradient> <white>Änderungen an <gradient:#ff7f50:#ff4500>{world_name}</gradient> gespeichert.</white>"
-    failed: "<gradient:#dc143c:#b22222>Speichern fehlgeschlagen:</gradient> <white>Änderungen an <gradient:#ff7f50:#ff4500>{world_name}</gradient> konnten nicht gespeichert werden.</white>"
+    failed: "<gradient:#dc143c:#b22222>Speichern fehlgeschlagen:</gradient> <white>Änderungen an <gradient:#ff7f50:#ff4500>{world_name}</gradient>: <gray>{error}</gray></white>"
 
 multiverse_list_ui:
   title: "<gradient:#ff7f50:#ff4500>Verwaltete Welten</gradient>"

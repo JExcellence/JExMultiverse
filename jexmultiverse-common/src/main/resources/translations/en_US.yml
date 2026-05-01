@@ -7,6 +7,7 @@ multiverse:
   type_not_available: "<gradient:#dc143c:#b22222>Error:</gradient> <white>World type <gradient:#ff7f50:#ff4500>{type}</gradient> is not available in this edition.</white>"
   world_limit_reached: "<gradient:#dc143c:#b22222>Limit Reached:</gradient> <white>You have reached the maximum world limit (<gradient:#ff7f50:#ff4500>{max}</gradient>).</white>"
   world_does_not_exist: "<gradient:#dc143c:#b22222>Error:</gradient> <white>World <gradient:#ff7f50:#ff4500>{world_name}</gradient> does not exist.</white>"
+  world_already_exists: "<gradient:#dc143c:#b22222>Error:</gradient> <white>World <gradient:#ff7f50:#ff4500>{world_name}</gradient> already exists.</white>"
 
   creating_world: "<gradient:#ffa500:#ff8c00>Creating:</gradient> <white>Creating world <gradient:#ff7f50:#ff4500>{world_name}</gradient>...</white>"
   create_success: "<gradient:#32cd32:#228b22>Created:</gradient> <white>World <gradient:#ff7f50:#ff4500>{world_name}</gradient> created. <gray>(type: {type}, env: {environment})</gray></white>"
@@ -114,7 +115,7 @@ multiverse_editor_ui:
       - ""
       - "<gradient:#32cd32:#228b22>Click</gradient> <gray>to save</gray>"
     success: "<gradient:#32cd32:#228b22>Saved:</gradient> <white>Changes to <gradient:#ff7f50:#ff4500>{world_name}</gradient> saved.</white>"
-    failed: "<gradient:#dc143c:#b22222>Save Failed:</gradient> <white>Failed to save <gradient:#ff7f50:#ff4500>{world_name}</gradient>.</white>"
+    failed: "<gradient:#dc143c:#b22222>Save Failed:</gradient> <white>Failed to save <gradient:#ff7f50:#ff4500>{world_name}</gradient>: <gray>{error}</gray></white>"
 
 multiverse_list_ui:
   title: "<gradient:#ff7f50:#ff4500>Managed Worlds</gradient>"
