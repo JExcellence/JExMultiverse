@@ -188,6 +188,114 @@ plot:
   unmerged: "<gradient:#ffa500:#ff8c00>Unmerged:</gradient> <white>This plot is now standalone again.</white>"
   help_merge:   "<gradient:#ffa500:#ff6347>/{alias} merge</gradient> <gray>- merge with the plot you're facing</gray>"
   help_unmerge: "<gradient:#ffa500:#ff6347>/{alias} unmerge</gradient> <gray>- split this plot off the merge group</gray>"
+  help_menu:    "<gradient:#ffa500:#ff6347>/{alias} menu</gradient> <gray>- open the plot management GUI</gray>"
+
+plot_menu_ui:
+  title: "<gradient:#ff7f50:#ff4500>Plot</gradient> <dark_gray>{world_name} @ {grid_x},{grid_z}</dark_gray>"
+  info:
+    name: "<gradient:#ffa500:#ff6347>{owner_name}'s plot</gradient>"
+    lore:
+      - ""
+      - "<gray>Owner:</gray> <white>{owner_name}</white>"
+      - "<gray>World:</gray> <white>{world_name}</white>"
+      - "<gray>Grid:</gray> <white>{grid_x},{grid_z}</white>"
+      - "<gray>Trusted:</gray> <white>{trusted}</white> <dark_gray>·</dark_gray> <gray>Denied:</gray> <white>{denied}</white>"
+      - "<gray>Merged:</gray> <white>{merged}</white>"
+  members:
+    name: "<gradient:#ff7f50:#ff4500>Members</gradient>"
+    lore:
+      - ""
+      - "<gray>Click to view trusted</gray>"
+      - "<gray>and denied players.</gray>"
+  flags:
+    name: "<gradient:#ff7f50:#ff4500>Flags</gradient>"
+    lore:
+      - ""
+      - "<gray>Click to toggle plot flags</gray>"
+      - "<gray>like PvP, mob spawning,</gray>"
+      - "<gray>explosions, and fire.</gray>"
+  home:
+    name: "<gradient:#ff7f50:#ff4500>Teleport home</gradient>"
+    lore:
+      - ""
+      - "<gray>Click to teleport to the</gray>"
+      - "<gray>center of this plot.</gray>"
+  unclaim:
+    name: "<gradient:#dc143c:#b22222>Unclaim plot</gradient>"
+    lore:
+      - ""
+      - "<gray>Releases this plot.</gray>"
+      - "<gray>All members and flags are removed.</gray>"
+
+plot_flags_ui:
+  title: "<gradient:#ff7f50:#ff4500>Flags</gradient> <dark_gray>{grid_x},{grid_z}</dark_gray>"
+  flag:
+    pvp:
+      name: "<gradient:#ff7f50:#ff4500>PvP</gradient> <dark_gray>({value})</dark_gray>"
+      lore:
+        - ""
+        - "<gray>Status:</gray> <white>{value}</white> <dark_gray>({source})</dark_gray>"
+        - ""
+        - "<gray>When enabled, anyone can</gray>"
+        - "<gray>fight in this plot.</gray>"
+        - ""
+        - "<gradient:#ff7f50:#ff4500>Click</gradient> <gray>to toggle</gray>"
+    mob-spawning:
+      name: "<gradient:#ff7f50:#ff4500>Mob spawning</gradient> <dark_gray>({value})</dark_gray>"
+      lore:
+        - ""
+        - "<gray>Status:</gray> <white>{value}</white> <dark_gray>({source})</dark_gray>"
+        - ""
+        - "<gray>Controls hostile mobs from</gray>"
+        - "<gray>naturally spawning.</gray>"
+        - ""
+        - "<gradient:#ff7f50:#ff4500>Click</gradient> <gray>to toggle</gray>"
+    explosion:
+      name: "<gradient:#ff7f50:#ff4500>Explosions</gradient> <dark_gray>({value})</dark_gray>"
+      lore:
+        - ""
+        - "<gray>Status:</gray> <white>{value}</white> <dark_gray>({source})</dark_gray>"
+        - ""
+        - "<gray>When disabled, blocks in this</gray>"
+        - "<gray>plot survive creepers and TNT.</gray>"
+        - ""
+        - "<gradient:#ff7f50:#ff4500>Click</gradient> <gray>to toggle</gray>"
+    fire-spread:
+      name: "<gradient:#ff7f50:#ff4500>Fire spread</gradient> <dark_gray>({value})</dark_gray>"
+      lore:
+        - ""
+        - "<gray>Status:</gray> <white>{value}</white> <dark_gray>({source})</dark_gray>"
+        - ""
+        - "<gray>When disabled, fire won't</gray>"
+        - "<gray>spread or burn blocks.</gray>"
+        - ""
+        - "<gradient:#ff7f50:#ff4500>Click</gradient> <gray>to toggle</gray>"
+
+plot_members_ui:
+  title: "<gradient:#ff7f50:#ff4500>Members</gradient> <dark_gray>{grid_x},{grid_z}</dark_gray>"
+  entry:
+    trusted:
+      name: "<gradient:#32cd32:#228b22>{member_name}</gradient> <dark_gray>(trusted)</dark_gray>"
+      lore:
+        - ""
+        - "<gray>#{index} · trusted to build</gray>"
+        - ""
+        - "<gradient:#dc143c:#b22222>Click</gradient> <gray>to remove trust</gray>"
+    denied:
+      name: "<gradient:#dc143c:#b22222>{member_name}</gradient> <dark_gray>(denied)</dark_gray>"
+      lore:
+        - ""
+        - "<gray>#{index} · denied entry</gray>"
+        - ""
+        - "<gradient:#32cd32:#228b22>Click</gradient> <gray>to lift the deny</gray>"
+  page:
+    name: "<gradient:#ff7f50:#ff4500>Page {page}/{total_pages}</gradient>"
+    lore:
+      - "<gray>Page {current_page} of {max_page}</gray>"
+  previous: "<gradient:#ff7f50:#ff4500>← Previous</gradient>"
+  next: "<gradient:#ff7f50:#ff4500>Next →</gradient>"
+  back: "<gradient:#ffa500:#ff6347>← Back</gradient>"
+  loading: "<gray>Loading...</gray>"
 
 multiverse_list_ui:
   title: "<gradient:#ff7f50:#ff4500>Managed Worlds</gradient>"

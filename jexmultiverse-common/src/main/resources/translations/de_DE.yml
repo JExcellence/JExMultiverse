@@ -188,6 +188,114 @@ plot:
   unmerged: "<gradient:#ffa500:#ff8c00>Getrennt:</gradient> <white>Dieser Plot steht wieder alleine.</white>"
   help_merge:   "<gradient:#ffa500:#ff6347>/{alias} merge</gradient> <gray>- mit dem Plot in Blickrichtung verbinden</gray>"
   help_unmerge: "<gradient:#ffa500:#ff6347>/{alias} unmerge</gradient> <gray>- diesen Plot aus der Merge-Gruppe lösen</gray>"
+  help_menu:    "<gradient:#ffa500:#ff6347>/{alias} menu</gradient> <gray>- Plot-Verwaltung als GUI öffnen</gray>"
+
+plot_menu_ui:
+  title: "<gradient:#ff7f50:#ff4500>Plot</gradient> <dark_gray>{world_name} @ {grid_x},{grid_z}</dark_gray>"
+  info:
+    name: "<gradient:#ffa500:#ff6347>Plot von {owner_name}</gradient>"
+    lore:
+      - ""
+      - "<gray>Besitzer:</gray> <white>{owner_name}</white>"
+      - "<gray>Welt:</gray> <white>{world_name}</white>"
+      - "<gray>Raster:</gray> <white>{grid_x},{grid_z}</white>"
+      - "<gray>Vertraut:</gray> <white>{trusted}</white> <dark_gray>·</dark_gray> <gray>Gesperrt:</gray> <white>{denied}</white>"
+      - "<gray>Verbunden:</gray> <white>{merged}</white>"
+  members:
+    name: "<gradient:#ff7f50:#ff4500>Mitglieder</gradient>"
+    lore:
+      - ""
+      - "<gray>Klick um vertraute und</gray>"
+      - "<gray>gesperrte Spieler zu sehen.</gray>"
+  flags:
+    name: "<gradient:#ff7f50:#ff4500>Flags</gradient>"
+    lore:
+      - ""
+      - "<gray>Klick um Plot-Flags zu schalten:</gray>"
+      - "<gray>PvP, Mob-Spawning,</gray>"
+      - "<gray>Explosionen, Feuer.</gray>"
+  home:
+    name: "<gradient:#ff7f50:#ff4500>Zum Plot teleportieren</gradient>"
+    lore:
+      - ""
+      - "<gray>Klick um in die Mitte</gray>"
+      - "<gray>dieses Plots zu teleportieren.</gray>"
+  unclaim:
+    name: "<gradient:#dc143c:#b22222>Plot freigeben</gradient>"
+    lore:
+      - ""
+      - "<gray>Gibt diesen Plot frei.</gray>"
+      - "<gray>Alle Mitglieder und Flags werden entfernt.</gray>"
+
+plot_flags_ui:
+  title: "<gradient:#ff7f50:#ff4500>Flags</gradient> <dark_gray>{grid_x},{grid_z}</dark_gray>"
+  flag:
+    pvp:
+      name: "<gradient:#ff7f50:#ff4500>PvP</gradient> <dark_gray>({value})</dark_gray>"
+      lore:
+        - ""
+        - "<gray>Status:</gray> <white>{value}</white> <dark_gray>({source})</dark_gray>"
+        - ""
+        - "<gray>Wenn aktiviert, kann jeder</gray>"
+        - "<gray>in diesem Plot kämpfen.</gray>"
+        - ""
+        - "<gradient:#ff7f50:#ff4500>Klick</gradient> <gray>zum Umschalten</gray>"
+    mob-spawning:
+      name: "<gradient:#ff7f50:#ff4500>Mob-Spawning</gradient> <dark_gray>({value})</dark_gray>"
+      lore:
+        - ""
+        - "<gray>Status:</gray> <white>{value}</white> <dark_gray>({source})</dark_gray>"
+        - ""
+        - "<gray>Steuert ob feindliche Mobs</gray>"
+        - "<gray>natürlich spawnen.</gray>"
+        - ""
+        - "<gradient:#ff7f50:#ff4500>Klick</gradient> <gray>zum Umschalten</gray>"
+    explosion:
+      name: "<gradient:#ff7f50:#ff4500>Explosionen</gradient> <dark_gray>({value})</dark_gray>"
+      lore:
+        - ""
+        - "<gray>Status:</gray> <white>{value}</white> <dark_gray>({source})</dark_gray>"
+        - ""
+        - "<gray>Wenn deaktiviert, überleben</gray>"
+        - "<gray>Blöcke Creeper und TNT.</gray>"
+        - ""
+        - "<gradient:#ff7f50:#ff4500>Klick</gradient> <gray>zum Umschalten</gray>"
+    fire-spread:
+      name: "<gradient:#ff7f50:#ff4500>Feuerausbreitung</gradient> <dark_gray>({value})</dark_gray>"
+      lore:
+        - ""
+        - "<gray>Status:</gray> <white>{value}</white> <dark_gray>({source})</dark_gray>"
+        - ""
+        - "<gray>Wenn deaktiviert, breitet sich</gray>"
+        - "<gray>Feuer nicht aus und brennt nichts.</gray>"
+        - ""
+        - "<gradient:#ff7f50:#ff4500>Klick</gradient> <gray>zum Umschalten</gray>"
+
+plot_members_ui:
+  title: "<gradient:#ff7f50:#ff4500>Mitglieder</gradient> <dark_gray>{grid_x},{grid_z}</dark_gray>"
+  entry:
+    trusted:
+      name: "<gradient:#32cd32:#228b22>{member_name}</gradient> <dark_gray>(vertraut)</dark_gray>"
+      lore:
+        - ""
+        - "<gray>#{index} · darf bauen</gray>"
+        - ""
+        - "<gradient:#dc143c:#b22222>Klick</gradient> <gray>um Vertrauen zu entziehen</gray>"
+    denied:
+      name: "<gradient:#dc143c:#b22222>{member_name}</gradient> <dark_gray>(gesperrt)</dark_gray>"
+      lore:
+        - ""
+        - "<gray>#{index} · darf nicht betreten</gray>"
+        - ""
+        - "<gradient:#32cd32:#228b22>Klick</gradient> <gray>um Sperre aufzuheben</gray>"
+  page:
+    name: "<gradient:#ff7f50:#ff4500>Seite {page}/{total_pages}</gradient>"
+    lore:
+      - "<gray>Seite {current_page} von {max_page}</gray>"
+  previous: "<gradient:#ff7f50:#ff4500>← Zurück</gradient>"
+  next: "<gradient:#ff7f50:#ff4500>Weiter →</gradient>"
+  back: "<gradient:#ffa500:#ff6347>← Zurück</gradient>"
+  loading: "<gray>Lädt...</gray>"
 
 multiverse_list_ui:
   title: "<gradient:#ff7f50:#ff4500>Verwaltete Welten</gradient>"

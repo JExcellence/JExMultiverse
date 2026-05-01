@@ -10,6 +10,8 @@ import de.jexcellence.multiverse.factory.WorldFactory;
 import de.jexcellence.multiverse.service.MultiverseService;
 import de.jexcellence.multiverse.service.PlotFlag;
 import de.jexcellence.multiverse.service.PlotService;
+import de.jexcellence.multiverse.view.PlotMenuView;
+import me.devnatan.inventoryframework.ViewFrame;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.command.CommandSender;
@@ -33,15 +35,18 @@ public final class PlotHandler {
     private final PlotService plots;
     private final MultiverseService mv;
     private final WorldFactory worldFactory;
+    private final ViewFrame viewFrame;
     private final JavaPlugin plugin;
 
     public PlotHandler(@NotNull PlotService plots,
                        @NotNull MultiverseService mv,
                        @NotNull WorldFactory worldFactory,
+                       @NotNull ViewFrame viewFrame,
                        @NotNull JavaPlugin plugin) {
         this.plots = plots;
         this.mv = mv;
         this.worldFactory = worldFactory;
+        this.viewFrame = viewFrame;
         this.plugin = plugin;
     }
 
@@ -60,6 +65,7 @@ public final class PlotHandler {
                 Map.entry("plot.flag",     this::onFlag),
                 Map.entry("plot.merge",    this::onMerge),
                 Map.entry("plot.unmerge",  this::onUnmerge),
+                Map.entry("plot.menu",     this::onMenu),
                 Map.entry("plot.help",     this::onHelp)
         );
     }
@@ -383,6 +389,20 @@ public final class PlotHandler {
         };
     }
 
+    // ── Menu ────────────────────────────────────────────────────────────────────
+
+    private void onMenu(@NotNull CommandContext ctx) {
+        var player = ctx.asPlayer().orElse(null);
+        if (player == null) return;
+        var plot = plots.getPlotAt(player.getLocation()).orElse(null);
+        if (plot == null) {
+            r18n().msg("plot.error.not_on_plot").prefix().send(player);
+            return;
+        }
+        viewFrame.open(PlotMenuView.class, player,
+                PlotMenuView.dataMap(plot, plugin, plots, mv));
+    }
+
     // ── Merge / Unmerge ─────────────────────────────────────────────────────────
 
     private void onMerge(@NotNull CommandContext ctx) {
@@ -455,6 +475,7 @@ public final class PlotHandler {
         if (hasPerm(sender, "jexplots.command.flag"))    r18n().msg("plot.help_flag").with("alias", alias).send(sender);
         if (hasPerm(sender, "jexplots.command.merge"))   r18n().msg("plot.help_merge").with("alias", alias).send(sender);
         if (hasPerm(sender, "jexplots.command.unmerge")) r18n().msg("plot.help_unmerge").with("alias", alias).send(sender);
+        if (hasPerm(sender, "jexplots.command.menu"))    r18n().msg("plot.help_menu").with("alias", alias).send(sender);
         r18n().msg("plot.help_footer").send(sender);
     }
 

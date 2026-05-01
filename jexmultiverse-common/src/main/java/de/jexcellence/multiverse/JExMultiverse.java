@@ -27,6 +27,9 @@ import de.jexcellence.multiverse.service.MultiverseEdition;
 import de.jexcellence.multiverse.service.MultiverseService;
 import de.jexcellence.multiverse.view.MultiverseEditorView;
 import de.jexcellence.multiverse.view.MultiverseListView;
+import de.jexcellence.multiverse.view.PlotFlagsView;
+import de.jexcellence.multiverse.view.PlotMembersView;
+import de.jexcellence.multiverse.view.PlotMenuView;
 import me.devnatan.inventoryframework.ViewFrame;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.ServicePriority;
@@ -216,6 +219,9 @@ public abstract class JExMultiverse {
                 .create(plugin)
                 .with(new MultiverseEditorView())
                 .with(new MultiverseListView())
+                .with(new PlotMenuView())
+                .with(new PlotMembersView())
+                .with(new PlotFlagsView())
                 .defaultConfig(config -> {
                     config.cancelOnClick();
                     config.cancelOnDrag();
@@ -251,7 +257,7 @@ public abstract class JExMultiverse {
                         multiverseService, plugin).handlerMap(),
                 messages, registry);
         factory.registerTree("commands/plot.yml",
-                new PlotHandler(plotService, multiverseService, worldFactory, plugin).handlerMap(),
+                new PlotHandler(plotService, multiverseService, worldFactory, viewFrame, plugin).handlerMap(),
                 messages, registry);
 
         // Still let JExCommand auto-register any listener classes under the plugin package.

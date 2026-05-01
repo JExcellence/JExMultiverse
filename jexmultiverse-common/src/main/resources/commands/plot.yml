@@ -74,6 +74,11 @@ subcommands:
       - { name: flag,   type: plot_flag,                                                 required: false, description: "Flag key (omit for action=list)" }
       - { name: value,  type: string,                                                    required: false, description: "true / false (action=set only)" }
 
+  - name: menu
+    description: "Open the plot management GUI"
+    permission: "jexplots.command.menu"
+    senders: [player]
+
   - name: merge
     description: "Merge with the adjacent plot in the direction you're facing"
     permission: "jexplots.command.merge"
