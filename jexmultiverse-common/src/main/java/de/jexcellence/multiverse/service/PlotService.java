@@ -9,11 +9,14 @@ import de.jexcellence.multiverse.database.entity.StoredPlotFlag;
 import de.jexcellence.multiverse.database.repository.PlotFlagRepository;
 import de.jexcellence.multiverse.database.repository.PlotMemberRepository;
 import de.jexcellence.multiverse.database.repository.PlotRepository;
+import de.jexcellence.multiverse.factory.WorldFactory;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -45,6 +48,7 @@ import java.util.concurrent.ConcurrentMap;
 public class PlotService {
 
     private final MultiverseService multiverseService;
+    private final WorldFactory worldFactory;
     private final PlotRepository plots;
     private final PlotMemberRepository members;
     private final PlotFlagRepository flags;
@@ -63,12 +67,14 @@ public class PlotService {
     private final ConcurrentMap<Long, Map<String, Boolean>> flagsByPlot = new ConcurrentHashMap<>();
 
     public PlotService(@NotNull MultiverseService multiverseService,
+                       @NotNull WorldFactory worldFactory,
                        @NotNull PlotRepository plots,
                        @NotNull PlotMemberRepository members,
                        @NotNull PlotFlagRepository flags,
                        @NotNull JExLogger logger,
                        @NotNull JavaPlugin plugin) {
         this.multiverseService = multiverseService;
+        this.worldFactory = worldFactory;
         this.plots = plots;
         this.members = members;
         this.flags = flags;
@@ -372,5 +378,178 @@ public class PlotService {
     /** Returns a snapshot of all cached plots (read-only). */
     public @NotNull Collection<Plot> getAllPlots() {
         return Collections.unmodifiableCollection(byId.values());
+    }
+
+    // ── Merging ─────────────────────────────────────────────────────────────────
+
+    /**
+     * Returns the maximum merged-group size the player is allowed.
+     * Reads {@code jexplots.merge.<n>} (highest matching) and
+     * {@code jexplots.merge.unlimited}. Default is 1 (no merging).
+     */
+    public int getMergeLimit(@NotNull Player player) {
+        if (player.hasPermission("jexplots.merge.unlimited")) return Integer.MAX_VALUE;
+        int max = 1;
+        for (var info : player.getEffectivePermissions()) {
+            if (!info.getValue()) continue;
+            var perm = info.getPermission();
+            if (!perm.startsWith("jexplots.merge.")) continue;
+            try {
+                int n = Integer.parseInt(perm.substring("jexplots.merge.".length()));
+                if (n > max) max = n;
+            } catch (NumberFormatException ignored) {}
+        }
+        return max;
+    }
+
+    /** Returns all plots sharing the given plot's merge group, including itself. */
+    public @NotNull List<Plot> getMergeGroup(@NotNull Plot plot) {
+        var group = plot.getMergedGroupIdString();
+        if (group == null) return List.of(plot);
+        var list = new ArrayList<Plot>();
+        for (var p : byId.values()) {
+            if (group.equals(p.getMergedGroupIdString())) list.add(p);
+        }
+        return list;
+    }
+
+    /**
+     * Returns the plot adjacent to {@code plot} in the given facing direction,
+     * or empty if no plot is claimed in that cell.
+     */
+    public @NotNull Optional<Plot> getNeighbor(@NotNull Plot plot, @NotNull org.bukkit.block.BlockFace facing) {
+        int dx = 0, dz = 0;
+        switch (facing) {
+            case NORTH -> dz = -1;
+            case SOUTH -> dz = 1;
+            case EAST  -> dx = 1;
+            case WEST  -> dx = -1;
+            default -> { return Optional.empty(); }
+        }
+        return getPlot(plot.getWorldName(), plot.getGridX() + dx, plot.getGridZ() + dz);
+    }
+
+    /**
+     * Result of a merge attempt — either {@code OK} or one of the typed
+     * failure reasons so the handler can render a specific error message.
+     */
+    public enum MergeResult { OK, NO_NEIGHBOR, DIFFERENT_OWNER, LIMIT_REACHED, NOT_ADJACENT, FAILED }
+
+    /**
+     * Merges {@code plot} with the plot adjacent in {@code facing}. Both plots
+     * must be owned by {@code actor} (or actor must hold bypass) and the
+     * combined merge group size must be within actor's permission cap.
+     */
+    public @NotNull CompletableFuture<MergeResult> merge(@NotNull Player actor,
+                                                          @NotNull Plot plot,
+                                                          @NotNull org.bukkit.block.BlockFace facing) {
+        var neighbor = getNeighbor(plot, facing).orElse(null);
+        if (neighbor == null) return CompletableFuture.completedFuture(MergeResult.NO_NEIGHBOR);
+        if (!PlotMergeOps.areAdjacent(plot, neighbor)) {
+            return CompletableFuture.completedFuture(MergeResult.NOT_ADJACENT);
+        }
+        var bypass = actor.hasPermission("jexplots.bypass.protect");
+        if (!bypass && (!plot.isOwner(actor.getUniqueId()) || !neighbor.isOwner(actor.getUniqueId()))) {
+            return CompletableFuture.completedFuture(MergeResult.DIFFERENT_OWNER);
+        }
+        var groupA = getMergeGroup(plot);
+        var groupB = getMergeGroup(neighbor);
+        var alreadyMerged = plot.getMergedGroupIdString() != null
+                && plot.getMergedGroupIdString().equals(neighbor.getMergedGroupIdString());
+        var combined = alreadyMerged ? groupA.size() : groupA.size() + groupB.size();
+        if (combined > getMergeLimit(actor)) {
+            return CompletableFuture.completedFuture(MergeResult.LIMIT_REACHED);
+        }
+
+        // Determine the final group id — reuse if either side already has one.
+        var groupId = plot.getMergedGroupIdString() != null ? plot.getMergedGroupId()
+                : neighbor.getMergedGroupIdString() != null ? neighbor.getMergedGroupId()
+                : UUID.randomUUID();
+
+        // Update DB: every plot in both groups gets the unified group id.
+        var toUpdate = new ArrayList<Plot>();
+        for (var p : groupA) if (!groupId.toString().equals(p.getMergedGroupIdString())) toUpdate.add(p);
+        for (var p : groupB) if (!groupId.toString().equals(p.getMergedGroupIdString())) toUpdate.add(p);
+
+        CompletableFuture<Void> chain = CompletableFuture.completedFuture(null);
+        for (var p : toUpdate) {
+            p.setMergedGroupId(groupId);
+            chain = chain.thenCompose(v -> plots.updateAsync(p).thenApply(x -> null));
+        }
+
+        return chain.thenApply(v -> {
+            // Visual merge runs on main thread.
+            var bukkitWorld = Bukkit.getWorld(plot.getWorldName());
+            var mvWorld = worldFactory.getCachedWorld(plot.getWorldName()).orElse(null);
+            if (bukkitWorld != null && mvWorld != null) {
+                int plotSize = worldFactory.effectivePlotSize(mvWorld);
+                int roadWidth = worldFactory.effectiveRoadWidth(mvWorld);
+                Bukkit.getScheduler().runTask(plugin, () ->
+                        PlotMergeOps.applyMerge(bukkitWorld, plot, neighbor, plotSize, roadWidth,
+                                worldFactory.plotConfig()));
+            }
+            logger.info("Player {} merged plots {} ↔ {}", actor.getName(),
+                    coordOf(plot), coordOf(neighbor));
+            return MergeResult.OK;
+        }).exceptionally(ex -> {
+            logger.error("Merge failed for {}", actor.getName(), ex);
+            return MergeResult.FAILED;
+        });
+    }
+
+    /**
+     * Removes {@code plot} from its merge group. Restores the road slice +
+     * walls between {@code plot} and each adjacent plot that was in the
+     * same group. No-op if the plot wasn't merged.
+     */
+    public @NotNull CompletableFuture<Boolean> unmerge(@NotNull Plot plot) {
+        var groupId = plot.getMergedGroupIdString();
+        if (groupId == null) return CompletableFuture.completedFuture(true);
+
+        // Every plot in the group that's adjacent to `plot` needs its road
+        // slice + walls restored.
+        var others = new ArrayList<Plot>();
+        for (var p : byId.values()) {
+            if (p == plot) continue;
+            if (!groupId.equals(p.getMergedGroupIdString())) continue;
+            if (PlotMergeOps.areAdjacent(plot, p)) others.add(p);
+        }
+
+        plot.setMergedGroupId(null);
+        return plots.updateAsync(plot).thenApply(v -> {
+            // Did removing this plot leave only one plot in the group? If so,
+            // also clear that lone plot's group id (a group of one is just a
+            // standalone plot).
+            var remaining = new ArrayList<Plot>();
+            for (var p : byId.values()) {
+                if (groupId.equals(p.getMergedGroupIdString())) remaining.add(p);
+            }
+            if (remaining.size() == 1) {
+                var solo = remaining.get(0);
+                solo.setMergedGroupId(null);
+                plots.updateAsync(solo);
+            }
+
+            var bukkitWorld = Bukkit.getWorld(plot.getWorldName());
+            var mvWorld = worldFactory.getCachedWorld(plot.getWorldName()).orElse(null);
+            if (bukkitWorld != null && mvWorld != null) {
+                int plotSize = worldFactory.effectivePlotSize(mvWorld);
+                int roadWidth = worldFactory.effectiveRoadWidth(mvWorld);
+                Bukkit.getScheduler().runTask(plugin, () -> {
+                    for (var other : others) {
+                        PlotMergeOps.applyUnmerge(bukkitWorld, plot, other,
+                                plotSize, roadWidth, worldFactory.plotConfig());
+                    }
+                });
+            }
+            return true;
+        }).exceptionally(ex -> {
+            logger.error("Unmerge failed for plot {}", plot.getId(), ex);
+            return false;
+        });
+    }
+
+    private static @NotNull String coordOf(@NotNull Plot p) {
+        return p.getWorldName() + ":" + p.getGridX() + "," + p.getGridZ();
     }
 }

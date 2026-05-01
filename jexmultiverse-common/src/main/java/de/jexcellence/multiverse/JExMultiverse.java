@@ -199,8 +199,8 @@ public abstract class JExMultiverse {
         worldFactory = new WorldFactory(plugin, worldRepository, logger);
         multiverseService = new MultiverseService(
                 edition(), worldRepository, worldFactory, logger, plugin);
-        plotService = new PlotService(multiverseService, plotRepository, plotMemberRepository,
-                plotFlagRepository, logger, plugin);
+        plotService = new PlotService(multiverseService, worldFactory, plotRepository,
+                plotMemberRepository, plotFlagRepository, logger, plugin);
 
         Bukkit.getServicesManager().register(
                 MultiverseProvider.class, multiverseService, plugin, ServicePriority.Normal);

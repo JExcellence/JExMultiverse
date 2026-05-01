@@ -143,6 +143,13 @@ plot:
     flag_set_usage: "<gradient:#dc143c:#b22222>Usage:</gradient> <white>/plot flag set <flag> <true|false></white>"
     flag_remove_usage: "<gradient:#dc143c:#b22222>Usage:</gradient> <white>/plot flag remove <flag></white>"
     flag_failed: "<gradient:#dc143c:#b22222>Error:</gradient> <white>Failed to update flag <gradient:#ff7f50:#ff4500>{flag}</gradient>.</white>"
+    merge_no_neighbor: "<gradient:#dc143c:#b22222>Error:</gradient> <white>No claimed plot to the <gradient:#ff7f50:#ff4500>{direction}</gradient>.</white>"
+    merge_different_owner: "<gradient:#dc143c:#b22222>Error:</gradient> <white>The adjacent plot is owned by someone else.</white>"
+    merge_limit: "<gradient:#dc143c:#b22222>Limit reached:</gradient> <white>Your merge cap is <gradient:#ff7f50:#ff4500>{max}</gradient> plots per group.</white>"
+    merge_not_adjacent: "<gradient:#dc143c:#b22222>Error:</gradient> <white>Plots aren't adjacent.</white>"
+    merge_failed: "<gradient:#dc143c:#b22222>Error:</gradient> <white>Failed to merge plots.</white>"
+    unmerge_not_merged: "<gradient:#dc143c:#b22222>Error:</gradient> <white>This plot isn't part of a merge group.</white>"
+    unmerge_failed: "<gradient:#dc143c:#b22222>Error:</gradient> <white>Failed to unmerge plot.</white>"
 
   claimed: "<gradient:#32cd32:#228b22>Claimed:</gradient> <white>Plot <gradient:#ff7f50:#ff4500>{grid_x},{grid_z}</gradient> in <gradient:#ff7f50:#ff4500>{world_name}</gradient> is yours.</white>"
   unclaimed: "<gradient:#ffa500:#ff8c00>Unclaimed:</gradient> <white>Plot <gradient:#ff7f50:#ff4500>{grid_x},{grid_z}</gradient> released.</white>"
@@ -176,6 +183,11 @@ plot:
   flag_list_entry:  " <gray>•</gray> <gradient:#ffa500:#ff6347>{flag}</gradient> <dark_gray>=</dark_gray> <white>{value}</white> <dark_gray>({source})</dark_gray>"
   flag_set:         "<gradient:#32cd32:#228b22>Set:</gradient> <white>Flag <gradient:#ff7f50:#ff4500>{flag}</gradient> = <gradient:#ffa500:#ff6347>{value}</gradient>.</white>"
   flag_removed:     "<gradient:#ffa500:#ff8c00>Removed:</gradient> <white>Flag <gradient:#ff7f50:#ff4500>{flag}</gradient> reset to default.</white>"
+
+  merged: "<gradient:#32cd32:#228b22>Merged:</gradient> <white>Joined with the plot to the <gradient:#ff7f50:#ff4500>{direction}</gradient>.</white>"
+  unmerged: "<gradient:#ffa500:#ff8c00>Unmerged:</gradient> <white>This plot is now standalone again.</white>"
+  help_merge:   "<gradient:#ffa500:#ff6347>/{alias} merge</gradient> <gray>- merge with the plot you're facing</gray>"
+  help_unmerge: "<gradient:#ffa500:#ff6347>/{alias} unmerge</gradient> <gray>- split this plot off the merge group</gray>"
 
 multiverse_list_ui:
   title: "<gradient:#ff7f50:#ff4500>Managed Worlds</gradient>"

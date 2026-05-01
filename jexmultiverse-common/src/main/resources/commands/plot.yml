@@ -74,6 +74,16 @@ subcommands:
       - { name: flag,   type: plot_flag,                                                 required: false, description: "Flag key (omit for action=list)" }
       - { name: value,  type: string,                                                    required: false, description: "true / false (action=set only)" }
 
+  - name: merge
+    description: "Merge with the adjacent plot in the direction you're facing"
+    permission: "jexplots.command.merge"
+    senders: [player]
+
+  - name: unmerge
+    description: "Split this plot off the merge group"
+    permission: "jexplots.command.unmerge"
+    senders: [player]
+
   - name: help
     description: "Show /plot usage"
     senders: [player, console]

@@ -58,6 +58,8 @@ public final class PlotHandler {
                 Map.entry("plot.home",     this::onHome),
                 Map.entry("plot.list",     this::onList),
                 Map.entry("plot.flag",     this::onFlag),
+                Map.entry("plot.merge",    this::onMerge),
+                Map.entry("plot.unmerge",  this::onUnmerge),
                 Map.entry("plot.help",     this::onHelp)
         );
     }
@@ -381,9 +383,64 @@ public final class PlotHandler {
         };
     }
 
+    // ── Merge / Unmerge ─────────────────────────────────────────────────────────
+
+    private void onMerge(@NotNull CommandContext ctx) {
+        var player = ctx.asPlayer().orElse(null);
+        if (player == null) return;
+
+        var plot = plots.getPlotAt(player.getLocation()).orElse(null);
+        if (plot == null) {
+            r18n().msg("plot.error.not_on_plot").prefix().send(player);
+            return;
+        }
+        if (!plot.isOwner(player.getUniqueId()) && !player.hasPermission("jexplots.bypass.protect")) {
+            r18n().msg("plot.error.not_owner").prefix().with("owner_name", plot.getOwnerName()).send(player);
+            return;
+        }
+
+        var facing = player.getFacing(); // already horizontal-flattened
+        plots.merge(player, plot, facing).thenAccept(result -> Bukkit.getScheduler().runTask(plugin, () -> {
+            switch (result) {
+                case OK -> r18n().msg("plot.merged").prefix()
+                        .with("direction", facing.name().toLowerCase()).send(player);
+                case NO_NEIGHBOR -> r18n().msg("plot.error.merge_no_neighbor").prefix()
+                        .with("direction", facing.name().toLowerCase()).send(player);
+                case DIFFERENT_OWNER -> r18n().msg("plot.error.merge_different_owner").prefix().send(player);
+                case LIMIT_REACHED -> r18n().msg("plot.error.merge_limit").prefix()
+                        .with("max", String.valueOf(plots.getMergeLimit(player))).send(player);
+                case NOT_ADJACENT -> r18n().msg("plot.error.merge_not_adjacent").prefix().send(player);
+                case FAILED -> r18n().msg("plot.error.merge_failed").prefix().send(player);
+            }
+        }));
+    }
+
+    private void onUnmerge(@NotNull CommandContext ctx) {
+        var player = ctx.asPlayer().orElse(null);
+        if (player == null) return;
+
+        var plot = plots.getPlotAt(player.getLocation()).orElse(null);
+        if (plot == null) {
+            r18n().msg("plot.error.not_on_plot").prefix().send(player);
+            return;
+        }
+        if (!plot.isOwner(player.getUniqueId()) && !player.hasPermission("jexplots.bypass.protect")) {
+            r18n().msg("plot.error.not_owner").prefix().with("owner_name", plot.getOwnerName()).send(player);
+            return;
+        }
+        if (plot.getMergedGroupIdString() == null) {
+            r18n().msg("plot.error.unmerge_not_merged").prefix().send(player);
+            return;
+        }
+
+        plots.unmerge(plot).thenAccept(ok -> Bukkit.getScheduler().runTask(plugin, () ->
+                r18n().msg(ok ? "plot.unmerged" : "plot.error.unmerge_failed").prefix().send(player)));
+    }
+
     // ── Help ────────────────────────────────────────────────────────────────────
 
     private void onHelp(@NotNull CommandContext ctx) {
+
         var sender = ctx.sender();
         var alias = ctx.alias();
         r18n().msg("plot.help_header").send(sender);
@@ -396,6 +453,8 @@ public final class PlotHandler {
         if (hasPerm(sender, "jexplots.command.home"))    r18n().msg("plot.help_home").with("alias", alias).send(sender);
         if (hasPerm(sender, "jexplots.command.list"))    r18n().msg("plot.help_list").with("alias", alias).send(sender);
         if (hasPerm(sender, "jexplots.command.flag"))    r18n().msg("plot.help_flag").with("alias", alias).send(sender);
+        if (hasPerm(sender, "jexplots.command.merge"))   r18n().msg("plot.help_merge").with("alias", alias).send(sender);
+        if (hasPerm(sender, "jexplots.command.unmerge")) r18n().msg("plot.help_unmerge").with("alias", alias).send(sender);
         r18n().msg("plot.help_footer").send(sender);
     }
 
