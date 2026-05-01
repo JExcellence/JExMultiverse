@@ -4,14 +4,17 @@ import com.raindropcentral.commands.v2.argument.ArgumentType;
 import org.bukkit.Material;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
 /**
- * Argument type accepting any block-form {@link Material}, with tab
- * completion biased toward typical wall / fence / decorative-block choices
- * so players don't scroll through 1300+ unrelated materials.
+ * Argument type accepting any Bukkit {@link Material} that's a real block
+ * (excluding AIR / TECHNICAL legacy entries). Tab completion returns the
+ * curated "popular wall material" list when the partial is empty, and the
+ * full block-material catalog filtered by partial otherwise — so players
+ * can type any block name.
  *
  * <p>YAML schema id: {@code wall_material}.
  *
@@ -21,10 +24,10 @@ import java.util.Map;
 public final class WallMaterialArgumentType {
 
     /**
-     * Curated tab-completion list — popular wall / fence / glass / stone
-     * variants. The parser still accepts any valid block material.
+     * Suggested suggestions when the player hasn't typed anything yet —
+     * common wall / fence / decorative blocks.
      */
-    private static final List<String> SUGGESTED = List.of(
+    private static final List<String> CURATED = List.of(
             "stone_brick_wall",
             "mossy_stone_brick_wall",
             "cobblestone_wall",
@@ -53,6 +56,13 @@ public final class WallMaterialArgumentType {
             "black_stained_glass"
     );
 
+    /**
+     * Lazy-built lower-case list of every Bukkit block material name. Built
+     * once at first access; ~600 entries. Filtered by partial string at tab
+     * time — sub-millisecond on modern hardware.
+     */
+    private static volatile List<String> ALL_BLOCKS;
+
     private WallMaterialArgumentType() {}
 
     public static @NotNull ArgumentType<Material> create() {
@@ -61,7 +71,7 @@ public final class WallMaterialArgumentType {
                 Material.class,
                 (sender, raw) -> {
                     var mat = Material.matchMaterial(raw);
-                    if (mat == null || !mat.isBlock()) {
+                    if (mat == null || !mat.isBlock() || mat.isAir() || mat == Material.STRUCTURE_VOID) {
                         return ArgumentType.ParseResult.err(
                                 "plot.error.invalid_material", Map.of("material", raw));
                     }
@@ -69,9 +79,24 @@ public final class WallMaterialArgumentType {
                 },
                 (sender, partial) -> {
                     var lower = partial.toLowerCase(Locale.ROOT);
-                    return SUGGESTED.stream()
-                            .filter(m -> m.startsWith(lower))
+                    if (lower.isEmpty()) return CURATED;
+                    return allBlocks().stream()
+                            .filter(name -> name.startsWith(lower))
+                            .limit(64) // brigadier hard-caps tab suggestions; keep below.
                             .toList();
                 });
+    }
+
+    private static @NotNull List<String> allBlocks() {
+        var cached = ALL_BLOCKS;
+        if (cached != null) return cached;
+        cached = Arrays.stream(Material.values())
+                .filter(m -> m.isBlock() && !m.isAir() && m != Material.STRUCTURE_VOID)
+                .filter(m -> !m.name().startsWith("LEGACY_"))
+                .map(m -> m.name().toLowerCase(Locale.ROOT))
+                .sorted()
+                .toList();
+        ALL_BLOCKS = cached;
+        return cached;
     }
 }

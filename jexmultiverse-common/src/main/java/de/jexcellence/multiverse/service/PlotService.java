@@ -160,19 +160,24 @@ public class PlotService {
 
     // ── Flag mutations ──────────────────────────────────────────────────────────
 
-    /** Persists a flag override. Returns true on success. */
+    /**
+     * Persists a flag override. Returns true on success.
+     *
+     * <p>For an existing override we delete the old row and create a new one
+     * (rather than {@code updateAsync} on a detached entity) — fewer paths
+     * for "session is closed" / stale-entity errors to surface.
+     */
     public @NotNull CompletableFuture<Boolean> setFlag(@NotNull Plot plot,
                                                         @NotNull PlotFlag flag,
                                                         boolean value) {
         var key = flag.key();
         var raw = Boolean.toString(value);
         return flags.findByPlotAndKeyAsync(plot.getId(), key).thenCompose(existing -> {
+            CompletableFuture<Void> chain = CompletableFuture.completedFuture(null);
             if (existing.isPresent()) {
-                var row = existing.get();
-                row.setFlagValue(raw);
-                return flags.updateAsync(row).thenApply(x -> row);
+                chain = chain.thenCompose(v -> flags.deleteAsync(existing.get().getId()).thenApply(x -> null));
             }
-            return flags.createAsync(new StoredPlotFlag(plot.getId(), key, raw));
+            return chain.thenCompose(v -> flags.createAsync(new StoredPlotFlag(plot.getId(), key, raw)));
         }).thenApply(saved -> {
             flagsByPlot.computeIfAbsent(plot.getId(), k -> new ConcurrentHashMap<>())
                     .put(key, value);
@@ -354,16 +359,30 @@ public class PlotService {
                         coords -> getPlot(plot.getWorldName(), coords[0], coords[1]).orElse(null)));
     }
 
-    /** Updates the owner-customised border material and repaints perimeter walls. */
+    /**
+     * Updates the owner-customised border material and repaints perimeter walls.
+     *
+     * <p>Re-fetches the entity by coordinates before mutation so we never hand
+     * Hibernate a detached instance whose session was closed (which can surface
+     * as "LogicalConnectionManagedImpl is closed" during transaction work).
+     */
     public @NotNull CompletableFuture<Boolean> setBorder(@NotNull Plot plot, @Nullable Material material) {
-        plot.setWallMaterialOverride(material == null ? null : material.name());
-        return plots.updateAsync(plot).thenApply(v -> {
-            applyClaimedWalls(plot);
-            return true;
-        }).exceptionally(ex -> {
-            logger.error("Failed to set border for plot {}", plot.getId(), ex);
-            return false;
-        });
+        var newOverride = material == null ? null : material.name();
+        return plots.findByCoordsAsync(plot.getWorldName(), plot.getGridX(), plot.getGridZ())
+                .thenCompose(opt -> {
+                    var target = opt.orElse(plot);
+                    target.setWallMaterialOverride(newOverride);
+                    return plots.updateAsync(target);
+                })
+                .thenApply(saved -> {
+                    cachePlot(saved);
+                    applyClaimedWalls(saved);
+                    return true;
+                })
+                .exceptionally(ex -> {
+                    logger.error("Failed to set border for plot {}", plot.getId(), ex);
+                    return false;
+                });
     }
 
     /**
@@ -399,15 +418,15 @@ public class PlotService {
                                                          @NotNull MemberRole role) {
         var uuid = target.getUniqueId();
         var name = target.getName() != null ? target.getName() : uuid.toString().substring(0, 8);
+        // Same pattern as setFlag — delete-then-create instead of update on a
+        // detached entity, avoiding a class of Hibernate session lifecycle
+        // errors that surface as "LogicalConnectionManagedImpl is closed".
         return members.findByPlotAndMemberAsync(plot.getId(), uuid).thenCompose(existing -> {
+            CompletableFuture<Void> chain = CompletableFuture.completedFuture(null);
             if (existing.isPresent()) {
-                var m = existing.get();
-                m.setRole(role);
-                m.setMemberName(name);
-                return members.updateAsync(m).thenApply(x -> m);
+                chain = chain.thenCompose(v -> members.deleteAsync(existing.get().getId()).thenApply(x -> null));
             }
-            var m = new PlotMember(plot.getId(), uuid, name, role);
-            return members.createAsync(m);
+            return chain.thenCompose(v -> members.createAsync(new PlotMember(plot.getId(), uuid, name, role)));
         }).thenApply(saved -> {
             membersByPlot.computeIfAbsent(plot.getId(), k -> new ConcurrentHashMap<>())
                     .put(uuid, role);

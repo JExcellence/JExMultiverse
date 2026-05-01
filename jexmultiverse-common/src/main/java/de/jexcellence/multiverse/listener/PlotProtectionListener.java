@@ -102,27 +102,47 @@ public class PlotProtectionListener implements Listener {
     // ── Helpers ─────────────────────────────────────────────────────────────────
 
     /**
-     * True if the player should be prevented from acting at the location:
-     * PLOT world, location is on a claimed plot, and the player isn't owner /
-     * trusted / bypassing.
+     * True if the player should be prevented from acting at the location.
+     * Three cases:
+     * <ol>
+     *   <li>Location is on a claimed plot and player is neither owner /
+     *       trusted nor holds {@code jexplots.bypass.protect} → deny.</li>
+     *   <li>Location is on a road / border in a PLOT world and player
+     *       doesn't hold {@code jexplots.bypass.roads} → deny. Roads are
+     *       treated as protected public infrastructure by default; staff
+     *       with the bypass perm can still maintain them.</li>
+     *   <li>Otherwise → allow.</li>
+     * </ol>
      */
     private boolean denyBuild(@NotNull Player player, @NotNull org.bukkit.Location location) {
         var plot = plots.getPlotAt(location).orElse(null);
-        if (plot == null) return false;
-        if (plots.canBuild(player, plot)) return false;
+        if (plot != null) {
+            if (plots.canBuild(player, plot)) return false;
+            warnDenied(player, "plot.protection.denied",
+                    java.util.Map.of("owner_name", plot.getOwnerName()));
+            return true;
+        }
+        // No claimed plot at this location. If we're in a PLOT world the
+        // location is on a road or unclaimed plot — protect the road grid
+        // unless the player has the bypass permission.
+        if (mv.isRoadOrBorder(location)) {
+            if (player.hasPermission("jexplots.bypass.roads")
+                    || player.hasPermission("jexplots.bypass.protect")) return false;
+            warnDenied(player, "plot.protection.road_denied", java.util.Map.of());
+            return true;
+        }
+        return false;
+    }
 
-        // Throttle chat feedback to one message per second so a shift-place
-        // doesn't spam dozens of identical lines.
+    private void warnDenied(@NotNull Player player, @NotNull String key,
+                             @NotNull java.util.Map<String, Object> placeholders) {
         var meta = player.getMetadata(WARN_KEY);
         long now = System.currentTimeMillis();
         long last = meta.isEmpty() ? 0L : meta.get(0).asLong();
-        if (now - last >= 1000L) {
-            player.setMetadata(WARN_KEY, new FixedMetadataValue(plugin, now));
-            R18nManager.getInstance()
-                    .msg("plot.protection.denied").prefix()
-                    .with("owner_name", plot.getOwnerName())
-                    .send(player);
-        }
-        return true;
+        if (now - last < 1000L) return;
+        player.setMetadata(WARN_KEY, new FixedMetadataValue(plugin, now));
+        var builder = R18nManager.getInstance().msg(key).prefix();
+        placeholders.forEach((k, v) -> builder.with(k, String.valueOf(v)));
+        builder.send(player);
     }
 }

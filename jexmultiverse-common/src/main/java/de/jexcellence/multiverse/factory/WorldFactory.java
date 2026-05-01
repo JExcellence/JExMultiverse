@@ -214,11 +214,33 @@ public class WorldFactory {
      * @return a future that completes when all worlds are loaded
      */
     public @NotNull CompletableFuture<Void> loadAllWorlds() {
-        return repository.findAllAsync().thenAccept(worlds -> {
-            for (var mvWorld : worlds) {
-                Bukkit.getScheduler().runTask(plugin, () -> loadWorld(mvWorld));
+        return repository.findAllAsync().thenCompose(worlds -> {
+            if (worlds.isEmpty()) {
+                logger.info("No persisted worlds to load");
+                return CompletableFuture.completedFuture(null);
             }
-            logger.info("Queued {} worlds for loading", worlds.size());
+            // Each world creation runs on the main thread (Bukkit requirement)
+            // and signals its CompletableFuture when done, so the caller can
+            // block until every world is actually in Bukkit + cached. Otherwise
+            // services that depend on the world cache (PlotService, the
+            // protection listener, etc.) start running before the worlds exist.
+            logger.info("Loading {} world(s) from database on main thread...", worlds.size());
+            var futures = new java.util.ArrayList<CompletableFuture<Void>>(worlds.size());
+            for (var mvWorld : worlds) {
+                var f = new CompletableFuture<Void>();
+                Bukkit.getScheduler().runTask(plugin, () -> {
+                    try {
+                        loadWorld(mvWorld);
+                    } catch (Throwable t) {
+                        logger.error("Failed to load world '{}'", mvWorld.getIdentifier(), t);
+                    } finally {
+                        f.complete(null);
+                    }
+                });
+                futures.add(f);
+            }
+            return CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
+                    .thenRun(() -> logger.info("All {} world(s) loaded and cached", worlds.size()));
         }).exceptionally(ex -> {
             logger.error("Failed to load worlds from database", ex);
             return null;

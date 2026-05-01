@@ -125,6 +125,7 @@ multiverse_editor_ui:
 plot:
   protection:
     denied: "<gradient:#dc143c:#b22222>Denied:</gradient> <white>This plot is owned by <gradient:#ff7f50:#ff4500>{owner_name}</gradient>.</white>"
+    road_denied: "<gradient:#dc143c:#b22222>Denied:</gradient> <white>You can't modify the plot road grid.</white>"
   error:
     not_on_plot: "<gradient:#dc143c:#b22222>Error:</gradient> <white>You're not standing on a plot.</white>"
     already_claimed: "<gradient:#dc143c:#b22222>Error:</gradient> <white>This plot is already claimed by <gradient:#ff7f50:#ff4500>{owner_name}</gradient>.</white>"
