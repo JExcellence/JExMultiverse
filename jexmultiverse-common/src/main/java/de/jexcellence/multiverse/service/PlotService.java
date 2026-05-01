@@ -386,28 +386,54 @@ public class PlotService {
     }
 
     /**
-     * Unclaims a plot. Removes member records too. Returns true on success.
+     * Unclaims a plot. Removes member + flag records, repaints the perimeter
+     * walls in the unclaimed material, drops the plot from the cache.
+     * Returns true on success.
      */
     public @NotNull CompletableFuture<Boolean> unclaim(@NotNull Plot plot) {
-        var future = new CompletableFuture<Boolean>();
-        members.findByPlotAsync(plot.getId()).thenCompose(memberList -> {
-            CompletableFuture<Void> all = CompletableFuture.completedFuture(null);
-            for (var m : memberList) {
-                all = all.thenCompose(v -> members.deleteAsync(m.getId()).thenApply(x -> null));
+        return purgePlotRows(plot).thenApply(ok -> {
+            if (ok) {
+                // Snapshot the geometry before uncaching so wall ops still
+                // know which cells to touch.
+                applyUnclaimedWalls(plot);
+                uncachePlot(plot);
             }
-            return all.thenCompose(v -> plots.deleteAsync(plot.getId()));
-        }).thenAccept(v -> {
-            // Snapshot owner data before uncaching so wall ops still know
-            // the plot's geometry (and merge group, if any).
-            applyUnclaimedWalls(plot);
-            uncachePlot(plot);
-            future.complete(true);
-        }).exceptionally(ex -> {
-            logger.error("Failed to unclaim plot id={}", plot.getId(), ex);
-            future.complete(false);
-            return null;
+            return ok;
         });
-        return future;
+    }
+
+    /**
+     * Deletes every DB row associated with a plot — members, flag overrides,
+     * the plot itself — and removes the plot from the in-memory caches.
+     * Does NOT touch the world (no wall repaint).
+     *
+     * <p>Used as the shared core for {@link #unclaim(Plot)} (which adds wall
+     * ops) and {@link #deletePlotsInWorld(String)} (which runs while the
+     * world is in the process of being deleted, so wall ops would target a
+     * world about to vanish).
+     */
+    private @NotNull CompletableFuture<Boolean> purgePlotRows(@NotNull Plot plot) {
+        return members.findByPlotAsync(plot.getId()).thenCompose(memberList -> {
+            CompletableFuture<Void> chain = CompletableFuture.completedFuture(null);
+            for (var m : memberList) {
+                chain = chain.thenCompose(v -> members.deleteAsync(m.getId()).thenApply(x -> null));
+            }
+            return chain;
+        }).thenCompose(v -> flags.query()
+                .and("plotId", plot.getId())
+                .listAsync()
+        ).thenCompose(flagList -> {
+            CompletableFuture<Void> chain = CompletableFuture.completedFuture(null);
+            for (var f : flagList) {
+                chain = chain.thenCompose(v -> flags.deleteAsync(f.getId()).thenApply(x -> null));
+            }
+            return chain;
+        }).thenCompose(v -> plots.deleteAsync(plot.getId()))
+          .thenApply(v -> true)
+          .exceptionally(ex -> {
+              logger.error("Failed to purge plot rows for id={}", plot.getId(), ex);
+              return false;
+          });
     }
 
     /**
@@ -455,6 +481,29 @@ public class PlotService {
     /** Returns a snapshot of all cached plots (read-only). */
     public @NotNull Collection<Plot> getAllPlots() {
         return Collections.unmodifiableCollection(byId.values());
+    }
+
+    /**
+     * Cascade-deletes every plot row for a given world (members + flags
+     * included). Used by {@link MultiverseService#deleteWorld(String)} so
+     * deleting a world doesn't leave orphan plot rows pointing at it.
+     */
+    public @NotNull CompletableFuture<Void> deletePlotsInWorld(@NotNull String worldName) {
+        var doomed = new ArrayList<Plot>();
+        for (var p : byId.values()) {
+            if (p.getWorldName().equals(worldName)) doomed.add(p);
+        }
+        if (doomed.isEmpty()) return CompletableFuture.completedFuture(null);
+
+        logger.info("Cascade-deleting {} plot row(s) for world '{}'", doomed.size(), worldName);
+        CompletableFuture<Void> chain = CompletableFuture.completedFuture(null);
+        for (var plot : doomed) {
+            // purgePlotRows skips wall ops — the world is about to be deleted
+            // so there's no point trying to repaint anything in it.
+            chain = chain.thenCompose(v -> purgePlotRows(plot).thenApply(ok -> null));
+            uncachePlot(plot);
+        }
+        return chain;
     }
 
     // ── Merging ─────────────────────────────────────────────────────────────────

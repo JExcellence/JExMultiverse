@@ -197,33 +197,58 @@ public class MultiverseService implements MultiverseProvider {
      * @return a future containing {@code true} if deletion succeeded
      */
     public @NotNull CompletableFuture<Boolean> deleteWorld(@NotNull String identifier) {
+        // ORDER MATTERS: DB row is removed BEFORE the Bukkit world is unloaded.
+        //   1. Cascade-delete the plot rows in this world (otherwise they're
+        //      orphaned + the protection listener gets confused on restart).
+        //   2. Delete the MVWorld DB row WHILE the Bukkit world is still
+        //      loaded — the LocationConverter on spawn_location can resolve
+        //      the world UUID, so Hibernate doesn't surface
+        //      "LogicalConnectionManagedImpl is closed" trying to materialise
+        //      a Location with a null World.
+        //   3. THEN unload the Bukkit world on the main thread.
+        //   4. THEN walk the world folder and delete the files.
         var future = new CompletableFuture<Boolean>();
 
-        Bukkit.getScheduler().runTask(plugin, () -> {
-            var unloaded = worldFactory.unloadWorld(identifier, false);
-            if (!unloaded) {
-                future.complete(false);
-                return;
-            }
-
-            repository.deleteByIdentifier(identifier)
-                    .thenCompose(dbDeleted -> {
-                        if (!dbDeleted) return CompletableFuture.completedFuture(false);
-                        return worldFactory.deleteWorldFiles(identifier);
-                    })
-                    .thenAccept(success -> {
-                        worldFactory.invalidateCache(identifier);
-                        logger.info("Deleted world '{}'", identifier);
-                        future.complete(success);
-                    })
-                    .exceptionally(ex -> {
-                        logger.error("Failed to delete world '{}'", identifier, ex);
+        cascadeDeletePlots(identifier)
+                .thenCompose(v -> repository.deleteByIdentifier(identifier))
+                .thenAccept(dbDeleted -> Bukkit.getScheduler().runTask(plugin, () -> {
+                    if (!dbDeleted) {
                         future.complete(false);
-                        return null;
+                        return;
+                    }
+                    var unloaded = worldFactory.unloadWorld(identifier, false);
+                    if (!unloaded) {
+                        // DB row gone but world still loaded — log loudly so the
+                        // admin knows to restart to fully reclaim the slot.
+                        logger.warn("Deleted DB row for '{}' but failed to unload Bukkit world. " +
+                                "Restart the server to fully release the world.", identifier);
+                        worldFactory.invalidateCache(identifier);
+                        future.complete(true);
+                        return;
+                    }
+                    worldFactory.deleteWorldFiles(identifier).thenAccept(filesDeleted -> {
+                        worldFactory.invalidateCache(identifier);
+                        logger.info("Deleted world '{}' (db + bukkit + files)", identifier);
+                        future.complete(filesDeleted);
                     });
-        });
+                }))
+                .exceptionally(ex -> {
+                    logger.error("Failed to delete world '{}'", identifier, ex);
+                    future.complete(false);
+                    return null;
+                });
 
         return future;
+    }
+
+    /**
+     * Hook for cascade-deleting plot rows when a world is deleted. Wired up
+     * post-construction by {@link #attachPlotService(PlotService)}; called
+     * before the MVWorld row itself is deleted.
+     */
+    private @NotNull CompletableFuture<Void> cascadeDeletePlots(@NotNull String worldIdentifier) {
+        if (plotService == null) return CompletableFuture.completedFuture(null);
+        return plotService.deletePlotsInWorld(worldIdentifier);
     }
 
     /**
