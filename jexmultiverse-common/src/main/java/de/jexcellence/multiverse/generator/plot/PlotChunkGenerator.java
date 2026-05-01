@@ -45,6 +45,9 @@ public class PlotChunkGenerator extends ChunkGenerator {
         int startX = chunkX << 4;
         int startZ = chunkZ << 4;
 
+        // Walls run along the plot edges (the column adjacent to the road on
+        // each side of the plot), 3 blocks tall above the plot surface so
+        // they're clearly visible from inside and outside the plot.
         for (int x = 0; x < 16; x++) {
             for (int z = 0; z < 16; z++) {
                 int worldX = startX + x;
@@ -55,30 +58,36 @@ public class PlotChunkGenerator extends ChunkGenerator {
 
                 boolean isRoadX = modX >= plotSize;
                 boolean isRoadZ = modZ >= plotSize;
-                boolean isBorderX = modX == plotSize || modX == totalInterval - 1;
-                boolean isBorderZ = modZ == plotSize || modZ == totalInterval - 1;
+                // A column is a "plot-edge" iff it's the last plot column
+                // before a road on either axis, OR the first plot column
+                // after a road. That puts the wall on the plot side,
+                // leaving the road clean.
+                boolean isPlotEdgeX = !isRoadX && (modX == plotSize - 1 || modX == 0);
+                boolean isPlotEdgeZ = !isRoadZ && (modZ == plotSize - 1 || modZ == 0);
 
                 if (isRoadX || isRoadZ) {
-                    // Road or border
-                    for (int y = 0; y <= plotHeight; y++) {
-                        if (y == plotHeight && (isBorderX || isBorderZ)) {
-                            chunkData.setBlock(x, y, z, wallMaterial);
-                        } else if (y == plotHeight) {
-                            chunkData.setBlock(x, y, z, roadMaterial);
-                        } else {
-                            chunkData.setBlock(x, y, z, Material.STONE);
-                        }
+                    // Road: stone substrate, road-material surface.
+                    for (int y = 0; y < plotHeight; y++) {
+                        chunkData.setBlock(x, y, z, Material.STONE);
                     }
+                    chunkData.setBlock(x, plotHeight, z, roadMaterial);
                 } else {
-                    // Plot area
+                    // Plot interior: layered terrain.
                     for (PlotLayer layer : layers) {
                         for (int y = layer.minY(); y <= layer.maxY() && y <= plotHeight; y++) {
                             chunkData.setBlock(x, y, z, layer.material());
                         }
                     }
+                    // Wall on the plot's outer edge (3 blocks tall), only on
+                    // edges that actually face a road — so corners between
+                    // two plots stay open if there's no road there.
+                    if (isPlotEdgeX || isPlotEdgeZ) {
+                        for (int dy = 1; dy <= 3; dy++) {
+                            chunkData.setBlock(x, plotHeight + dy, z, wallMaterial);
+                        }
+                    }
                 }
 
-                // Bedrock floor
                 chunkData.setBlock(x, 0, z, Material.BEDROCK);
             }
         }

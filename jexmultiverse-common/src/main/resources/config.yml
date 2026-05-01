@@ -10,10 +10,11 @@
 
 plot-world:
   # Edge length (in blocks) of each plot. Plots are square.
-  plot-size: 32
+  # Smaller values mean more visible roads; larger values mean bigger plots.
+  plot-size: 16
 
   # Width (in blocks) of the road grid separating plots.
-  road-width: 7
+  road-width: 5
 
   # Y-coordinate of the plot surface. Layers below this are filled per the
   # `layers` list; above this is air.

@@ -36,7 +36,7 @@ public record PlotWorldConfig(
 ) {
 
     private static final PlotWorldConfig DEFAULT = new PlotWorldConfig(
-            32, 7, 64,
+            16, 5, 64,
             Material.STONE_BRICKS, Material.STONE_BRICK_WALL,
             List.of(
                     new PlotLayer(Material.DIRT, 1, 62),

@@ -218,7 +218,13 @@ public class MultiverseService implements MultiverseProvider {
         return repository.findByIdentifierAsync(changes.getIdentifier())
                 .thenCompose(opt -> {
                     var target = opt.orElse(changes);
-                    target.setSpawnLocation(changes.getSpawnLocation());
+                    // spawnLocation is NOT NULL in the schema. Only overwrite
+                    // when the editor actually carried a fresh value, otherwise
+                    // keep whatever Hibernate just loaded — preserves DB state
+                    // and prevents not-null constraint violations.
+                    if (changes.getSpawnLocation() != null) {
+                        target.setSpawnLocation(changes.getSpawnLocation());
+                    }
                     target.setGlobalizedSpawn(changes.isGlobalizedSpawn());
                     target.setPvpEnabled(changes.isPvpEnabled());
                     target.setEnterPermission(changes.getEnterPermission());
