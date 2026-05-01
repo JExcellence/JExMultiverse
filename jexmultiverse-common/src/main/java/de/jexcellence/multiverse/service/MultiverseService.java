@@ -297,24 +297,42 @@ public class MultiverseService implements MultiverseProvider {
      */
     public @NotNull CompletableFuture<@Nullable Location> getSpawnLocation(@NotNull Player player) {
         return getGlobalSpawnWorldEntity().thenApply(opt -> {
+            // Priority 1 — global spawn from any world flagged isGlobalizedSpawn.
             if (opt.isPresent()) {
-                var globalWorld = opt.get();
-                if (globalWorld.getSpawnLocation() != null) {
-                    return globalWorld.getSpawnLocation();
-                }
+                var loc = liveSpawnLocation(opt.get());
+                if (loc != null) return loc;
             }
 
-            // Fallback to current world's multiverse spawn
-            var currentWorldName = player.getWorld().getName();
-            var cached = worldFactory.getCachedWorld(currentWorldName);
-            if (cached.isPresent() && cached.get().getSpawnLocation() != null) {
-                return cached.get().getSpawnLocation();
+            // Priority 2 — current world's JExMultiverse-set spawn.
+            var cached = worldFactory.getCachedWorld(player.getWorld().getName());
+            if (cached.isPresent()) {
+                var loc = liveSpawnLocation(cached.get());
+                if (loc != null) return loc;
             }
 
-            // Final fallback: default world spawn
-            var defaultWorld = Bukkit.getWorlds().getFirst();
-            return defaultWorld.getSpawnLocation();
+            // Final fallback — Bukkit default world spawn (only when no MV
+            // configuration applies). Returns null if even that's missing so
+            // the caller can show a clear "no spawn configured" message.
+            var bukkitWorlds = Bukkit.getWorlds();
+            return bukkitWorlds.isEmpty() ? null : bukkitWorlds.getFirst().getSpawnLocation();
         });
+    }
+
+    /**
+     * Resolves the live, teleportable spawn for an MVWorld:
+     * the stored Location must be non-null AND its world must currently be
+     * loaded in Bukkit (rebinding by name if the deserialized world reference
+     * is stale). Returns {@code null} if either constraint fails so callers
+     * can fall through to the next priority tier.
+     */
+    private @Nullable Location liveSpawnLocation(@NotNull MVWorld mv) {
+        var stored = mv.getSpawnLocation();
+        if (stored == null) return null;
+        var world = stored.getWorld() != null ? stored.getWorld() : Bukkit.getWorld(mv.getIdentifier());
+        if (world == null) return null;
+        var loc = stored.clone();
+        loc.setWorld(world);
+        return loc;
     }
 
     // ── Query helpers ───────────────────────────────────────────────────────────

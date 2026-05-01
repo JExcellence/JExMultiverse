@@ -2,8 +2,11 @@ package de.jexcellence.multiverse.factory;
 
 import de.jexcellence.jexplatform.logging.JExLogger;
 import de.jexcellence.multiverse.api.MVWorldType;
+import de.jexcellence.multiverse.config.PlotWorldConfig;
 import de.jexcellence.multiverse.database.entity.MVWorld;
 import de.jexcellence.multiverse.database.repository.MVWorldRepository;
+import de.jexcellence.multiverse.generator.plot.PlotChunkGenerator;
+import de.jexcellence.multiverse.generator.void_world.VoidChunkGenerator;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -51,7 +54,17 @@ public class WorldFactory {
         this.repository = repository;
         this.logger = logger;
         this.voidGenerator = new VoidChunkGenerator();
-        this.plotGenerator = new PlotChunkGenerator();
+        var plotConfig = PlotWorldConfig.load(plugin.getDataFolder());
+        this.plotGenerator = new PlotChunkGenerator(
+                plotConfig.plotSize(),
+                plotConfig.roadWidth(),
+                plotConfig.plotHeight(),
+                plotConfig.roadMaterial(),
+                plotConfig.wallMaterial(),
+                plotConfig.layers());
+        logger.info("Plot generator: plot={}, road={}, height={}, road={}, wall={}, layers={}",
+                plotConfig.plotSize(), plotConfig.roadWidth(), plotConfig.plotHeight(),
+                plotConfig.roadMaterial(), plotConfig.wallMaterial(), plotConfig.layers().size());
     }
 
     // ── World creation ──────────────────────────────────────────────────────────
@@ -315,19 +328,4 @@ public class WorldFactory {
         return Optional.ofNullable(Bukkit.getWorld(identifier));
     }
 
-    // ── Inner generators ────────────────────────────────────────────────────────
-
-    /**
-     * Chunk generator that produces completely empty (void) chunks.
-     */
-    private static final class VoidChunkGenerator extends ChunkGenerator {
-        // No-op: generates empty chunks by default
-    }
-
-    /**
-     * Chunk generator that produces a grid-based plot layout with roads and borders.
-     */
-    private static final class PlotChunkGenerator extends ChunkGenerator {
-        // Placeholder: plot generation logic is applied via world post-processing
-    }
 }

@@ -63,7 +63,7 @@ public abstract class JExMultiverse {
     public void onLoad() {
         platform = JExPlatform.builder(plugin)
                 .withLogLevel(LogLevel.INFO)
-                .enableTranslations("en_US")
+                .enableTranslations("en_US", "de_DE")
                 .enableMetrics(metricsId())
                 .build();
 
@@ -131,9 +131,17 @@ public abstract class JExMultiverse {
     // ── Initialization pipeline ─────────────────────────────────────────────────
 
     private void initializeDatabase() {
-        // Copy default config files to the data folder if they don't already exist
+        // Copy default config files to the data folder if they don't already exist.
+        // Translations and command YAMLs are extracted so server admins can edit
+        // them without unpacking the JAR; commands are still loaded from the JAR
+        // by JExCommand, but the on-disk copies serve as a reference for tweaks.
         saveDefaultResource("database/hibernate.properties");
         saveDefaultResource("database/log4j.properties");
+        saveDefaultResource("config.yml");
+        saveDefaultResource("translations/en_US.yml");
+        saveDefaultResource("translations/de_DE.yml");
+        saveDefaultResource("commands/multiverse.yml");
+        saveDefaultResource("commands/spawn.yml");
 
         jeHibernate = JEHibernate.builder()
                 .configuration(config -> config.fromProperties(
