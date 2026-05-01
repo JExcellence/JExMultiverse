@@ -1,11 +1,13 @@
 package de.jexcellence.multiverse.generator.plot;
 
+import de.jexcellence.multiverse.service.SchematicService;
 import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.generator.BlockPopulator;
 import org.bukkit.generator.ChunkGenerator;
 import org.bukkit.generator.WorldInfo;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -27,10 +29,20 @@ public class PlotChunkGenerator extends ChunkGenerator {
     private final Material wallMaterial;
     private final List<PlotLayer> layers;
     private final int totalInterval;
+    private final SchematicService schematics;
+    private final String schematicName;
 
     public PlotChunkGenerator(int plotSize, int roadWidth, int plotHeight,
                               @NotNull Material roadMaterial, @NotNull Material wallMaterial,
                               @NotNull List<PlotLayer> layers) {
+        this(plotSize, roadWidth, plotHeight, roadMaterial, wallMaterial, layers, null, null);
+    }
+
+    public PlotChunkGenerator(int plotSize, int roadWidth, int plotHeight,
+                              @NotNull Material roadMaterial, @NotNull Material wallMaterial,
+                              @NotNull List<PlotLayer> layers,
+                              @Nullable SchematicService schematics,
+                              @Nullable String schematicName) {
         this.plotSize = plotSize;
         this.roadWidth = roadWidth;
         this.plotHeight = plotHeight;
@@ -38,6 +50,8 @@ public class PlotChunkGenerator extends ChunkGenerator {
         this.wallMaterial = wallMaterial;
         this.layers = layers;
         this.totalInterval = plotSize + roadWidth;
+        this.schematics = schematics;
+        this.schematicName = schematicName;
     }
 
     @Override
@@ -132,6 +146,10 @@ public class PlotChunkGenerator extends ChunkGenerator {
     public @NotNull List<BlockPopulator> getDefaultPopulators(@NotNull World world) {
         List<BlockPopulator> populators = new ArrayList<>();
         populators.add(new PlotBlockPopulator(plotSize, roadWidth, plotHeight, wallMaterial));
+        if (schematics != null && schematicName != null && !schematicName.isBlank()) {
+            populators.add(new PlotSchematicPopulator(
+                    schematics, schematicName, plotSize, roadWidth, plotHeight));
+        }
         return populators;
     }
 }

@@ -40,6 +40,11 @@ multiverse:
   help_list: "<gradient:#ffa500:#ff6347>/{alias} list</gradient> <gray>- Alle Welten auflisten</gray>"
   help_footer: "<dark_gray>───────────────────────────────</dark_gray>"
 
+  applyschematic_not_plot: "<gradient:#dc143c:#b22222>Fehler:</gradient> <white><gradient:#ff7f50:#ff4500>{world_name}</gradient> ist keine PLOT-Welt.</white>"
+  applyschematic_missing_name: "<gradient:#dc143c:#b22222>Fehler:</gradient> <white><gradient:#ff7f50:#ff4500>{world_name}</gradient> hat kein Schematic konfiguriert. Übergib einen Namen als zweites Argument.</white>"
+  applyschematic_not_found: "<gradient:#dc143c:#b22222>Fehler:</gradient> <white>Schematic <gradient:#ff7f50:#ff4500>{schematic}</gradient> wurde in plugins/JExMultiverse/schematics/ nicht gefunden.</white>"
+  applyschematic_done: "<gradient:#32cd32:#228b22>Angewendet:</gradient> <white><gradient:#ff7f50:#ff4500>{schematic}</gradient> auf <gradient:#ff7f50:#ff4500>{count}</gradient> Plot(s) in <gradient:#ff7f50:#ff4500>{world_name}</gradient> gepastet ({chunks} Chunks gescannt).</white>"
+
 multiverse_editor_ui:
   title: "<gradient:#ff7f50:#ff4500>Welt bearbeiten</gradient> <dark_gray>({world_name})</dark_gray>"
   spawn:

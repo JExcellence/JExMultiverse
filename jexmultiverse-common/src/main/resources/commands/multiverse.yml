@@ -19,6 +19,7 @@ subcommands:
       - { name: type,        type: "enum(de.jexcellence.multiverse.api.MVWorldType)",             required: false, description: "World type" }
       - { name: plot_size,   type: positive_long,                                                  required: false, description: "Per-world plot size override (PLOT only)" }
       - { name: road_width,  type: positive_long,                                                  required: false, description: "Per-world road width override (PLOT only)" }
+      - { name: schematic,   type: string,                                                         required: false, description: "Schematic file name without .nbt extension (PLOT only)" }
 
   - name: delete
     description: "Delete a world"
@@ -52,6 +53,14 @@ subcommands:
     description: "List all managed worlds"
     permission: "jexmultiverse.command.list"
     senders: [player, console]
+
+  - name: applyschematic
+    description: "Re-paste a schematic into every plot in a PLOT world's loaded chunks"
+    permission: "jexmultiverse.command.applyschematic"
+    senders: [player, console]
+    argumentSchema:
+      - { name: world,     type: world,  required: true,  description: "Target plot world" }
+      - { name: schematic, type: string, required: false, description: "Schematic name (defaults to world's stored schematic)" }
 
   - name: help
     description: "Show help"

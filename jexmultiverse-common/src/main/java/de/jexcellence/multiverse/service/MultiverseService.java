@@ -97,25 +97,36 @@ public class MultiverseService implements MultiverseProvider {
     public @NotNull CompletableFuture<Optional<MVWorld>> createWorld(@NotNull String name,
                                                                      World.@NotNull Environment environment,
                                                                      @NotNull MVWorldType type) {
-        return createWorld(name, environment, type, null, null);
+        return createWorld(name, environment, type, null, null, null);
+    }
+
+    public @NotNull CompletableFuture<Optional<MVWorld>> createWorld(@NotNull String name,
+                                                                     World.@NotNull Environment environment,
+                                                                     @NotNull MVWorldType type,
+                                                                     @Nullable Integer plotSizeOverride,
+                                                                     @Nullable Integer roadWidthOverride) {
+        return createWorld(name, environment, type, plotSizeOverride, roadWidthOverride, null);
     }
 
     /**
-     * Creates a managed world with per-world plot generation overrides.
-     * The override values are persisted on the entity so subsequent server
-     * starts re-create the same generator.
+     * Creates a managed world with per-world plot generation overrides + an
+     * optional schematic. The override values are persisted on the entity so
+     * subsequent server starts re-create the same generator.
      *
      * @param name              world identifier
      * @param environment       world environment
      * @param type              generation type
      * @param plotSizeOverride  per-world plot size (PLOT only), or {@code null}
      * @param roadWidthOverride per-world road width (PLOT only), or {@code null}
+     * @param schematicName     per-world schematic file name without {@code .nbt}
+     *                          extension (PLOT only), or {@code null}
      */
     public @NotNull CompletableFuture<Optional<MVWorld>> createWorld(@NotNull String name,
                                                                      World.@NotNull Environment environment,
                                                                      @NotNull MVWorldType type,
                                                                      @Nullable Integer plotSizeOverride,
-                                                                     @Nullable Integer roadWidthOverride) {
+                                                                     @Nullable Integer roadWidthOverride,
+                                                                     @Nullable String schematicName) {
         if (isAtWorldLimit()) {
             logger.warn("World limit reached ({}/{}), cannot create '{}'",
                     getWorldCount(), getMaxWorlds(), name);
@@ -136,11 +147,12 @@ public class MultiverseService implements MultiverseProvider {
         // entity faithfully represents how the world was generated.
         var effectivePlotSize = type == MVWorldType.PLOT ? plotSizeOverride : null;
         var effectiveRoadWidth = type == MVWorldType.PLOT ? roadWidthOverride : null;
+        var effectiveSchematic = type == MVWorldType.PLOT ? schematicName : null;
 
         var future = new CompletableFuture<Optional<MVWorld>>();
         Bukkit.getScheduler().runTask(plugin, () -> {
             var bukkitWorld = worldFactory.createBukkitWorld(name, environment, type,
-                    effectivePlotSize, effectiveRoadWidth);
+                    effectivePlotSize, effectiveRoadWidth, effectiveSchematic);
             if (bukkitWorld == null) {
                 future.complete(Optional.empty());
                 return;
@@ -156,6 +168,7 @@ public class MultiverseService implements MultiverseProvider {
                     .pvpEnabled(true)
                     .plotSizeOverride(effectivePlotSize)
                     .roadWidthOverride(effectiveRoadWidth)
+                    .schematicName(effectiveSchematic)
                     .build();
 
             repository.saveWorld(mvWorld).thenAccept(saved -> {

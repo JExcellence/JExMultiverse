@@ -7,6 +7,7 @@ import de.jexcellence.multiverse.database.entity.MVWorld;
 import de.jexcellence.multiverse.database.repository.MVWorldRepository;
 import de.jexcellence.multiverse.generator.plot.PlotChunkGenerator;
 import de.jexcellence.multiverse.generator.void_world.VoidChunkGenerator;
+import de.jexcellence.multiverse.service.SchematicService;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -45,6 +46,7 @@ public class WorldFactory {
     private final ChunkGenerator voidGenerator;
     private final ChunkGenerator plotGenerator;
     private final PlotWorldConfig plotConfig;
+    private final SchematicService schematics;
 
     private final Map<String, MVWorld> worldCache = new ConcurrentHashMap<>();
 
@@ -56,6 +58,7 @@ public class WorldFactory {
         this.logger = logger;
         this.voidGenerator = new VoidChunkGenerator();
         this.plotConfig = PlotWorldConfig.load(plugin.getDataFolder());
+        this.schematics = new SchematicService(plugin, logger);
         this.plotGenerator = new PlotChunkGenerator(
                 plotConfig.plotSize(),
                 plotConfig.roadWidth(),
@@ -73,6 +76,11 @@ public class WorldFactory {
         return plotConfig;
     }
 
+    /** Returns the shared schematic loader/cache. */
+    public @NotNull SchematicService schematics() {
+        return schematics;
+    }
+
     // ── World creation ──────────────────────────────────────────────────────────
 
     /**
@@ -86,43 +94,41 @@ public class WorldFactory {
     public @Nullable World createBukkitWorld(@NotNull String name,
                                               World.@NotNull Environment environment,
                                               @NotNull MVWorldType type) {
-        return createBukkitWorld(name, environment, type, null, null);
+        return createBukkitWorld(name, environment, type, null, null, null);
     }
 
     /**
      * Creates a Bukkit world honoring per-world plot generation overrides.
-     * Pass {@code null} for both overrides to use the global config.
+     * Pass {@code null} for any override to fall back to the global config.
      *
-     * @param name             the world folder name
-     * @param environment      the world environment
-     * @param type             the multiverse world type
-     * @param plotSizeOverride per-world plot size (PLOT only), or {@code null}
+     * @param name              the world folder name
+     * @param environment       the world environment
+     * @param type              the multiverse world type
+     * @param plotSizeOverride  per-world plot size (PLOT only), or {@code null}
      * @param roadWidthOverride per-world road width (PLOT only), or {@code null}
+     * @param schematicName     per-world schematic name (PLOT only), or {@code null}
      * @return the created Bukkit world, or {@code null} on failure
      */
     public @Nullable World createBukkitWorld(@NotNull String name,
                                               World.@NotNull Environment environment,
                                               @NotNull MVWorldType type,
                                               @Nullable Integer plotSizeOverride,
-                                              @Nullable Integer roadWidthOverride) {
+                                              @Nullable Integer roadWidthOverride,
+                                              @Nullable String schematicName) {
         try {
             var creator = new WorldCreator(name)
                     .environment(environment);
 
-            var generator = getGeneratorForType(type, plotSizeOverride, roadWidthOverride);
+            var generator = getGeneratorForType(type, plotSizeOverride, roadWidthOverride, schematicName);
             if (generator != null) {
                 creator.generator(generator);
             }
 
             var world = creator.createWorld();
             if (world != null) {
-                // Free spawn chunks once creation completes — vanilla worldgen
-                // forcibly loads spawn chunks during create which costs memory
-                // and tick time after creation. Custom generators (VOID/PLOT)
-                // benefit too since their spawn chunks contain little of value.
                 world.setKeepSpawnInMemory(false);
-                logger.info("Created Bukkit world '{}' (env={}, type={}, plot-override={}/{})",
-                        name, environment, type, plotSizeOverride, roadWidthOverride);
+                logger.info("Created Bukkit world '{}' (env={}, type={}, plot-override={}/{}, schematic={})",
+                        name, environment, type, plotSizeOverride, roadWidthOverride, schematicName);
             }
             return world;
         } catch (Exception e) {
@@ -135,20 +141,24 @@ public class WorldFactory {
      * Returns the chunk generator for the given world type using global config.
      */
     public @Nullable ChunkGenerator getGeneratorForType(@NotNull MVWorldType type) {
-        return getGeneratorForType(type, null, null);
+        return getGeneratorForType(type, null, null, null);
     }
 
     /**
      * Returns a chunk generator for the given world type, applying optional
-     * per-world plot overrides. For non-PLOT types the overrides are ignored.
+     * per-world plot overrides + schematic. For non-PLOT types the overrides
+     * are ignored. The shared no-override no-schematic plot generator is
+     * reused as a fast path when none of the params are set.
      */
     public @Nullable ChunkGenerator getGeneratorForType(@NotNull MVWorldType type,
                                                          @Nullable Integer plotSizeOverride,
-                                                         @Nullable Integer roadWidthOverride) {
+                                                         @Nullable Integer roadWidthOverride,
+                                                         @Nullable String schematicName) {
         return switch (type) {
             case VOID -> voidGenerator;
             case PLOT -> {
-                if (plotSizeOverride == null && roadWidthOverride == null) {
+                if (plotSizeOverride == null && roadWidthOverride == null
+                        && (schematicName == null || schematicName.isBlank())) {
                     yield plotGenerator;
                 }
                 int ps = plotSizeOverride != null ? plotSizeOverride : plotConfig.plotSize();
@@ -156,7 +166,8 @@ public class WorldFactory {
                 yield new PlotChunkGenerator(
                         ps, rw, plotConfig.plotHeight(),
                         plotConfig.roadMaterial(), plotConfig.wallMaterial(),
-                        plotConfig.layers());
+                        plotConfig.layers(),
+                        schematics, schematicName);
             }
             case DEFAULT -> null;
         };
@@ -227,7 +238,7 @@ public class WorldFactory {
         }
 
         var world = createBukkitWorld(mvWorld.getIdentifier(), mvWorld.getEnvironment(), mvWorld.getType(),
-                mvWorld.getPlotSizeOverride(), mvWorld.getRoadWidthOverride());
+                mvWorld.getPlotSizeOverride(), mvWorld.getRoadWidthOverride(), mvWorld.getSchematicName());
         if (world != null) {
             cacheWorld(mvWorld);
             logger.info("Loaded world '{}'", mvWorld.getIdentifier());

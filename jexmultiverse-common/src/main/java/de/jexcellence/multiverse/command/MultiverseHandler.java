@@ -56,14 +56,15 @@ public final class MultiverseHandler {
     /** Returns the path to handler map for registration. */
     public @NotNull Map<String, CommandHandler> handlerMap() {
         return Map.of(
-                "multiverse",           this::onRoot,
-                "multiverse.create",    this::onCreate,
-                "multiverse.delete",    this::onDelete,
-                "multiverse.edit",      this::onEdit,
-                "multiverse.teleport",  this::onTeleport,
-                "multiverse.load",      this::onLoad,
-                "multiverse.list",      this::onList,
-                "multiverse.help",      this::onHelp
+                "multiverse",                this::onRoot,
+                "multiverse.create",         this::onCreate,
+                "multiverse.delete",         this::onDelete,
+                "multiverse.edit",           this::onEdit,
+                "multiverse.teleport",       this::onTeleport,
+                "multiverse.load",           this::onLoad,
+                "multiverse.list",           this::onList,
+                "multiverse.help",           this::onHelp,
+                "multiverse.applyschematic", this::onApplySchematic
         );
     }
 
@@ -82,6 +83,7 @@ public final class MultiverseHandler {
         var worldType = ctx.get("type", MVWorldType.class).orElse(MVWorldType.DEFAULT);
         var plotSize = ctx.get("plot_size", Long.class).map(Long::intValue).orElse(null);
         var roadWidth = ctx.get("road_width", Long.class).map(Long::intValue).orElse(null);
+        var schematic = ctx.get("schematic", String.class).orElse(null);
 
         if (!service.isWorldTypeAvailable(worldType)) {
             r18n().msg("multiverse.type_not_available").prefix()
@@ -109,7 +111,7 @@ public final class MultiverseHandler {
                 .with("world_name", name)
                 .send(sender);
 
-        service.createWorld(name, environment, worldType, plotSize, roadWidth).thenAccept(opt -> {
+        service.createWorld(name, environment, worldType, plotSize, roadWidth, schematic).thenAccept(opt -> {
             Bukkit.getScheduler().runTask(plugin, () -> {
                 if (opt.isPresent()) {
                     r18n().msg("multiverse.create_success").prefix()
@@ -293,6 +295,81 @@ public final class MultiverseHandler {
         r18n().msg("multiverse.list_footer")
                 .with("count", String.valueOf(worlds.size()))
                 .with("max", service.getMaxWorlds() < 0 ? "unlimited" : String.valueOf(service.getMaxWorlds()))
+                .send(sender);
+    }
+
+    // ── Apply schematic ─────────────────────────────────────────────────────────
+
+    private void onApplySchematic(@NotNull CommandContext ctx) {
+        var sender = ctx.sender();
+        var world = ctx.require("world", MVWorld.class);
+        if (world.getType() != MVWorldType.PLOT) {
+            r18n().msg("multiverse.applyschematic_not_plot").prefix()
+                    .with("world_name", world.getIdentifier())
+                    .send(sender);
+            return;
+        }
+
+        var name = ctx.get("schematic", String.class).orElse(world.getSchematicName());
+        if (name == null || name.isBlank()) {
+            r18n().msg("multiverse.applyschematic_missing_name").prefix()
+                    .with("world_name", world.getIdentifier())
+                    .send(sender);
+            return;
+        }
+
+        var bukkit = Bukkit.getWorld(world.getIdentifier());
+        if (bukkit == null) {
+            r18n().msg("multiverse.world_not_loaded").prefix()
+                    .with("world_name", world.getIdentifier())
+                    .send(sender);
+            return;
+        }
+
+        var schematicService = worldFactory.schematics();
+        if (schematicService.load(name).isEmpty()) {
+            r18n().msg("multiverse.applyschematic_not_found").prefix()
+                    .with("schematic", name)
+                    .send(sender);
+            return;
+        }
+
+        int plotSize = worldFactory.effectivePlotSize(world);
+        int roadWidth = worldFactory.effectiveRoadWidth(world);
+        int plotHeight = worldFactory.plotConfig().plotHeight();
+        int interval = plotSize + roadWidth;
+        var random = new java.util.Random();
+
+        // Iterate currently-loaded chunks and paste at the anchor of any plot
+        // whose NW corner lives in that chunk. Same coverage as the populator.
+        var chunks = bukkit.getLoadedChunks();
+        int placed = 0;
+        for (var chunk : chunks) {
+            int chunkMinX = chunk.getX() << 4;
+            int chunkMinZ = chunk.getZ() << 4;
+            int chunkMaxX = chunkMinX + 15;
+            int chunkMaxZ = chunkMinZ + 15;
+            for (int gridX = Math.floorDiv(chunkMinX, interval);
+                 gridX <= Math.floorDiv(chunkMaxX, interval); gridX++) {
+                for (int gridZ = Math.floorDiv(chunkMinZ, interval);
+                     gridZ <= Math.floorDiv(chunkMaxZ, interval); gridZ++) {
+                    int anchorX = gridX * interval;
+                    int anchorZ = gridZ * interval;
+                    if (anchorX < chunkMinX || anchorX > chunkMaxX) continue;
+                    if (anchorZ < chunkMinZ || anchorZ > chunkMaxZ) continue;
+                    de.jexcellence.multiverse.generator.plot.PlotSchematicPopulator.placeManually(
+                            schematicService, name, bukkit, gridX, gridZ,
+                            plotSize, roadWidth, plotHeight, random);
+                    placed++;
+                }
+            }
+        }
+
+        r18n().msg("multiverse.applyschematic_done").prefix()
+                .with("world_name", world.getIdentifier())
+                .with("schematic", name)
+                .with("count", String.valueOf(placed))
+                .with("chunks", String.valueOf(chunks.length))
                 .send(sender);
     }
 

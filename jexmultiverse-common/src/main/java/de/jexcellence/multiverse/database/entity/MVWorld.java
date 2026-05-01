@@ -70,6 +70,15 @@ public class MVWorld extends LongIdEntity {
     @Column(name = "road_width_override")
     private Integer roadWidthOverride;
 
+    /**
+     * Per-world schematic file name (PLOT type only). When non-null, the
+     * structure (a {@code .nbt} file in {@code plugins/JExMultiverse/schematics/})
+     * is pasted at the NW corner of every plot at chunk-generation time.
+     * Stored without the {@code .nbt} extension.
+     */
+    @Column(name = "schematic_name", length = 128)
+    private String schematicName;
+
     // ── Constructors ────────────────────────────────────────────────────
 
     public MVWorld() {
@@ -86,6 +95,7 @@ public class MVWorld extends LongIdEntity {
         this.enterPermission = builder.enterPermission;
         this.plotSizeOverride = builder.plotSizeOverride;
         this.roadWidthOverride = builder.roadWidthOverride;
+        this.schematicName = builder.schematicName;
     }
 
     // ── Getters & Setters ───────────────────────────────────────────────
@@ -160,6 +170,14 @@ public class MVWorld extends LongIdEntity {
 
     public void setRoadWidthOverride(@Nullable Integer roadWidthOverride) {
         this.roadWidthOverride = roadWidthOverride;
+    }
+
+    public @Nullable String getSchematicName() {
+        return schematicName;
+    }
+
+    public void setSchematicName(@Nullable String schematicName) {
+        this.schematicName = schematicName;
     }
 
     // ── Snapshot ─────────────────────────────────────────────────────────
@@ -253,6 +271,7 @@ public class MVWorld extends LongIdEntity {
         private String enterPermission;
         private Integer plotSizeOverride;
         private Integer roadWidthOverride;
+        private String schematicName;
 
         private Builder() {}
 
@@ -346,6 +365,15 @@ public class MVWorld extends LongIdEntity {
          */
         public @NotNull Builder roadWidthOverride(@Nullable Integer roadWidthOverride) {
             this.roadWidthOverride = roadWidthOverride;
+            return this;
+        }
+
+        /**
+         * Sets the per-world schematic file name (PLOT type only). Stored
+         * without the {@code .nbt} extension.
+         */
+        public @NotNull Builder schematicName(@Nullable String schematicName) {
+            this.schematicName = schematicName;
             return this;
         }
 
