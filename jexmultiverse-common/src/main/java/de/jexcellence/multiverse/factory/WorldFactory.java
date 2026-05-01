@@ -58,7 +58,7 @@ public class WorldFactory {
         this.logger = logger;
         this.voidGenerator = new VoidChunkGenerator();
         this.plotConfig = PlotWorldConfig.load(plugin.getDataFolder());
-        this.schematics = new SchematicService(plugin, logger);
+        this.schematics = new SchematicService(plugin, logger, plotConfig);
         this.plotGenerator = new PlotChunkGenerator(
                 plotConfig.plotSize(),
                 plotConfig.roadWidth(),

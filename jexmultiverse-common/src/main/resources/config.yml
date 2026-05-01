@@ -33,3 +33,10 @@ plot-world:
   layers:
     - { material: DIRT,        min-y: 1,  max-y: 62 }
     - { material: GRASS_BLOCK, min-y: 63, max-y: 63 }
+
+  # Offset applied to schematic pastes, relative to each plot's NW corner at
+  # plot-height. Negative Y digs into the terrain (useful for buried
+  # foundations); positive Y raises the structure above the plot surface.
+  schematic-offset-x: 0
+  schematic-offset-y: 1
+  schematic-offset-z: 0

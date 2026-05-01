@@ -16,12 +16,15 @@ import java.util.Map;
  * <p>Falls back to sensible defaults for any missing key so a corrupted or
  * partially-edited file still produces a valid generator.
  *
- * @param plotSize     edge length of each plot
- * @param roadWidth    width of road between plots
- * @param plotHeight   y-coordinate of the plot surface
- * @param roadMaterial top-layer material of roads
- * @param wallMaterial material edging each plot
- * @param layers       terrain layers within plots
+ * @param plotSize         edge length of each plot
+ * @param roadWidth        width of road between plots
+ * @param plotHeight       y-coordinate of the plot surface
+ * @param roadMaterial     top-layer material of roads
+ * @param wallMaterial     material edging each plot
+ * @param layers           terrain layers within plots
+ * @param schematicOffsetX X offset for schematic pastes, relative to plot NW corner
+ * @param schematicOffsetY Y offset for schematic pastes, relative to plotHeight
+ * @param schematicOffsetZ Z offset for schematic pastes, relative to plot NW corner
  *
  * @author JExcellence
  * @since 3.0.0
@@ -32,7 +35,10 @@ public record PlotWorldConfig(
         int plotHeight,
         @NotNull Material roadMaterial,
         @NotNull Material wallMaterial,
-        @NotNull List<PlotLayer> layers
+        @NotNull List<PlotLayer> layers,
+        int schematicOffsetX,
+        int schematicOffsetY,
+        int schematicOffsetZ
 ) {
 
     private static final PlotWorldConfig DEFAULT = new PlotWorldConfig(
@@ -41,7 +47,8 @@ public record PlotWorldConfig(
             List.of(
                     new PlotLayer(Material.DIRT, 1, 62),
                     new PlotLayer(Material.GRASS_BLOCK, 63, 63)
-            )
+            ),
+            0, 1, 0
     );
 
     /**
@@ -61,6 +68,9 @@ public record PlotWorldConfig(
         var plotHeight = section.getInt("plot-height", DEFAULT.plotHeight);
         var roadMat   = parseMaterial(section.getString("road-material"), DEFAULT.roadMaterial);
         var wallMat   = parseMaterial(section.getString("wall-material"), DEFAULT.wallMaterial);
+        var offX      = section.getInt("schematic-offset-x", DEFAULT.schematicOffsetX);
+        var offY      = section.getInt("schematic-offset-y", DEFAULT.schematicOffsetY);
+        var offZ      = section.getInt("schematic-offset-z", DEFAULT.schematicOffsetZ);
 
         var rawLayers = section.getList("layers");
         List<PlotLayer> layers = new ArrayList<>();
@@ -75,7 +85,8 @@ public record PlotWorldConfig(
         }
         if (layers.isEmpty()) layers = DEFAULT.layers;
 
-        return new PlotWorldConfig(plotSize, roadWidth, plotHeight, roadMat, wallMat, layers);
+        return new PlotWorldConfig(plotSize, roadWidth, plotHeight, roadMat, wallMat, layers,
+                offX, offY, offZ);
     }
 
     private static Material parseMaterial(String raw, Material fallback) {

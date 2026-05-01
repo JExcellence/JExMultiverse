@@ -47,6 +47,8 @@ dependencies {
     compileOnly(libs.jackson.jsr310)
     compileOnly(libs.java.uuid)
     compileOnly(libs.xseries)
+    compileOnly(libs.worldedit.bukkit) // Soft-dep: enables .schem/.schematic loading
+                                        // when WorldEdit (or FAWE) is installed.
 
     compileOnly(libs.bundles.jexcellence) {
         exclude(group = "de.jexcellence.hibernate")
