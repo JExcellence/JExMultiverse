@@ -86,11 +86,30 @@ public class WorldFactory {
     public @Nullable World createBukkitWorld(@NotNull String name,
                                               World.@NotNull Environment environment,
                                               @NotNull MVWorldType type) {
+        return createBukkitWorld(name, environment, type, null, null);
+    }
+
+    /**
+     * Creates a Bukkit world honoring per-world plot generation overrides.
+     * Pass {@code null} for both overrides to use the global config.
+     *
+     * @param name             the world folder name
+     * @param environment      the world environment
+     * @param type             the multiverse world type
+     * @param plotSizeOverride per-world plot size (PLOT only), or {@code null}
+     * @param roadWidthOverride per-world road width (PLOT only), or {@code null}
+     * @return the created Bukkit world, or {@code null} on failure
+     */
+    public @Nullable World createBukkitWorld(@NotNull String name,
+                                              World.@NotNull Environment environment,
+                                              @NotNull MVWorldType type,
+                                              @Nullable Integer plotSizeOverride,
+                                              @Nullable Integer roadWidthOverride) {
         try {
             var creator = new WorldCreator(name)
                     .environment(environment);
 
-            var generator = getGeneratorForType(type);
+            var generator = getGeneratorForType(type, plotSizeOverride, roadWidthOverride);
             if (generator != null) {
                 creator.generator(generator);
             }
@@ -102,7 +121,8 @@ public class WorldFactory {
                 // and tick time after creation. Custom generators (VOID/PLOT)
                 // benefit too since their spawn chunks contain little of value.
                 world.setKeepSpawnInMemory(false);
-                logger.info("Created Bukkit world '{}' (env={}, type={})", name, environment, type);
+                logger.info("Created Bukkit world '{}' (env={}, type={}, plot-override={}/{})",
+                        name, environment, type, plotSizeOverride, roadWidthOverride);
             }
             return world;
         } catch (Exception e) {
@@ -112,17 +132,50 @@ public class WorldFactory {
     }
 
     /**
-     * Returns the chunk generator for the given world type.
-     *
-     * @param type the multiverse world type
-     * @return the chunk generator, or {@code null} for vanilla generation
+     * Returns the chunk generator for the given world type using global config.
      */
     public @Nullable ChunkGenerator getGeneratorForType(@NotNull MVWorldType type) {
+        return getGeneratorForType(type, null, null);
+    }
+
+    /**
+     * Returns a chunk generator for the given world type, applying optional
+     * per-world plot overrides. For non-PLOT types the overrides are ignored.
+     */
+    public @Nullable ChunkGenerator getGeneratorForType(@NotNull MVWorldType type,
+                                                         @Nullable Integer plotSizeOverride,
+                                                         @Nullable Integer roadWidthOverride) {
         return switch (type) {
             case VOID -> voidGenerator;
-            case PLOT -> plotGenerator;
+            case PLOT -> {
+                if (plotSizeOverride == null && roadWidthOverride == null) {
+                    yield plotGenerator;
+                }
+                int ps = plotSizeOverride != null ? plotSizeOverride : plotConfig.plotSize();
+                int rw = roadWidthOverride != null ? roadWidthOverride : plotConfig.roadWidth();
+                yield new PlotChunkGenerator(
+                        ps, rw, plotConfig.plotHeight(),
+                        plotConfig.roadMaterial(), plotConfig.wallMaterial(),
+                        plotConfig.layers());
+            }
             case DEFAULT -> null;
         };
+    }
+
+    /**
+     * Returns the effective plot size for the given MVWorld — its override if
+     * set, else the global config value. Defined regardless of world type;
+     * callers should already know the world is PLOT.
+     */
+    public int effectivePlotSize(@NotNull MVWorld mv) {
+        return mv.getPlotSizeOverride() != null ? mv.getPlotSizeOverride() : plotConfig.plotSize();
+    }
+
+    /**
+     * Returns the effective road width for the given MVWorld.
+     */
+    public int effectiveRoadWidth(@NotNull MVWorld mv) {
+        return mv.getRoadWidthOverride() != null ? mv.getRoadWidthOverride() : plotConfig.roadWidth();
     }
 
     /**
@@ -173,7 +226,8 @@ public class WorldFactory {
             return existing;
         }
 
-        var world = createBukkitWorld(mvWorld.getIdentifier(), mvWorld.getEnvironment(), mvWorld.getType());
+        var world = createBukkitWorld(mvWorld.getIdentifier(), mvWorld.getEnvironment(), mvWorld.getType(),
+                mvWorld.getPlotSizeOverride(), mvWorld.getRoadWidthOverride());
         if (world != null) {
             cacheWorld(mvWorld);
             logger.info("Loaded world '{}'", mvWorld.getIdentifier());

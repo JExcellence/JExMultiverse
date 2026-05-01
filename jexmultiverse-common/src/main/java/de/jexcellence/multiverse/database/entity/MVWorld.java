@@ -55,6 +55,21 @@ public class MVWorld extends LongIdEntity {
     @Column(name = "enter_permission", length = 128)
     private String enterPermission;
 
+    /**
+     * Per-world plot size override (PLOT type only). When non-null this
+     * supersedes the global config.yml {@code plot-world.plot-size} for
+     * generation and API queries against this world.
+     */
+    @Column(name = "plot_size_override")
+    private Integer plotSizeOverride;
+
+    /**
+     * Per-world road width override (PLOT type only). When non-null this
+     * supersedes the global config.yml {@code plot-world.road-width}.
+     */
+    @Column(name = "road_width_override")
+    private Integer roadWidthOverride;
+
     // ── Constructors ────────────────────────────────────────────────────
 
     public MVWorld() {
@@ -69,6 +84,8 @@ public class MVWorld extends LongIdEntity {
         this.globalizedSpawn = builder.globalizedSpawn;
         this.pvpEnabled = builder.pvpEnabled;
         this.enterPermission = builder.enterPermission;
+        this.plotSizeOverride = builder.plotSizeOverride;
+        this.roadWidthOverride = builder.roadWidthOverride;
     }
 
     // ── Getters & Setters ───────────────────────────────────────────────
@@ -127,6 +144,22 @@ public class MVWorld extends LongIdEntity {
 
     public void setEnterPermission(@Nullable String enterPermission) {
         this.enterPermission = enterPermission;
+    }
+
+    public @Nullable Integer getPlotSizeOverride() {
+        return plotSizeOverride;
+    }
+
+    public void setPlotSizeOverride(@Nullable Integer plotSizeOverride) {
+        this.plotSizeOverride = plotSizeOverride;
+    }
+
+    public @Nullable Integer getRoadWidthOverride() {
+        return roadWidthOverride;
+    }
+
+    public void setRoadWidthOverride(@Nullable Integer roadWidthOverride) {
+        this.roadWidthOverride = roadWidthOverride;
     }
 
     // ── Snapshot ─────────────────────────────────────────────────────────
@@ -218,6 +251,8 @@ public class MVWorld extends LongIdEntity {
         private boolean globalizedSpawn;
         private boolean pvpEnabled;
         private String enterPermission;
+        private Integer plotSizeOverride;
+        private Integer roadWidthOverride;
 
         private Builder() {}
 
@@ -295,6 +330,22 @@ public class MVWorld extends LongIdEntity {
          */
         public @NotNull Builder enterPermission(@Nullable String enterPermission) {
             this.enterPermission = enterPermission;
+            return this;
+        }
+
+        /**
+         * Sets the per-world plot size override (PLOT type only).
+         */
+        public @NotNull Builder plotSizeOverride(@Nullable Integer plotSizeOverride) {
+            this.plotSizeOverride = plotSizeOverride;
+            return this;
+        }
+
+        /**
+         * Sets the per-world road width override (PLOT type only).
+         */
+        public @NotNull Builder roadWidthOverride(@Nullable Integer roadWidthOverride) {
+            this.roadWidthOverride = roadWidthOverride;
             return this;
         }
 

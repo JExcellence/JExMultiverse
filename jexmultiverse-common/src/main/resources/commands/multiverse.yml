@@ -17,6 +17,8 @@ subcommands:
       - { name: name,        type: string,                                                        required: true,  description: "World name" }
       - { name: environment, type: environment,                                                   required: false, description: "World environment (NORMAL, NETHER, THE_END)" }
       - { name: type,        type: "enum(de.jexcellence.multiverse.api.MVWorldType)",             required: false, description: "World type" }
+      - { name: plot_size,   type: positive_long,                                                  required: false, description: "Per-world plot size override (PLOT only)" }
+      - { name: road_width,  type: positive_long,                                                  required: false, description: "Per-world road width override (PLOT only)" }
 
   - name: delete
     description: "Delete a world"

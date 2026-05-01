@@ -97,6 +97,25 @@ public class MultiverseService implements MultiverseProvider {
     public @NotNull CompletableFuture<Optional<MVWorld>> createWorld(@NotNull String name,
                                                                      World.@NotNull Environment environment,
                                                                      @NotNull MVWorldType type) {
+        return createWorld(name, environment, type, null, null);
+    }
+
+    /**
+     * Creates a managed world with per-world plot generation overrides.
+     * The override values are persisted on the entity so subsequent server
+     * starts re-create the same generator.
+     *
+     * @param name              world identifier
+     * @param environment       world environment
+     * @param type              generation type
+     * @param plotSizeOverride  per-world plot size (PLOT only), or {@code null}
+     * @param roadWidthOverride per-world road width (PLOT only), or {@code null}
+     */
+    public @NotNull CompletableFuture<Optional<MVWorld>> createWorld(@NotNull String name,
+                                                                     World.@NotNull Environment environment,
+                                                                     @NotNull MVWorldType type,
+                                                                     @Nullable Integer plotSizeOverride,
+                                                                     @Nullable Integer roadWidthOverride) {
         if (isAtWorldLimit()) {
             logger.warn("World limit reached ({}/{}), cannot create '{}'",
                     getWorldCount(), getMaxWorlds(), name);
@@ -113,9 +132,15 @@ public class MultiverseService implements MultiverseProvider {
             return CompletableFuture.completedFuture(Optional.empty());
         }
 
+        // Overrides only apply to PLOT worlds; clear them otherwise so the
+        // entity faithfully represents how the world was generated.
+        var effectivePlotSize = type == MVWorldType.PLOT ? plotSizeOverride : null;
+        var effectiveRoadWidth = type == MVWorldType.PLOT ? roadWidthOverride : null;
+
         var future = new CompletableFuture<Optional<MVWorld>>();
         Bukkit.getScheduler().runTask(plugin, () -> {
-            var bukkitWorld = worldFactory.createBukkitWorld(name, environment, type);
+            var bukkitWorld = worldFactory.createBukkitWorld(name, environment, type,
+                    effectivePlotSize, effectiveRoadWidth);
             if (bukkitWorld == null) {
                 future.complete(Optional.empty());
                 return;
@@ -129,6 +154,8 @@ public class MultiverseService implements MultiverseProvider {
                     .spawnLocation(spawn)
                     .globalizedSpawn(false)
                     .pvpEnabled(true)
+                    .plotSizeOverride(effectivePlotSize)
+                    .roadWidthOverride(effectiveRoadWidth)
                     .build();
 
             repository.saveWorld(mvWorld).thenAccept(saved -> {
@@ -401,14 +428,16 @@ public class MultiverseService implements MultiverseProvider {
         var w = location.getWorld();
         if (w == null) return Optional.empty();
         var name = w.getName();
-        var mv = worldFactory.getCachedWorld(name);
-        if (mv.isEmpty() || mv.get().getType() != MVWorldType.PLOT) return Optional.empty();
+        var mvOpt = worldFactory.getCachedWorld(name);
+        if (mvOpt.isEmpty() || mvOpt.get().getType() != MVWorldType.PLOT) return Optional.empty();
 
-        var cfg = worldFactory.plotConfig();
-        int interval = cfg.plotSize() + cfg.roadWidth();
+        var mv = mvOpt.get();
+        int plotSize = worldFactory.effectivePlotSize(mv);
+        int roadWidth = worldFactory.effectiveRoadWidth(mv);
+        int interval = plotSize + roadWidth;
         int modX = Math.floorMod(location.getBlockX(), interval);
         int modZ = Math.floorMod(location.getBlockZ(), interval);
-        if (modX >= cfg.plotSize() || modZ >= cfg.plotSize()) return Optional.empty();
+        if (modX >= plotSize || modZ >= plotSize) return Optional.empty();
 
         int gridX = Math.floorDiv(location.getBlockX(), interval);
         int gridZ = Math.floorDiv(location.getBlockZ(), interval);
@@ -417,16 +446,19 @@ public class MultiverseService implements MultiverseProvider {
 
     @Override
     public @NotNull Optional<PlotBounds> plotBounds(@NotNull String worldIdentifier, int gridX, int gridZ) {
-        var mv = worldFactory.getCachedWorld(worldIdentifier);
-        if (mv.isEmpty() || mv.get().getType() != MVWorldType.PLOT) return Optional.empty();
+        var mvOpt = worldFactory.getCachedWorld(worldIdentifier);
+        if (mvOpt.isEmpty() || mvOpt.get().getType() != MVWorldType.PLOT) return Optional.empty();
 
-        var cfg = worldFactory.plotConfig();
-        int interval = cfg.plotSize() + cfg.roadWidth();
+        var mv = mvOpt.get();
+        int plotSize = worldFactory.effectivePlotSize(mv);
+        int roadWidth = worldFactory.effectiveRoadWidth(mv);
+        int interval = plotSize + roadWidth;
         int minX = gridX * interval;
         int minZ = gridZ * interval;
-        int maxX = minX + cfg.plotSize() - 1;
-        int maxZ = minZ + cfg.plotSize() - 1;
-        return Optional.of(new PlotBounds(worldIdentifier, gridX, gridZ, minX, minZ, maxX, maxZ, cfg.plotHeight()));
+        int maxX = minX + plotSize - 1;
+        int maxZ = minZ + plotSize - 1;
+        return Optional.of(new PlotBounds(worldIdentifier, gridX, gridZ, minX, minZ, maxX, maxZ,
+                worldFactory.plotConfig().plotHeight()));
     }
 
     @Override

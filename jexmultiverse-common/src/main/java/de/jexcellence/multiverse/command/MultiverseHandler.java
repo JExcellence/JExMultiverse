@@ -80,6 +80,8 @@ public final class MultiverseHandler {
         var name = ctx.require("name", String.class);
         var environment = ctx.get("environment", World.Environment.class).orElse(World.Environment.NORMAL);
         var worldType = ctx.get("type", MVWorldType.class).orElse(MVWorldType.DEFAULT);
+        var plotSize = ctx.get("plot_size", Long.class).map(Long::intValue).orElse(null);
+        var roadWidth = ctx.get("road_width", Long.class).map(Long::intValue).orElse(null);
 
         if (!service.isWorldTypeAvailable(worldType)) {
             r18n().msg("multiverse.type_not_available").prefix()
@@ -107,7 +109,7 @@ public final class MultiverseHandler {
                 .with("world_name", name)
                 .send(sender);
 
-        service.createWorld(name, environment, worldType).thenAccept(opt -> {
+        service.createWorld(name, environment, worldType, plotSize, roadWidth).thenAccept(opt -> {
             Bukkit.getScheduler().runTask(plugin, () -> {
                 if (opt.isPresent()) {
                     r18n().msg("multiverse.create_success").prefix()
