@@ -44,6 +44,7 @@ public class WorldFactory {
 
     private final ChunkGenerator voidGenerator;
     private final ChunkGenerator plotGenerator;
+    private final PlotWorldConfig plotConfig;
 
     private final Map<String, MVWorld> worldCache = new ConcurrentHashMap<>();
 
@@ -54,7 +55,7 @@ public class WorldFactory {
         this.repository = repository;
         this.logger = logger;
         this.voidGenerator = new VoidChunkGenerator();
-        var plotConfig = PlotWorldConfig.load(plugin.getDataFolder());
+        this.plotConfig = PlotWorldConfig.load(plugin.getDataFolder());
         this.plotGenerator = new PlotChunkGenerator(
                 plotConfig.plotSize(),
                 plotConfig.roadWidth(),
@@ -65,6 +66,11 @@ public class WorldFactory {
         logger.info("Plot generator: plot={}, road={}, height={}, road={}, wall={}, layers={}",
                 plotConfig.plotSize(), plotConfig.roadWidth(), plotConfig.plotHeight(),
                 plotConfig.roadMaterial(), plotConfig.wallMaterial(), plotConfig.layers().size());
+    }
+
+    /** Returns the plot-world generation config currently in effect. */
+    public @NotNull PlotWorldConfig plotConfig() {
+        return plotConfig;
     }
 
     // ── World creation ──────────────────────────────────────────────────────────

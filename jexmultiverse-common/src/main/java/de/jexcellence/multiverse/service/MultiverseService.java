@@ -4,6 +4,8 @@ import de.jexcellence.jexplatform.logging.JExLogger;
 import de.jexcellence.multiverse.api.MVWorldSnapshot;
 import de.jexcellence.multiverse.api.MVWorldType;
 import de.jexcellence.multiverse.api.MultiverseProvider;
+import de.jexcellence.multiverse.api.PlotBounds;
+import de.jexcellence.multiverse.api.PlotCoord;
 import de.jexcellence.multiverse.database.entity.MVWorld;
 import de.jexcellence.multiverse.database.repository.MVWorldRepository;
 import de.jexcellence.multiverse.factory.WorldFactory;
@@ -390,6 +392,50 @@ public class MultiverseService implements MultiverseProvider {
     public @NotNull CompletableFuture<Boolean> hasMultiverseSpawn(@NotNull String worldName) {
         return getWorldEntity(worldName).thenApply(opt ->
                 opt.isPresent() && opt.get().getSpawnLocation() != null);
+    }
+
+    // ── Plot grid API ───────────────────────────────────────────────────────────
+
+    @Override
+    public @NotNull Optional<PlotCoord> plotAt(@NotNull Location location) {
+        var w = location.getWorld();
+        if (w == null) return Optional.empty();
+        var name = w.getName();
+        var mv = worldFactory.getCachedWorld(name);
+        if (mv.isEmpty() || mv.get().getType() != MVWorldType.PLOT) return Optional.empty();
+
+        var cfg = worldFactory.plotConfig();
+        int interval = cfg.plotSize() + cfg.roadWidth();
+        int modX = Math.floorMod(location.getBlockX(), interval);
+        int modZ = Math.floorMod(location.getBlockZ(), interval);
+        if (modX >= cfg.plotSize() || modZ >= cfg.plotSize()) return Optional.empty();
+
+        int gridX = Math.floorDiv(location.getBlockX(), interval);
+        int gridZ = Math.floorDiv(location.getBlockZ(), interval);
+        return Optional.of(new PlotCoord(name, gridX, gridZ));
+    }
+
+    @Override
+    public @NotNull Optional<PlotBounds> plotBounds(@NotNull String worldIdentifier, int gridX, int gridZ) {
+        var mv = worldFactory.getCachedWorld(worldIdentifier);
+        if (mv.isEmpty() || mv.get().getType() != MVWorldType.PLOT) return Optional.empty();
+
+        var cfg = worldFactory.plotConfig();
+        int interval = cfg.plotSize() + cfg.roadWidth();
+        int minX = gridX * interval;
+        int minZ = gridZ * interval;
+        int maxX = minX + cfg.plotSize() - 1;
+        int maxZ = minZ + cfg.plotSize() - 1;
+        return Optional.of(new PlotBounds(worldIdentifier, gridX, gridZ, minX, minZ, maxX, maxZ, cfg.plotHeight()));
+    }
+
+    @Override
+    public boolean isRoadOrBorder(@NotNull Location location) {
+        var w = location.getWorld();
+        if (w == null) return false;
+        var mv = worldFactory.getCachedWorld(w.getName());
+        if (mv.isEmpty() || mv.get().getType() != MVWorldType.PLOT) return false;
+        return plotAt(location).isEmpty();
     }
 
     @Override
