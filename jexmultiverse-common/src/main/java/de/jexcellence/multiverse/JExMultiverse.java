@@ -8,9 +8,15 @@ import de.jexcellence.jexplatform.logging.JExLogger;
 import de.jexcellence.jexplatform.logging.LogLevel;
 import de.jexcellence.multiverse.api.MultiverseProvider;
 import de.jexcellence.multiverse.command.EnvironmentArgumentType;
+import de.jexcellence.multiverse.command.PlotArgumentType;
+import de.jexcellence.multiverse.command.PlotHandler;
 import de.jexcellence.multiverse.command.R18nCommandMessages;
 import de.jexcellence.multiverse.command.WorldArgumentType;
 import de.jexcellence.multiverse.config.TranslationKeyMerger;
+import de.jexcellence.multiverse.database.repository.PlotMemberRepository;
+import de.jexcellence.multiverse.database.repository.PlotRepository;
+import de.jexcellence.multiverse.listener.PlotProtectionListener;
+import de.jexcellence.multiverse.service.PlotService;
 import de.jexcellence.multiverse.database.repository.MVWorldRepository;
 import de.jexcellence.multiverse.factory.WorldFactory;
 import de.jexcellence.multiverse.listener.SpawnListener;
@@ -47,6 +53,9 @@ public abstract class JExMultiverse {
     private MultiverseService multiverseService;
     private WorldFactory worldFactory;
     private MVWorldRepository worldRepository;
+    private PlotService plotService;
+    private PlotRepository plotRepository;
+    private PlotMemberRepository plotMemberRepository;
     private ViewFrame viewFrame;
     private JExLogger logger;
 
@@ -152,6 +161,7 @@ public abstract class JExMultiverse {
         // merged keys on first load.
         saveDefaultResource("commands/multiverse.yml");
         saveDefaultResource("commands/spawn.yml");
+        saveDefaultResource("commands/plot.yml");
 
         jeHibernate = JEHibernate.builder()
                 .configuration(config -> config.fromProperties(
@@ -178,16 +188,21 @@ public abstract class JExMultiverse {
     private void initializeServices() {
         var repos = jeHibernate.repositories();
         worldRepository = repos.get(MVWorldRepository.class);
+        plotRepository = repos.get(PlotRepository.class);
+        plotMemberRepository = repos.get(PlotMemberRepository.class);
 
         worldFactory = new WorldFactory(plugin, worldRepository, logger);
         multiverseService = new MultiverseService(
                 edition(), worldRepository, worldFactory, logger, plugin);
+        plotService = new PlotService(multiverseService, plotRepository, plotMemberRepository,
+                logger, plugin);
 
         Bukkit.getServicesManager().register(
                 MultiverseProvider.class, multiverseService, plugin, ServicePriority.Normal);
 
         worldFactory.loadAllWorlds().join();
-        logger.info("Multiverse service ready — worlds loaded");
+        plotService.loadAll().join();
+        logger.info("Multiverse + plot services ready");
     }
 
     @SuppressWarnings("UnstableApiUsage")
@@ -211,10 +226,11 @@ public abstract class JExMultiverse {
     private void registerCommands() {
         var factory = new CommandFactory(plugin, this);
 
-        // Shared argument type registry — defaults + the plugin-specific "world" type.
+        // Shared argument type registry — defaults + the plugin-specific types.
         var registry = ArgumentTypeRegistry.defaults()
                 .register(WorldArgumentType.of(worldFactory))
-                .register(EnvironmentArgumentType.create());
+                .register(EnvironmentArgumentType.create())
+                .register(PlotArgumentType.of(plotService));
 
         // Shared i18n bridge — all framework & plugin keys route through R18nManager.
         var messages = new R18nCommandMessages();
@@ -228,14 +244,18 @@ public abstract class JExMultiverse {
                 new de.jexcellence.multiverse.command.SpawnHandler(
                         multiverseService, plugin).handlerMap(),
                 messages, registry);
+        factory.registerTree("commands/plot.yml",
+                new PlotHandler(plotService, multiverseService, worldFactory, plugin).handlerMap(),
+                messages, registry);
 
         // Still let JExCommand auto-register any listener classes under the plugin package.
         factory.registerAllCommandsAndListeners();
     }
 
     private void registerListeners() {
-        Bukkit.getPluginManager().registerEvents(
-                new SpawnListener(multiverseService, worldFactory, logger), plugin);
+        var pm = Bukkit.getPluginManager();
+        pm.registerEvents(new SpawnListener(multiverseService, worldFactory, logger), plugin);
+        pm.registerEvents(new PlotProtectionListener(plotService, multiverseService, plugin), plugin);
     }
 
     // ── Accessors ────────────────────────────────────────────────────────────────

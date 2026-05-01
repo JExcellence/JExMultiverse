@@ -1,0 +1,70 @@
+# JExCommand 2.0 tree — /plot
+# Plot ownership commands for JExMultiverse PLOT worlds.
+
+name: plot
+description: "Plot management"
+aliases:
+  - p
+  - plots
+permission: "jexplots.command"
+senders: [player, console]
+
+subcommands:
+  - name: claim
+    description: "Claim the plot you're standing on"
+    permission: "jexplots.command.claim"
+    senders: [player]
+
+  - name: unclaim
+    description: "Unclaim the plot you're standing on"
+    permission: "jexplots.command.unclaim"
+    senders: [player]
+
+  - name: info
+    description: "Show info about the plot you're standing on"
+    permission: "jexplots.command.info"
+    senders: [player]
+
+  - name: trust
+    description: "Allow another player to build on this plot"
+    permission: "jexplots.command.trust"
+    senders: [player]
+    argumentSchema:
+      - { name: target, type: offline_player, required: true, description: "Player to trust" }
+
+  - name: untrust
+    description: "Remove a trusted player"
+    permission: "jexplots.command.untrust"
+    senders: [player]
+    argumentSchema:
+      - { name: target, type: offline_player, required: true, description: "Player to untrust" }
+
+  - name: deny
+    description: "Deny a player from entering this plot"
+    permission: "jexplots.command.deny"
+    senders: [player]
+    argumentSchema:
+      - { name: target, type: offline_player, required: true, description: "Player to deny" }
+
+  - name: undeny
+    description: "Lift a deny on a player"
+    permission: "jexplots.command.deny"
+    senders: [player]
+    argumentSchema:
+      - { name: target, type: offline_player, required: true, description: "Player to un-deny" }
+
+  - name: home
+    description: "Teleport to one of your plots"
+    permission: "jexplots.command.home"
+    senders: [player]
+    argumentSchema:
+      - { name: n, type: positive_long, required: false, defaultValue: "1", description: "Plot number (from /plot list)" }
+
+  - name: list
+    description: "List your owned plots"
+    permission: "jexplots.command.list"
+    senders: [player, console]
+
+  - name: help
+    description: "Show /plot usage"
+    senders: [player, console]

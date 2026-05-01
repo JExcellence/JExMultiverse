@@ -122,6 +122,51 @@ multiverse_editor_ui:
     success: "<gradient:#32cd32:#228b22>Saved:</gradient> <white>Changes to <gradient:#ff7f50:#ff4500>{world_name}</gradient> saved.</white>"
     failed: "<gradient:#dc143c:#b22222>Save Failed:</gradient> <white>Failed to save <gradient:#ff7f50:#ff4500>{world_name}</gradient>: <gray>{error}</gray></white>"
 
+plot:
+  protection:
+    denied: "<gradient:#dc143c:#b22222>Denied:</gradient> <white>This plot is owned by <gradient:#ff7f50:#ff4500>{owner_name}</gradient>.</white>"
+  error:
+    not_on_plot: "<gradient:#dc143c:#b22222>Error:</gradient> <white>You're not standing on a plot.</white>"
+    already_claimed: "<gradient:#dc143c:#b22222>Error:</gradient> <white>This plot is already claimed by <gradient:#ff7f50:#ff4500>{owner_name}</gradient>.</white>"
+    not_owner: "<gradient:#dc143c:#b22222>Error:</gradient> <white>This plot is owned by <gradient:#ff7f50:#ff4500>{owner_name}</gradient>.</white>"
+    claim_limit: "<gradient:#dc143c:#b22222>Limit reached:</gradient> <white>You own <gradient:#ff7f50:#ff4500>{owned}</gradient>/<gradient:#ff7f50:#ff4500>{max}</gradient> plots.</white>"
+    claim_failed: "<gradient:#dc143c:#b22222>Error:</gradient> <white>Failed to claim plot.</white>"
+    unclaim_failed: "<gradient:#dc143c:#b22222>Error:</gradient> <white>Failed to unclaim plot.</white>"
+    member_failed: "<gradient:#dc143c:#b22222>Error:</gradient> <white>Failed to update member <gradient:#ff7f50:#ff4500>{target_name}</gradient>.</white>"
+    member_not_set: "<gradient:#dc143c:#b22222>Error:</gradient> <white><gradient:#ff7f50:#ff4500>{target_name}</gradient> doesn't have that role on this plot.</white>"
+    target_is_owner: "<gradient:#dc143c:#b22222>Error:</gradient> <white>You can't add the plot owner as a member.</white>"
+    no_plots: "<gradient:#dc143c:#b22222>Error:</gradient> <white>You don't own any plots.</white>"
+    no_such_home: "<gradient:#dc143c:#b22222>Error:</gradient> <white>No plot #{n} (you own {count}).</white>"
+    console_no_owner: "<gradient:#dc143c:#b22222>Error:</gradient> <white>Run /plot list as a player.</white>"
+    unknown_plot: "<gradient:#dc143c:#b22222>Error:</gradient> <white>Unknown plot: <gradient:#ff7f50:#ff4500>{plot}</gradient>.</white>"
+
+  claimed: "<gradient:#32cd32:#228b22>Claimed:</gradient> <white>Plot <gradient:#ff7f50:#ff4500>{grid_x},{grid_z}</gradient> in <gradient:#ff7f50:#ff4500>{world_name}</gradient> is yours.</white>"
+  unclaimed: "<gradient:#ffa500:#ff8c00>Unclaimed:</gradient> <white>Plot <gradient:#ff7f50:#ff4500>{grid_x},{grid_z}</gradient> released.</white>"
+  trusted: "<gradient:#32cd32:#228b22>Trusted:</gradient> <white><gradient:#ff7f50:#ff4500>{target_name}</gradient> can now build on this plot.</white>"
+  untrusted: "<gradient:#ffa500:#ff8c00>Untrusted:</gradient> <white><gradient:#ff7f50:#ff4500>{target_name}</gradient> can no longer build on this plot.</white>"
+  denied: "<gradient:#32cd32:#228b22>Denied:</gradient> <white><gradient:#ff7f50:#ff4500>{target_name}</gradient> is now denied from this plot.</white>"
+  undenied: "<gradient:#ffa500:#ff8c00>Un-denied:</gradient> <white><gradient:#ff7f50:#ff4500>{target_name}</gradient> can enter this plot again.</white>"
+  teleported: "<gradient:#32cd32:#228b22>Teleported:</gradient> <white>Plot <gradient:#ff7f50:#ff4500>{grid_x},{grid_z}</gradient> in <gradient:#ff7f50:#ff4500>{world_name}</gradient>.</white>"
+
+  info_header: "<gradient:#ff7f50:#ff4500>Plot {grid_x},{grid_z}</gradient> <dark_gray>in {world_name}</dark_gray>"
+  info_owner:  "  <gray>Owner:</gray> <gradient:#ffa500:#ff6347>{owner_name}</gradient>"
+  info_members: "  <gray>Trusted:</gray> <white>{trusted}</white> <dark_gray>·</dark_gray> <gray>Denied:</gray> <white>{denied}</white>"
+
+  list_empty: "<gray>You don't own any plots.</gray>"
+  list_header: "<gradient:#ff7f50:#ff4500>Your plots</gradient> <dark_gray>({count}/{max})</dark_gray>"
+  list_entry: " <gray>{n}.</gray> <gradient:#ffa500:#ff6347>{world_name}</gradient> <dark_gray>@ {grid_x},{grid_z}</dark_gray>"
+
+  help_header: "<gradient:#ff7f50:#ff4500>Plot commands</gradient>"
+  help_claim:   "<gradient:#ffa500:#ff6347>/{alias} claim</gradient> <gray>- claim the plot you're standing on</gray>"
+  help_unclaim: "<gradient:#ffa500:#ff6347>/{alias} unclaim</gradient> <gray>- release the plot you're standing on</gray>"
+  help_info:    "<gradient:#ffa500:#ff6347>/{alias} info</gradient> <gray>- show plot info</gray>"
+  help_trust:   "<gradient:#ffa500:#ff6347>/{alias} trust <player></gradient> <gray>- let a player build</gray>"
+  help_untrust: "<gradient:#ffa500:#ff6347>/{alias} untrust <player></gradient> <gray>- remove a trusted player</gray>"
+  help_deny:    "<gradient:#ffa500:#ff6347>/{alias} deny <player></gradient> <gray>- block a player from entering</gray>"
+  help_home:    "<gradient:#ffa500:#ff6347>/{alias} home [n]</gradient> <gray>- teleport to your plot</gray>"
+  help_list:    "<gradient:#ffa500:#ff6347>/{alias} list</gradient> <gray>- list your plots</gray>"
+  help_footer:  "<dark_gray>───────────────────────────────</dark_gray>"
+
 multiverse_list_ui:
   title: "<gradient:#ff7f50:#ff4500>Managed Worlds</gradient>"
   entry:

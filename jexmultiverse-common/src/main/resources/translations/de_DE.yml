@@ -122,6 +122,51 @@ multiverse_editor_ui:
     success: "<gradient:#32cd32:#228b22>Gespeichert:</gradient> <white>Änderungen an <gradient:#ff7f50:#ff4500>{world_name}</gradient> gespeichert.</white>"
     failed: "<gradient:#dc143c:#b22222>Speichern fehlgeschlagen:</gradient> <white>Änderungen an <gradient:#ff7f50:#ff4500>{world_name}</gradient>: <gray>{error}</gray></white>"
 
+plot:
+  protection:
+    denied: "<gradient:#dc143c:#b22222>Verweigert:</gradient> <white>Dieser Plot gehört <gradient:#ff7f50:#ff4500>{owner_name}</gradient>.</white>"
+  error:
+    not_on_plot: "<gradient:#dc143c:#b22222>Fehler:</gradient> <white>Du stehst nicht auf einem Plot.</white>"
+    already_claimed: "<gradient:#dc143c:#b22222>Fehler:</gradient> <white>Dieser Plot gehört bereits <gradient:#ff7f50:#ff4500>{owner_name}</gradient>.</white>"
+    not_owner: "<gradient:#dc143c:#b22222>Fehler:</gradient> <white>Dieser Plot gehört <gradient:#ff7f50:#ff4500>{owner_name}</gradient>.</white>"
+    claim_limit: "<gradient:#dc143c:#b22222>Limit erreicht:</gradient> <white>Du besitzt <gradient:#ff7f50:#ff4500>{owned}</gradient>/<gradient:#ff7f50:#ff4500>{max}</gradient> Plots.</white>"
+    claim_failed: "<gradient:#dc143c:#b22222>Fehler:</gradient> <white>Plot konnte nicht beansprucht werden.</white>"
+    unclaim_failed: "<gradient:#dc143c:#b22222>Fehler:</gradient> <white>Plot konnte nicht freigegeben werden.</white>"
+    member_failed: "<gradient:#dc143c:#b22222>Fehler:</gradient> <white>Mitglied <gradient:#ff7f50:#ff4500>{target_name}</gradient> konnte nicht aktualisiert werden.</white>"
+    member_not_set: "<gradient:#dc143c:#b22222>Fehler:</gradient> <white><gradient:#ff7f50:#ff4500>{target_name}</gradient> hat diese Rolle nicht auf dem Plot.</white>"
+    target_is_owner: "<gradient:#dc143c:#b22222>Fehler:</gradient> <white>Du kannst dich selbst (den Besitzer) nicht als Mitglied hinzufügen.</white>"
+    no_plots: "<gradient:#dc143c:#b22222>Fehler:</gradient> <white>Du besitzt keine Plots.</white>"
+    no_such_home: "<gradient:#dc143c:#b22222>Fehler:</gradient> <white>Kein Plot #{n} (du besitzt {count}).</white>"
+    console_no_owner: "<gradient:#dc143c:#b22222>Fehler:</gradient> <white>Führe /plot list als Spieler aus.</white>"
+    unknown_plot: "<gradient:#dc143c:#b22222>Fehler:</gradient> <white>Unbekannter Plot: <gradient:#ff7f50:#ff4500>{plot}</gradient>.</white>"
+
+  claimed: "<gradient:#32cd32:#228b22>Beansprucht:</gradient> <white>Plot <gradient:#ff7f50:#ff4500>{grid_x},{grid_z}</gradient> in <gradient:#ff7f50:#ff4500>{world_name}</gradient> gehört dir.</white>"
+  unclaimed: "<gradient:#ffa500:#ff8c00>Freigegeben:</gradient> <white>Plot <gradient:#ff7f50:#ff4500>{grid_x},{grid_z}</gradient> freigegeben.</white>"
+  trusted: "<gradient:#32cd32:#228b22>Vertraut:</gradient> <white><gradient:#ff7f50:#ff4500>{target_name}</gradient> darf jetzt auf diesem Plot bauen.</white>"
+  untrusted: "<gradient:#ffa500:#ff8c00>Vertrauen entzogen:</gradient> <white><gradient:#ff7f50:#ff4500>{target_name}</gradient> darf nicht mehr auf diesem Plot bauen.</white>"
+  denied: "<gradient:#32cd32:#228b22>Gesperrt:</gradient> <white><gradient:#ff7f50:#ff4500>{target_name}</gradient> ist jetzt vom Plot gesperrt.</white>"
+  undenied: "<gradient:#ffa500:#ff8c00>Sperre aufgehoben:</gradient> <white><gradient:#ff7f50:#ff4500>{target_name}</gradient> darf den Plot wieder betreten.</white>"
+  teleported: "<gradient:#32cd32:#228b22>Teleportiert:</gradient> <white>Plot <gradient:#ff7f50:#ff4500>{grid_x},{grid_z}</gradient> in <gradient:#ff7f50:#ff4500>{world_name}</gradient>.</white>"
+
+  info_header: "<gradient:#ff7f50:#ff4500>Plot {grid_x},{grid_z}</gradient> <dark_gray>in {world_name}</dark_gray>"
+  info_owner:  "  <gray>Besitzer:</gray> <gradient:#ffa500:#ff6347>{owner_name}</gradient>"
+  info_members: "  <gray>Vertraut:</gray> <white>{trusted}</white> <dark_gray>·</dark_gray> <gray>Gesperrt:</gray> <white>{denied}</white>"
+
+  list_empty: "<gray>Du besitzt keine Plots.</gray>"
+  list_header: "<gradient:#ff7f50:#ff4500>Deine Plots</gradient> <dark_gray>({count}/{max})</dark_gray>"
+  list_entry: " <gray>{n}.</gray> <gradient:#ffa500:#ff6347>{world_name}</gradient> <dark_gray>@ {grid_x},{grid_z}</dark_gray>"
+
+  help_header: "<gradient:#ff7f50:#ff4500>Plot-Befehle</gradient>"
+  help_claim:   "<gradient:#ffa500:#ff6347>/{alias} claim</gradient> <gray>- den Plot beanspruchen, auf dem du stehst</gray>"
+  help_unclaim: "<gradient:#ffa500:#ff6347>/{alias} unclaim</gradient> <gray>- den Plot freigeben, auf dem du stehst</gray>"
+  help_info:    "<gradient:#ffa500:#ff6347>/{alias} info</gradient> <gray>- Plot-Info anzeigen</gray>"
+  help_trust:   "<gradient:#ffa500:#ff6347>/{alias} trust <spieler></gradient> <gray>- Spieler bauen lassen</gray>"
+  help_untrust: "<gradient:#ffa500:#ff6347>/{alias} untrust <spieler></gradient> <gray>- Vertrauen entziehen</gray>"
+  help_deny:    "<gradient:#ffa500:#ff6347>/{alias} deny <spieler></gradient> <gray>- Spieler vom Plot sperren</gray>"
+  help_home:    "<gradient:#ffa500:#ff6347>/{alias} home [n]</gradient> <gray>- zu deinem Plot teleportieren</gray>"
+  help_list:    "<gradient:#ffa500:#ff6347>/{alias} list</gradient> <gray>- deine Plots auflisten</gray>"
+  help_footer:  "<dark_gray>───────────────────────────────</dark_gray>"
+
 multiverse_list_ui:
   title: "<gradient:#ff7f50:#ff4500>Verwaltete Welten</gradient>"
   entry:
