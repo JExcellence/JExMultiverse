@@ -207,7 +207,7 @@ public class MultiverseService implements MultiverseProvider {
     /**
      * Updates a world entity in the database and refreshes the cache.
      *
-     * @param world the world to update
+     * @param changes the world to update
      * @return a future containing the updated world
      */
     public @NotNull CompletableFuture<MVWorld> updateWorld(@NotNull MVWorld changes) {

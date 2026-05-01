@@ -10,6 +10,7 @@ import de.jexcellence.multiverse.api.MultiverseProvider;
 import de.jexcellence.multiverse.command.EnvironmentArgumentType;
 import de.jexcellence.multiverse.command.R18nCommandMessages;
 import de.jexcellence.multiverse.command.WorldArgumentType;
+import de.jexcellence.multiverse.config.TranslationKeyMerger;
 import de.jexcellence.multiverse.database.repository.MVWorldRepository;
 import de.jexcellence.multiverse.factory.WorldFactory;
 import de.jexcellence.multiverse.listener.SpawnListener;
@@ -78,6 +79,14 @@ public abstract class JExMultiverse {
     public void onEnable() {
         logger.info("Enabling JExMultiverse {} Edition...", edition);
 
+        // Merge any new translation keys from the JAR into existing on-disk
+        // YAML files BEFORE R18n loads. R18nManager only extracts when a
+        // file is missing, so plugin upgrades that ship new keys never reach
+        // disk otherwise — admins keep seeing "missing key" placeholders.
+        TranslationKeyMerger.mergeAll(plugin,
+                "translations/en_US.yml",
+                "translations/de_DE.yml");
+
         // Capture the main-thread context classloader NOW.
         // JEDependency.initializeWithRemapping() sets the dependency classloader as the
         // context classloader of the main thread during onLoad(). ForkJoinPool worker
@@ -138,8 +147,9 @@ public abstract class JExMultiverse {
         saveDefaultResource("database/hibernate.properties");
         saveDefaultResource("database/log4j.properties");
         saveDefaultResource("config.yml");
-        saveDefaultResource("translations/en_US.yml");
-        saveDefaultResource("translations/de_DE.yml");
+        // Translation files are extracted earlier (in onEnable, before
+        // platform.initialize) by TranslationKeyMerger so R18n sees the
+        // merged keys on first load.
         saveDefaultResource("commands/multiverse.yml");
         saveDefaultResource("commands/spawn.yml");
 
