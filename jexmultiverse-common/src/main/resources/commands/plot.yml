@@ -65,6 +65,15 @@ subcommands:
     permission: "jexplots.command.list"
     senders: [player, console]
 
+  - name: flag
+    description: "Manage plot flags"
+    permission: "jexplots.command.flag"
+    senders: [player]
+    argumentSchema:
+      - { name: action, type: "enum(de.jexcellence.multiverse.command.PlotFlagAction)", required: true,  description: "set | remove | list" }
+      - { name: flag,   type: plot_flag,                                                 required: false, description: "Flag key (omit for action=list)" }
+      - { name: value,  type: string,                                                    required: false, description: "true / false (action=set only)" }
+
   - name: help
     description: "Show /plot usage"
     senders: [player, console]

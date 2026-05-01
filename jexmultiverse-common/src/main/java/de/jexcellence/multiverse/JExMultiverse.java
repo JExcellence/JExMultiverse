@@ -9,12 +9,15 @@ import de.jexcellence.jexplatform.logging.LogLevel;
 import de.jexcellence.multiverse.api.MultiverseProvider;
 import de.jexcellence.multiverse.command.EnvironmentArgumentType;
 import de.jexcellence.multiverse.command.PlotArgumentType;
+import de.jexcellence.multiverse.command.PlotFlagArgumentType;
 import de.jexcellence.multiverse.command.PlotHandler;
 import de.jexcellence.multiverse.command.R18nCommandMessages;
 import de.jexcellence.multiverse.command.WorldArgumentType;
 import de.jexcellence.multiverse.config.TranslationKeyMerger;
+import de.jexcellence.multiverse.database.repository.PlotFlagRepository;
 import de.jexcellence.multiverse.database.repository.PlotMemberRepository;
 import de.jexcellence.multiverse.database.repository.PlotRepository;
+import de.jexcellence.multiverse.listener.PlotFlagListener;
 import de.jexcellence.multiverse.listener.PlotProtectionListener;
 import de.jexcellence.multiverse.service.PlotService;
 import de.jexcellence.multiverse.database.repository.MVWorldRepository;
@@ -56,6 +59,7 @@ public abstract class JExMultiverse {
     private PlotService plotService;
     private PlotRepository plotRepository;
     private PlotMemberRepository plotMemberRepository;
+    private PlotFlagRepository plotFlagRepository;
     private ViewFrame viewFrame;
     private JExLogger logger;
 
@@ -190,12 +194,13 @@ public abstract class JExMultiverse {
         worldRepository = repos.get(MVWorldRepository.class);
         plotRepository = repos.get(PlotRepository.class);
         plotMemberRepository = repos.get(PlotMemberRepository.class);
+        plotFlagRepository = repos.get(PlotFlagRepository.class);
 
         worldFactory = new WorldFactory(plugin, worldRepository, logger);
         multiverseService = new MultiverseService(
                 edition(), worldRepository, worldFactory, logger, plugin);
         plotService = new PlotService(multiverseService, plotRepository, plotMemberRepository,
-                logger, plugin);
+                plotFlagRepository, logger, plugin);
 
         Bukkit.getServicesManager().register(
                 MultiverseProvider.class, multiverseService, plugin, ServicePriority.Normal);
@@ -230,7 +235,8 @@ public abstract class JExMultiverse {
         var registry = ArgumentTypeRegistry.defaults()
                 .register(WorldArgumentType.of(worldFactory))
                 .register(EnvironmentArgumentType.create())
-                .register(PlotArgumentType.of(plotService));
+                .register(PlotArgumentType.of(plotService))
+                .register(PlotFlagArgumentType.create());
 
         // Shared i18n bridge — all framework & plugin keys route through R18nManager.
         var messages = new R18nCommandMessages();
@@ -256,6 +262,7 @@ public abstract class JExMultiverse {
         var pm = Bukkit.getPluginManager();
         pm.registerEvents(new SpawnListener(multiverseService, worldFactory, logger), plugin);
         pm.registerEvents(new PlotProtectionListener(plotService, multiverseService, plugin), plugin);
+        pm.registerEvents(new PlotFlagListener(plotService), plugin);
     }
 
     // ── Accessors ────────────────────────────────────────────────────────────────

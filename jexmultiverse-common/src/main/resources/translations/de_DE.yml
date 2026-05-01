@@ -139,6 +139,10 @@ plot:
     no_such_home: "<gradient:#dc143c:#b22222>Fehler:</gradient> <white>Kein Plot #{n} (du besitzt {count}).</white>"
     console_no_owner: "<gradient:#dc143c:#b22222>Fehler:</gradient> <white>Führe /plot list als Spieler aus.</white>"
     unknown_plot: "<gradient:#dc143c:#b22222>Fehler:</gradient> <white>Unbekannter Plot: <gradient:#ff7f50:#ff4500>{plot}</gradient>.</white>"
+    unknown_flag: "<gradient:#dc143c:#b22222>Fehler:</gradient> <white>Unbekanntes Flag <gradient:#ff7f50:#ff4500>{flag}</gradient>. Erlaubt: <gray>{options}</gray>.</white>"
+    flag_set_usage: "<gradient:#dc143c:#b22222>Verwendung:</gradient> <white>/plot flag set <flag> <true|false></white>"
+    flag_remove_usage: "<gradient:#dc143c:#b22222>Verwendung:</gradient> <white>/plot flag remove <flag></white>"
+    flag_failed: "<gradient:#dc143c:#b22222>Fehler:</gradient> <white>Flag <gradient:#ff7f50:#ff4500>{flag}</gradient> konnte nicht aktualisiert werden.</white>"
 
   claimed: "<gradient:#32cd32:#228b22>Beansprucht:</gradient> <white>Plot <gradient:#ff7f50:#ff4500>{grid_x},{grid_z}</gradient> in <gradient:#ff7f50:#ff4500>{world_name}</gradient> gehört dir.</white>"
   unclaimed: "<gradient:#ffa500:#ff8c00>Freigegeben:</gradient> <white>Plot <gradient:#ff7f50:#ff4500>{grid_x},{grid_z}</gradient> freigegeben.</white>"
@@ -165,7 +169,13 @@ plot:
   help_deny:    "<gradient:#ffa500:#ff6347>/{alias} deny <spieler></gradient> <gray>- Spieler vom Plot sperren</gray>"
   help_home:    "<gradient:#ffa500:#ff6347>/{alias} home [n]</gradient> <gray>- zu deinem Plot teleportieren</gray>"
   help_list:    "<gradient:#ffa500:#ff6347>/{alias} list</gradient> <gray>- deine Plots auflisten</gray>"
+  help_flag:    "<gradient:#ffa500:#ff6347>/{alias} flag <set|remove|list> [flag] [wert]</gradient> <gray>- Plot-Flags verwalten</gray>"
   help_footer:  "<dark_gray>───────────────────────────────</dark_gray>"
+
+  flag_list_header: "<gradient:#ff7f50:#ff4500>Flags für Plot {grid_x},{grid_z}</gradient>"
+  flag_list_entry:  " <gray>•</gray> <gradient:#ffa500:#ff6347>{flag}</gradient> <dark_gray>=</dark_gray> <white>{value}</white> <dark_gray>({source})</dark_gray>"
+  flag_set:         "<gradient:#32cd32:#228b22>Gesetzt:</gradient> <white>Flag <gradient:#ff7f50:#ff4500>{flag}</gradient> = <gradient:#ffa500:#ff6347>{value}</gradient>.</white>"
+  flag_removed:     "<gradient:#ffa500:#ff8c00>Entfernt:</gradient> <white>Flag <gradient:#ff7f50:#ff4500>{flag}</gradient> auf Standard zurückgesetzt.</white>"
 
 multiverse_list_ui:
   title: "<gradient:#ff7f50:#ff4500>Verwaltete Welten</gradient>"

@@ -8,6 +8,7 @@ import de.jexcellence.multiverse.database.entity.MemberRole;
 import de.jexcellence.multiverse.database.entity.Plot;
 import de.jexcellence.multiverse.factory.WorldFactory;
 import de.jexcellence.multiverse.service.MultiverseService;
+import de.jexcellence.multiverse.service.PlotFlag;
 import de.jexcellence.multiverse.service.PlotService;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
@@ -56,6 +57,7 @@ public final class PlotHandler {
                 Map.entry("plot.undeny",   this::onUndeny),
                 Map.entry("plot.home",     this::onHome),
                 Map.entry("plot.list",     this::onList),
+                Map.entry("plot.flag",     this::onFlag),
                 Map.entry("plot.help",     this::onHelp)
         );
     }
@@ -304,6 +306,81 @@ public final class PlotHandler {
         }
     }
 
+    // ── Flag ────────────────────────────────────────────────────────────────────
+
+    private void onFlag(@NotNull CommandContext ctx) {
+        var player = ctx.asPlayer().orElse(null);
+        if (player == null) return;
+
+        var plot = plots.getPlotAt(player.getLocation()).orElse(null);
+        if (plot == null) {
+            r18n().msg("plot.error.not_on_plot").prefix().send(player);
+            return;
+        }
+        if (!plot.isOwner(player.getUniqueId()) && !player.hasPermission("jexplots.bypass.protect")) {
+            r18n().msg("plot.error.not_owner").prefix().with("owner_name", plot.getOwnerName()).send(player);
+            return;
+        }
+
+        var action = ctx.require("action", PlotFlagAction.class);
+        switch (action) {
+            case LIST -> {
+                r18n().msg("plot.flag_list_header").prefix()
+                        .with("grid_x", String.valueOf(plot.getGridX()))
+                        .with("grid_z", String.valueOf(plot.getGridZ()))
+                        .send(player);
+                for (var f : PlotFlag.values()) {
+                    var effective = plots.getFlag(plot, f);
+                    var override = plots.hasFlagOverride(plot, f);
+                    r18n().msg("plot.flag_list_entry")
+                            .with("flag", f.key())
+                            .with("value", String.valueOf(effective))
+                            .with("source", override ? "override" : "default")
+                            .send(player);
+                }
+            }
+            case SET -> {
+                var flag = ctx.get("flag", PlotFlag.class).orElse(null);
+                if (flag == null) {
+                    r18n().msg("plot.error.flag_set_usage").prefix().send(player);
+                    return;
+                }
+                var raw = ctx.get("value", String.class).orElse(null);
+                Boolean value = parseBoolean(raw);
+                if (value == null) {
+                    r18n().msg("plot.error.flag_set_usage").prefix().send(player);
+                    return;
+                }
+                plots.setFlag(plot, flag, value).thenAccept(ok -> Bukkit.getScheduler().runTask(plugin, () ->
+                        r18n().msg(ok ? "plot.flag_set" : "plot.error.flag_failed").prefix()
+                                .with("flag", flag.key())
+                                .with("value", String.valueOf(value))
+                                .send(player)));
+            }
+            case REMOVE -> {
+                var flag = ctx.get("flag", PlotFlag.class).orElse(null);
+                if (flag == null) {
+                    r18n().msg("plot.error.flag_remove_usage").prefix().send(player);
+                    return;
+                }
+                plots.removeFlag(plot, flag).thenAccept(ok -> Bukkit.getScheduler().runTask(plugin, () ->
+                        r18n().msg(ok ? "plot.flag_removed" : "plot.error.flag_failed").prefix()
+                                .with("flag", flag.key())
+                                .send(player)));
+            }
+        }
+    }
+
+    private static @org.jetbrains.annotations.Nullable Boolean parseBoolean(
+            @org.jetbrains.annotations.Nullable String raw) {
+        if (raw == null) return null;
+        return switch (raw.toLowerCase(java.util.Locale.ROOT)) {
+            case "true", "yes", "on", "1", "enable", "enabled" -> Boolean.TRUE;
+            case "false", "no", "off", "0", "disable", "disabled" -> Boolean.FALSE;
+            default -> null;
+        };
+    }
+
     // ── Help ────────────────────────────────────────────────────────────────────
 
     private void onHelp(@NotNull CommandContext ctx) {
@@ -318,6 +395,7 @@ public final class PlotHandler {
         if (hasPerm(sender, "jexplots.command.deny"))    r18n().msg("plot.help_deny").with("alias", alias).send(sender);
         if (hasPerm(sender, "jexplots.command.home"))    r18n().msg("plot.help_home").with("alias", alias).send(sender);
         if (hasPerm(sender, "jexplots.command.list"))    r18n().msg("plot.help_list").with("alias", alias).send(sender);
+        if (hasPerm(sender, "jexplots.command.flag"))    r18n().msg("plot.help_flag").with("alias", alias).send(sender);
         r18n().msg("plot.help_footer").send(sender);
     }
 

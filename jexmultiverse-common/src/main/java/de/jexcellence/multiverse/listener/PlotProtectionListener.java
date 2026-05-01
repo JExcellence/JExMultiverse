@@ -2,6 +2,7 @@ package de.jexcellence.multiverse.listener;
 
 import de.jexcellence.jextranslate.R18nManager;
 import de.jexcellence.multiverse.service.MultiverseService;
+import de.jexcellence.multiverse.service.PlotFlag;
 import de.jexcellence.multiverse.service.PlotService;
 import org.bukkit.entity.Player;
 import org.bukkit.metadata.FixedMetadataValue;
@@ -89,10 +90,12 @@ public class PlotProtectionListener implements Listener {
     public void onPvp(@NotNull EntityDamageByEntityEvent event) {
         if (!(event.getEntity() instanceof Player victim)) return;
         if (!(event.getDamager() instanceof Player attacker)) return;
-        // Find plot at victim. If both players are owner/trusted, allow. Otherwise block.
         var plot = plots.getPlotAt(victim.getLocation()).orElse(null);
         if (plot == null) return; // road or unclaimed = vanilla rules apply
+        // PvP allowed when: both are owner/trusted (any PvP among friends), OR
+        // the plot's `pvp` flag is enabled (anyone can fight here).
         if (plots.canBuild(attacker, plot) && plots.canBuild(victim, plot)) return;
+        if (plots.getFlag(plot, PlotFlag.PVP)) return;
         event.setCancelled(true);
     }
 

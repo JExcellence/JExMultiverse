@@ -5,6 +5,8 @@ import de.jexcellence.multiverse.api.PlotCoord;
 import de.jexcellence.multiverse.database.entity.MemberRole;
 import de.jexcellence.multiverse.database.entity.Plot;
 import de.jexcellence.multiverse.database.entity.PlotMember;
+import de.jexcellence.multiverse.database.entity.StoredPlotFlag;
+import de.jexcellence.multiverse.database.repository.PlotFlagRepository;
 import de.jexcellence.multiverse.database.repository.PlotMemberRepository;
 import de.jexcellence.multiverse.database.repository.PlotRepository;
 import org.bukkit.Location;
@@ -45,6 +47,7 @@ public class PlotService {
     private final MultiverseService multiverseService;
     private final PlotRepository plots;
     private final PlotMemberRepository members;
+    private final PlotFlagRepository flags;
     private final JExLogger logger;
     private final JavaPlugin plugin;
 
@@ -56,15 +59,19 @@ public class PlotService {
     private final ConcurrentMap<UUID, Set<Long>> byOwner = new ConcurrentHashMap<>();
     /** Members per plot id. */
     private final ConcurrentMap<Long, Map<UUID, MemberRole>> membersByPlot = new ConcurrentHashMap<>();
+    /** Flag overrides per plot id (key → string value). Default flags aren't stored here. */
+    private final ConcurrentMap<Long, Map<String, Boolean>> flagsByPlot = new ConcurrentHashMap<>();
 
     public PlotService(@NotNull MultiverseService multiverseService,
                        @NotNull PlotRepository plots,
                        @NotNull PlotMemberRepository members,
+                       @NotNull PlotFlagRepository flags,
                        @NotNull JExLogger logger,
                        @NotNull JavaPlugin plugin) {
         this.multiverseService = multiverseService;
         this.plots = plots;
         this.members = members;
+        this.flags = flags;
         this.logger = logger;
         this.plugin = plugin;
     }
@@ -83,15 +90,22 @@ public class PlotService {
             for (var plot : allPlots) {
                 cachePlot(plot);
             }
-            return members.findAllAsync().thenAccept(allMembers -> {
+            return members.findAllAsync().thenCompose(allMembers -> {
                 membersByPlot.clear();
                 for (var m : allMembers) {
                     membersByPlot.computeIfAbsent(m.getPlotId(),
                                     k -> new ConcurrentHashMap<>())
                             .put(m.getMemberUuid(), m.getRole());
                 }
-                logger.info("Plot cache loaded — {} plots, {} member entries",
-                        allPlots.size(), allMembers.size());
+                return flags.findAllAsync().thenAccept(allFlags -> {
+                    flagsByPlot.clear();
+                    for (var f : allFlags) {
+                        flagsByPlot.computeIfAbsent(f.getPlotId(), k -> new ConcurrentHashMap<>())
+                                .put(f.getFlagKey(), Boolean.parseBoolean(f.getFlagValue()));
+                    }
+                    logger.info("Plot cache loaded — {} plots, {} member entries, {} flag overrides",
+                            allPlots.size(), allMembers.size(), allFlags.size());
+                });
             });
         }).exceptionally(ex -> {
             logger.error("Failed to load plot cache", ex);
@@ -111,6 +125,71 @@ public class PlotService {
         var owned = byOwner.get(plot.getOwnerUuid());
         if (owned != null) owned.remove(plot.getId());
         membersByPlot.remove(plot.getId());
+        flagsByPlot.remove(plot.getId());
+    }
+
+    // ── Flag accessors (listener-safe) ──────────────────────────────────────────
+
+    /** Returns the effective boolean value of a flag — override if set, else default. */
+    public boolean getFlag(@NotNull Plot plot, @NotNull PlotFlag flag) {
+        var stored = flagsByPlot.get(plot.getId());
+        if (stored != null) {
+            var v = stored.get(flag.key());
+            if (v != null) return v;
+        }
+        return flag.defaultValue();
+    }
+
+    /** Returns whether a flag has an explicit override (vs. taking the default). */
+    public boolean hasFlagOverride(@NotNull Plot plot, @NotNull PlotFlag flag) {
+        var stored = flagsByPlot.get(plot.getId());
+        return stored != null && stored.containsKey(flag.key());
+    }
+
+    /** Returns a snapshot of explicit flag overrides for a plot. */
+    public @NotNull Map<String, Boolean> getFlagOverrides(@NotNull Plot plot) {
+        return new HashMap<>(flagsByPlot.getOrDefault(plot.getId(), Collections.emptyMap()));
+    }
+
+    // ── Flag mutations ──────────────────────────────────────────────────────────
+
+    /** Persists a flag override. Returns true on success. */
+    public @NotNull CompletableFuture<Boolean> setFlag(@NotNull Plot plot,
+                                                        @NotNull PlotFlag flag,
+                                                        boolean value) {
+        var key = flag.key();
+        var raw = Boolean.toString(value);
+        return flags.findByPlotAndKeyAsync(plot.getId(), key).thenCompose(existing -> {
+            if (existing.isPresent()) {
+                var row = existing.get();
+                row.setFlagValue(raw);
+                return flags.updateAsync(row).thenApply(x -> row);
+            }
+            return flags.createAsync(new StoredPlotFlag(plot.getId(), key, raw));
+        }).thenApply(saved -> {
+            flagsByPlot.computeIfAbsent(plot.getId(), k -> new ConcurrentHashMap<>())
+                    .put(key, value);
+            return true;
+        }).exceptionally(ex -> {
+            logger.error("Failed to set flag {} on plot {}", flag.key(), plot.getId(), ex);
+            return false;
+        });
+    }
+
+    /** Removes a flag override (resets to default). Returns true on success. */
+    public @NotNull CompletableFuture<Boolean> removeFlag(@NotNull Plot plot,
+                                                          @NotNull PlotFlag flag) {
+        return flags.findByPlotAndKeyAsync(plot.getId(), flag.key()).thenCompose(opt -> {
+            if (opt.isEmpty()) return CompletableFuture.completedFuture(true);
+            return flags.deleteAsync(opt.get().getId()).thenApply(v -> {
+                var pf = flagsByPlot.get(plot.getId());
+                if (pf != null) pf.remove(flag.key());
+                return true;
+            });
+        }).exceptionally(ex -> {
+            logger.error("Failed to remove flag {} on plot {}", flag.key(), plot.getId(), ex);
+            return false;
+        });
     }
 
     // ── Synchronous queries (listener-safe) ─────────────────────────────────────
