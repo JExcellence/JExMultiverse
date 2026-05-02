@@ -104,6 +104,17 @@ public class MultiverseService implements MultiverseProvider {
         return createWorld(name, environment, type, null, null, null);
     }
 
+    /**
+     * Creates a managed world with per-world plot size and road width overrides.
+     * Delegates to the full overload with {@code schematicName = null}.
+     *
+     * @param name              world identifier
+     * @param environment       world environment
+     * @param type              generation type
+     * @param plotSizeOverride  per-world plot size (PLOT only), or {@code null}
+     * @param roadWidthOverride per-world road width (PLOT only), or {@code null}
+     * @return a future containing the created world, or empty on failure
+     */
     public @NotNull CompletableFuture<Optional<MVWorld>> createWorld(@NotNull String name,
                                                                      World.@NotNull Environment environment,
                                                                      @NotNull MVWorldType type,

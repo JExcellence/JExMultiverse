@@ -118,5 +118,12 @@ public class PlotMembersView extends PaginatedView<PlotMembersView.Entry> {
         });
     }
 
+    /**
+     * A single member entry displayed in the paginated list.
+     *
+     * @param uuid the member's unique id
+     * @param name the member's display name (or a UUID prefix as fallback)
+     * @param role the member's current {@link MemberRole}
+     */
     public record Entry(@NotNull UUID uuid, @NotNull String name, @NotNull MemberRole role) {}
 }

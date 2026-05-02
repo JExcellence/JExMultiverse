@@ -50,6 +50,11 @@ public final class PlotHandler {
         this.plugin = plugin;
     }
 
+    /**
+     * Returns the full command handler map keyed by command path (e.g. {@code "plot.claim"}).
+     *
+     * @return an immutable map of command paths to their handlers
+     */
     public @NotNull Map<String, CommandHandler> handlerMap() {
         return Map.ofEntries(
                 Map.entry("plot",          this::onRoot),

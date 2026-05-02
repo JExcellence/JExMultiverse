@@ -24,10 +24,22 @@ public class PlotFlagRepository extends AbstractCrudRepository<StoredPlotFlag, L
         super(executor, emf, entityClass);
     }
 
+    /**
+     * Returns all stored plot flags asynchronously.
+     *
+     * @return a future containing the list of all {@link StoredPlotFlag} entries
+     */
     public @NotNull CompletableFuture<List<StoredPlotFlag>> findAllAsync() {
         return query().listAsync();
     }
 
+    /**
+     * Finds a stored flag by plot id and flag key asynchronously.
+     *
+     * @param plotId  the plot's database id
+     * @param flagKey the flag's stable key
+     * @return a future containing the matching entry, or empty if not found
+     */
     public @NotNull CompletableFuture<Optional<StoredPlotFlag>> findByPlotAndKeyAsync(
             long plotId, @NotNull String flagKey) {
         return query().and("plotId", plotId).and("flagKey", flagKey).firstAsync();

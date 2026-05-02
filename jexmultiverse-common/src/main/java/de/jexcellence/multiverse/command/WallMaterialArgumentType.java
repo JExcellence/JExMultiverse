@@ -65,6 +65,11 @@ public final class WallMaterialArgumentType {
 
     private WallMaterialArgumentType() {}
 
+    /**
+     * Creates an {@link ArgumentType} that resolves a block material name to a {@link Material}.
+     *
+     * @return the configured argument type
+     */
     public static @NotNull ArgumentType<Material> create() {
         return ArgumentType.custom(
                 "wall_material",

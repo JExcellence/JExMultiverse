@@ -25,10 +25,23 @@ public class PlotMemberRepository extends AbstractCrudRepository<PlotMember, Lon
         super(executor, emf, entityClass);
     }
 
+    /**
+     * Returns all members for a given plot asynchronously.
+     *
+     * @param plotId the plot's database id
+     * @return a future containing the list of members
+     */
     public @NotNull CompletableFuture<List<PlotMember>> findByPlotAsync(long plotId) {
         return query().and("plotId", plotId).listAsync();
     }
 
+    /**
+     * Finds a specific member entry by plot id and member UUID asynchronously.
+     *
+     * @param plotId the plot's database id
+     * @param member the member's UUID
+     * @return a future containing the matching entry, or empty if not found
+     */
     public @NotNull CompletableFuture<Optional<PlotMember>> findByPlotAndMemberAsync(
             long plotId, @NotNull UUID member) {
         return query()
@@ -37,6 +50,11 @@ public class PlotMemberRepository extends AbstractCrudRepository<PlotMember, Lon
                 .firstAsync();
     }
 
+    /**
+     * Returns all plot members asynchronously.
+     *
+     * @return a future containing the list of all {@link PlotMember} entries
+     */
     public @NotNull CompletableFuture<List<PlotMember>> findAllAsync() {
         return query().listAsync();
     }

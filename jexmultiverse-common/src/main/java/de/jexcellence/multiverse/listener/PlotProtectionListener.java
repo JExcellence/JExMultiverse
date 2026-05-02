@@ -45,6 +45,7 @@ public class PlotProtectionListener implements Listener {
 
     // ── Block place / break ─────────────────────────────────────────────────────
 
+    /** Cancels block placement by players who lack build rights on the plot. */
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onBlockPlace(@NotNull BlockPlaceEvent event) {
         if (denyBuild(event.getPlayer(), event.getBlock().getLocation())) {
@@ -52,6 +53,7 @@ public class PlotProtectionListener implements Listener {
         }
     }
 
+    /** Cancels block breaking by players who lack build rights on the plot. */
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onBlockBreak(@NotNull BlockBreakEvent event) {
         if (denyBuild(event.getPlayer(), event.getBlock().getLocation())) {
@@ -59,6 +61,7 @@ public class PlotProtectionListener implements Listener {
         }
     }
 
+    /** Cancels bucket fills by players who lack build rights on the plot. */
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onBucketFill(@NotNull PlayerBucketFillEvent event) {
         if (denyBuild(event.getPlayer(), event.getBlock().getLocation())) {
@@ -66,6 +69,7 @@ public class PlotProtectionListener implements Listener {
         }
     }
 
+    /** Cancels bucket empties by players who lack build rights on the plot. */
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onBucketEmpty(@NotNull PlayerBucketEmptyEvent event) {
         if (denyBuild(event.getPlayer(), event.getBlock().getLocation())) {
@@ -75,6 +79,7 @@ public class PlotProtectionListener implements Listener {
 
     // ── Interact (containers, redstone, doors, etc.) ────────────────────────────
 
+    /** Cancels block interactions by players who lack build rights on the plot. */
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onInteract(@NotNull PlayerInteractEvent event) {
         var block = event.getClickedBlock();
@@ -86,6 +91,7 @@ public class PlotProtectionListener implements Listener {
 
     // ── PvP ─────────────────────────────────────────────────────────────────────
 
+    /** Cancels PvP in plots where the {@link PlotFlag#PVP} flag is disabled. */
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onPvp(@NotNull EntityDamageByEntityEvent event) {
         if (!(event.getEntity() instanceof Player victim)) return;

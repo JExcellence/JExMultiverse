@@ -207,6 +207,15 @@ public class PlotMenuView extends BaseView {
 
     // ── Helper ──────────────────────────────────────────────────────────────────
 
+    /**
+     * Builds the initial-data map required to open any plot view.
+     *
+     * @param plot    the target plot
+     * @param plugin  the owning plugin instance
+     * @param service the plot service
+     * @param mv      the multiverse service
+     * @return an immutable map keyed by the {@code DATA_*} constants
+     */
     public static @NotNull Map<String, Object> dataMap(@NotNull Plot plot, @NotNull JavaPlugin plugin,
                                                          @NotNull PlotService service, @NotNull MultiverseService mv) {
         return Map.of(

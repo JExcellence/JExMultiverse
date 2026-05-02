@@ -131,10 +131,18 @@ public class Plot extends LongIdEntity {
         return Objects.hash(worldName, gridX, gridZ);
     }
 
+    /**
+     * Returns a new {@link Builder} for constructing a {@link Plot} instance.
+     *
+     * @return a fresh builder
+     */
     public static @NotNull Builder builder() {
         return new Builder();
     }
 
+    /**
+     * Fluent builder for {@link Plot}.
+     */
     public static final class Builder {
         private String worldName;
         private int gridX;
@@ -146,17 +154,34 @@ public class Plot extends LongIdEntity {
 
         private Builder() {}
 
+        /** Sets the world name. @param worldName the world name; must not be null @return this builder */
         public @NotNull Builder worldName(@NotNull String worldName) { this.worldName = worldName; return this; }
+        /** Sets the grid X coordinate. @param gridX the grid X coordinate @return this builder */
         public @NotNull Builder gridX(int gridX) { this.gridX = gridX; return this; }
+        /** Sets the grid Z coordinate. @param gridZ the grid Z coordinate @return this builder */
         public @NotNull Builder gridZ(int gridZ) { this.gridZ = gridZ; return this; }
+        /** Sets the owner UUID. @param owner the owner's UUID @return this builder */
         public @NotNull Builder ownerUuid(@NotNull UUID owner) { this.ownerUuid = owner.toString(); return this; }
+        /** Sets the owner display name. @param ownerName the owner's display name @return this builder */
         public @NotNull Builder ownerName(@NotNull String ownerName) { this.ownerName = ownerName; return this; }
+        /** Sets the claim timestamp. @param claimedAt the claim timestamp @return this builder */
         public @NotNull Builder claimedAt(@NotNull Instant claimedAt) { this.claimedAt = claimedAt; return this; }
+        /**
+         * Sets the merge group id, or {@code null} to leave the plot unmerged.
+         *
+         * @param id the merge group UUID, or {@code null}
+         * @return this builder
+         */
         public @NotNull Builder mergedGroupId(@Nullable UUID id) {
             this.mergedGroupId = id == null ? null : id.toString();
             return this;
         }
 
+        /**
+         * Builds the {@link Plot} instance.
+         *
+         * @return a new plot
+         */
         public @NotNull Plot build() { return new Plot(this); }
     }
 }

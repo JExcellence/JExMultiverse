@@ -32,6 +32,12 @@ public final class PlotArgumentType {
 
     private PlotArgumentType() {}
 
+    /**
+     * Creates an {@link ArgumentType} that resolves a plot coordinate token to a claimed {@link Plot}.
+     *
+     * @param service the plot service used for lookup
+     * @return the configured argument type
+     */
     public static @NotNull ArgumentType<Plot> of(@NotNull PlotService service) {
         return ArgumentType.custom(
                 "plot",

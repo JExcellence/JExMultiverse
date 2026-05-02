@@ -61,10 +61,20 @@ public enum PlotFlag {
         this.defaultValue = defaultValue;
     }
 
+    /**
+     * Returns the stable YAML/CLI key for this flag.
+     *
+     * @return the lower-case key string
+     */
     public @NotNull String key() {
         return key;
     }
 
+    /**
+     * Returns the default value for this flag when no override is stored.
+     *
+     * @return {@code true} if the flag is enabled by default
+     */
     public boolean defaultValue() {
         return defaultValue;
     }

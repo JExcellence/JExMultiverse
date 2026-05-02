@@ -111,13 +111,26 @@ public abstract class JExMultiverse {
         // libraries. Propagating the captured loader fixes that.
         final ClassLoader dependencyClassLoader = Thread.currentThread().getContextClassLoader();
 
+        // thenRunAsync (not thenRun) is critical here. initializeServices()
+        // .join()s on world-load tasks that have to execute on the main
+        // thread. If thenRun ran on the main thread (which happens whenever
+        // platform.initialize() completes synchronously or completes on
+        // main during plugin enable), .join() would deadlock waiting for
+        // main-thread tasks the same blocked main thread is supposed to
+        // run — and we'd never reach registerCommands(), so the entire
+        // /mv + /plot tree would silently never register.
         platform.initialize()
-                .thenRun(() -> {
+                .thenRunAsync(() -> {
                     Thread.currentThread().setContextClassLoader(dependencyClassLoader);
+                    logger.info("[init] step 1/5 — database");
                     initializeDatabase();
+                    logger.info("[init] step 2/5 — services + world cache");
                     initializeServices();
+                    logger.info("[init] step 3/5 — views");
                     registerViews();
+                    logger.info("[init] step 4/5 — commands");
                     registerCommands();
+                    logger.info("[init] step 5/5 — listeners");
                     registerListeners();
                     logger.info("JExMultiverse {} Edition enabled", edition);
                 })

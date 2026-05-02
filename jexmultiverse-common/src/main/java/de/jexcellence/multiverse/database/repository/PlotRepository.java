@@ -25,6 +25,14 @@ public class PlotRepository extends AbstractCrudRepository<Plot, Long> {
         super(executor, emf, entityClass);
     }
 
+    /**
+     * Finds a plot by its world and grid coordinates synchronously.
+     *
+     * @param world the world name
+     * @param gridX the grid X coordinate
+     * @param gridZ the grid Z coordinate
+     * @return the matching plot, or empty if not found
+     */
     public @NotNull Optional<Plot> findByCoords(@NotNull String world, int gridX, int gridZ) {
         return query()
                 .and("worldName", world)
@@ -33,6 +41,14 @@ public class PlotRepository extends AbstractCrudRepository<Plot, Long> {
                 .first();
     }
 
+    /**
+     * Finds a plot by its world and grid coordinates asynchronously.
+     *
+     * @param world the world name
+     * @param gridX the grid X coordinate
+     * @param gridZ the grid Z coordinate
+     * @return a future containing the matching plot, or empty if not found
+     */
     public @NotNull CompletableFuture<Optional<Plot>> findByCoordsAsync(
             @NotNull String world, int gridX, int gridZ) {
         return query()
@@ -42,12 +58,23 @@ public class PlotRepository extends AbstractCrudRepository<Plot, Long> {
                 .firstAsync();
     }
 
+    /**
+     * Returns all plots owned by the given player asynchronously.
+     *
+     * @param owner the owner's UUID
+     * @return a future containing the list of owned plots
+     */
     public @NotNull CompletableFuture<List<Plot>> findByOwnerAsync(@NotNull UUID owner) {
         return query()
                 .and("ownerUuid", owner.toString())
                 .listAsync();
     }
 
+    /**
+     * Returns all plots asynchronously.
+     *
+     * @return a future containing the list of all {@link Plot} entries
+     */
     public @NotNull CompletableFuture<List<Plot>> findAllAsync() {
         return query().listAsync();
     }

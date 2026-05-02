@@ -20,6 +20,11 @@ public final class PlotFlagArgumentType {
 
     private PlotFlagArgumentType() {}
 
+    /**
+     * Creates an {@link ArgumentType} that resolves a flag key to a {@link PlotFlag} constant.
+     *
+     * @return the configured argument type
+     */
     public static @NotNull ArgumentType<PlotFlag> create() {
         return ArgumentType.custom(
                 "plot_flag",

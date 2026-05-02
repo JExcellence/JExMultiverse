@@ -52,6 +52,7 @@ public class PlotFlagListener implements Listener {
 
     // ── Mob spawning ────────────────────────────────────────────────────────────
 
+    /** Blocks hostile mob natural spawning in plots with {@link PlotFlag#MOB_SPAWNING} disabled. */
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onCreatureSpawn(@NotNull CreatureSpawnEvent event) {
         // Only gate hostile mobs — peaceful mobs and ambient critters stay vanilla.
@@ -82,6 +83,7 @@ public class PlotFlagListener implements Listener {
 
     // ── Explosions ──────────────────────────────────────────────────────────────
 
+    /** Strips blocks inside no-explosion plots from entity explosion block lists. */
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onEntityExplode(@NotNull EntityExplodeEvent event) {
         event.blockList().removeIf(block -> {
@@ -90,6 +92,7 @@ public class PlotFlagListener implements Listener {
         });
     }
 
+    /** Strips blocks inside no-explosion plots from block explosion block lists. */
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onBlockExplode(@NotNull BlockExplodeEvent event) {
         event.blockList().removeIf(block -> {
@@ -100,6 +103,7 @@ public class PlotFlagListener implements Listener {
 
     // ── Fire spread / burn ──────────────────────────────────────────────────────
 
+    /** Cancels fire spread into plots with {@link PlotFlag#FIRE_SPREAD} disabled. */
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onBlockSpread(@NotNull BlockSpreadEvent event) {
         Block source = event.getSource();
@@ -111,6 +115,7 @@ public class PlotFlagListener implements Listener {
         }
     }
 
+    /** Cancels block burn in plots with {@link PlotFlag#FIRE_SPREAD} disabled. */
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onBlockBurn(@NotNull BlockBurnEvent event) {
         var plot = plots.getPlotAt(event.getBlock().getLocation()).orElse(null);
@@ -122,6 +127,7 @@ public class PlotFlagListener implements Listener {
 
     // ── Keep inventory ──────────────────────────────────────────────────────────
 
+    /** Applies keep-inventory on death for plots with {@link PlotFlag#KEEP_INVENTORY} enabled. */
     @EventHandler(priority = EventPriority.NORMAL)
     public void onPlayerDeath(@NotNull PlayerDeathEvent event) {
         var plot = plots.getPlotAt(event.getEntity().getLocation()).orElse(null);
@@ -136,6 +142,7 @@ public class PlotFlagListener implements Listener {
 
     // ── Liquid flow (water + lava) ──────────────────────────────────────────────
 
+    /** Cancels liquid flow into plots with {@link PlotFlag#LIQUID_FLOW} disabled. */
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onLiquidFlow(@NotNull BlockFromToEvent event) {
         var plot = plots.getPlotAt(event.getToBlock().getLocation()).orElse(null);
@@ -147,6 +154,7 @@ public class PlotFlagListener implements Listener {
 
     // ── Ice / snow form + melt ──────────────────────────────────────────────────
 
+    /** Cancels ice/snow melt in plots with {@link PlotFlag#ICE_FORM_MELT} disabled. */
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onIceMelt(@NotNull BlockFadeEvent event) {
         var type = event.getBlock().getType();
@@ -159,6 +167,7 @@ public class PlotFlagListener implements Listener {
         }
     }
 
+    /** Cancels ice/snow formation in plots with {@link PlotFlag#ICE_FORM_MELT} disabled. */
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onIceForm(@NotNull BlockFormEvent event) {
         var newType = event.getNewState().getType();
@@ -177,6 +186,7 @@ public class PlotFlagListener implements Listener {
     // when the block-x or block-z actually changes. Players who can't enter
     // are pushed back to their previous location.
 
+    /** Pushes players back when they enter a plot with {@link PlotFlag#ENTRY} disabled or are denied. */
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onPlayerMove(@NotNull PlayerMoveEvent event) {
         var to = event.getTo();
