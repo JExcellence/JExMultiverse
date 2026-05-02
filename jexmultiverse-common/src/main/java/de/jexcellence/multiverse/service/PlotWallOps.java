@@ -43,21 +43,27 @@ public final class PlotWallOps {
         int x0 = plot.getGridX() * interval;
         int z0 = plot.getGridZ() * interval;
 
-        // North edge (z = z0), neighbour at gridZ - 1.
+        // Walls sit on the ROAD-side column adjacent to the plot — one block
+        // outside the plot interior. Plot at gridX,gridZ has road-side wall
+        // columns at:
+        //   north: z = z0 - 1
+        //   south: z = z0 + plotSize
+        //   west:  x = x0 - 1
+        //   east:  x = x0 + plotSize
+        // Stripe length runs the full plot edge so corner road cells get
+        // walls from both axes.
+
         if (!neighbourMerged(neighbourLookup, plot.getGridX(), plot.getGridZ() - 1, mergedNeighbourIds)) {
-            stripeX(world, x0, x0 + plotSize - 1, z0, plotHeight, wallHeight, material);
+            stripeX(world, x0, x0 + plotSize - 1, z0 - 1, plotHeight, wallHeight, material);
         }
-        // South edge (z = z0 + plotSize - 1), neighbour at gridZ + 1.
         if (!neighbourMerged(neighbourLookup, plot.getGridX(), plot.getGridZ() + 1, mergedNeighbourIds)) {
-            stripeX(world, x0, x0 + plotSize - 1, z0 + plotSize - 1, plotHeight, wallHeight, material);
+            stripeX(world, x0, x0 + plotSize - 1, z0 + plotSize, plotHeight, wallHeight, material);
         }
-        // West edge (x = x0), neighbour at gridX - 1.
         if (!neighbourMerged(neighbourLookup, plot.getGridX() - 1, plot.getGridZ(), mergedNeighbourIds)) {
-            stripeZ(world, x0, z0, z0 + plotSize - 1, plotHeight, wallHeight, material);
+            stripeZ(world, x0 - 1, z0, z0 + plotSize - 1, plotHeight, wallHeight, material);
         }
-        // East edge (x = x0 + plotSize - 1), neighbour at gridX + 1.
         if (!neighbourMerged(neighbourLookup, plot.getGridX() + 1, plot.getGridZ(), mergedNeighbourIds)) {
-            stripeZ(world, x0 + plotSize - 1, z0, z0 + plotSize - 1, plotHeight, wallHeight, material);
+            stripeZ(world, x0 + plotSize, z0, z0 + plotSize - 1, plotHeight, wallHeight, material);
         }
     }
 

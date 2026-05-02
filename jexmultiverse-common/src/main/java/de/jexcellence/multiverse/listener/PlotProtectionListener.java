@@ -103,18 +103,26 @@ public class PlotProtectionListener implements Listener {
 
     /**
      * True if the player should be prevented from acting at the location.
-     * Three cases:
+     * Four cases (in priority order):
      * <ol>
-     *   <li>Location is on a claimed plot and player is neither owner /
-     *       trusted nor holds {@code jexplots.bypass.protect} → deny.</li>
-     *   <li>Location is on a road / border in a PLOT world and player
-     *       doesn't hold {@code jexplots.bypass.roads} → deny. Roads are
-     *       treated as protected public infrastructure by default; staff
-     *       with the bypass perm can still maintain them.</li>
+     *   <li>Player holds {@code jexplots.bypass.protect} → allow (staff
+     *       all-access).</li>
+     *   <li>Location is on a CLAIMED plot and the player is neither owner
+     *       nor trusted → deny with the owner's name.</li>
+     *   <li>Location is on an UNCLAIMED plot in a PLOT world → deny
+     *       unless the player holds {@code jexplots.bypass.roads} (the
+     *       road bypass perm doubles as "I'm staff and can edit
+     *       unclaimed terrain"). Otherwise plots could be vandalised
+     *       before they're claimed.</li>
+     *   <li>Location is on a ROAD / BORDER in a PLOT world → deny unless
+     *       the player holds {@code jexplots.bypass.roads}. Roads are
+     *       protected public infrastructure.</li>
      *   <li>Otherwise → allow.</li>
      * </ol>
      */
     private boolean denyBuild(@NotNull Player player, @NotNull org.bukkit.Location location) {
+        if (player.hasPermission("jexplots.bypass.protect")) return false;
+
         var plot = plots.getPlotAt(location).orElse(null);
         if (plot != null) {
             if (plots.canBuild(player, plot)) return false;
@@ -122,12 +130,16 @@ public class PlotProtectionListener implements Listener {
                     java.util.Map.of("owner_name", plot.getOwnerName()));
             return true;
         }
-        // No claimed plot at this location. If we're in a PLOT world the
-        // location is on a road or unclaimed plot — protect the road grid
-        // unless the player has the bypass permission.
+
+        // Not claimed. Either an unclaimed plot interior, or road/border.
+        var inUnclaimedPlot = mv.plotAt(location).isPresent();
+        if (inUnclaimedPlot) {
+            if (player.hasPermission("jexplots.bypass.roads")) return false;
+            warnDenied(player, "plot.protection.unclaimed_denied", java.util.Map.of());
+            return true;
+        }
         if (mv.isRoadOrBorder(location)) {
-            if (player.hasPermission("jexplots.bypass.roads")
-                    || player.hasPermission("jexplots.bypass.protect")) return false;
+            if (player.hasPermission("jexplots.bypass.roads")) return false;
             warnDenied(player, "plot.protection.road_denied", java.util.Map.of());
             return true;
         }

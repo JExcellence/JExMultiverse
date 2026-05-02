@@ -126,6 +126,7 @@ plot:
   protection:
     denied: "<gradient:#dc143c:#b22222>Verweigert:</gradient> <white>Dieser Plot gehört <gradient:#ff7f50:#ff4500>{owner_name}</gradient>.</white>"
     road_denied: "<gradient:#dc143c:#b22222>Verweigert:</gradient> <white>Du darfst die Plot-Straßen nicht verändern.</white>"
+    unclaimed_denied: "<gradient:#dc143c:#b22222>Verweigert:</gradient> <white>Dieser Plot ist unbeansprucht. Nutze <gradient:#ff7f50:#ff4500>/plot claim</gradient> um ihn zu beanspruchen.</white>"
   error:
     not_on_plot: "<gradient:#dc143c:#b22222>Fehler:</gradient> <white>Du stehst nicht auf einem Plot.</white>"
     already_claimed: "<gradient:#dc143c:#b22222>Fehler:</gradient> <white>Dieser Plot gehört bereits <gradient:#ff7f50:#ff4500>{owner_name}</gradient>.</white>"
