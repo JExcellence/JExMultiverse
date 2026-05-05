@@ -1,0 +1,67 @@
+# JExCommand 2.0 tree — /multiverse (admin)
+# World management tooling for JExMultiverse.
+
+name: multiverse
+description: "Manage multiverse worlds"
+aliases:
+  - mv
+permission: "jexmultiverse.command"
+senders: [player]
+
+subcommands:
+  - name: create
+    description: "Create a new world"
+    permission: "jexmultiverse.command.create"
+    senders: [player]
+    argumentSchema:
+      - { name: name,        type: string,                                                        required: true,  description: "World name" }
+      - { name: environment, type: environment,                                                   required: false, description: "World environment (NORMAL, NETHER, THE_END)" }
+      - { name: type,        type: "enum(de.jexcellence.multiverse.api.MVWorldType)",             required: false, description: "World type" }
+      - { name: plot_size,   type: positive_long,                                                  required: false, description: "Per-world plot size override (PLOT only)" }
+      - { name: road_width,  type: positive_long,                                                  required: false, description: "Per-world road width override (PLOT only)" }
+      - { name: schematic,   type: string,                                                         required: false, description: "Schematic file name without .nbt extension (PLOT only)" }
+
+  - name: delete
+    description: "Delete a world"
+    permission: "jexmultiverse.command.delete"
+    senders: [player]
+    argumentSchema:
+      - { name: world, type: world, required: true, description: "Target world" }
+
+  - name: edit
+    description: "Edit world settings"
+    permission: "jexmultiverse.command.edit"
+    senders: [player]
+    argumentSchema:
+      - { name: world, type: world, required: true, description: "Target world" }
+
+  - name: teleport
+    description: "Teleport to a world"
+    permission: "jexmultiverse.command.teleport"
+    senders: [player]
+    argumentSchema:
+      - { name: world, type: world, required: true, description: "Target world" }
+
+  - name: load
+    description: "Load a world from database"
+    permission: "jexmultiverse.command.load"
+    senders: [player]
+    argumentSchema:
+      - { name: world, type: world, required: true, description: "Target world" }
+
+  - name: list
+    description: "List all managed worlds"
+    permission: "jexmultiverse.command.list"
+    senders: [player, console]
+
+  - name: applyschematic
+    description: "Re-paste a schematic into every plot in a PLOT world's loaded chunks"
+    permission: "jexmultiverse.command.applyschematic"
+    senders: [player, console]
+    argumentSchema:
+      - { name: world,     type: world,  required: true,  description: "Target plot world" }
+      - { name: schematic, type: string, required: false, description: "Schematic name (defaults to world's stored schematic)" }
+
+  - name: help
+    description: "Show help"
+    senders: [player]

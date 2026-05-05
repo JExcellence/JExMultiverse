@@ -1,0 +1,101 @@
+# JExCommand 2.0 tree — /plot
+# Plot ownership commands for JExMultiverse PLOT worlds.
+
+name: plot
+description: "Plot management"
+aliases:
+  - p
+  - plots
+permission: "jexplots.command"
+senders: [player, console]
+
+subcommands:
+  - name: claim
+    description: "Claim the plot you're standing on"
+    permission: "jexplots.command.claim"
+    senders: [player]
+
+  - name: unclaim
+    description: "Unclaim the plot you're standing on"
+    permission: "jexplots.command.unclaim"
+    senders: [player]
+
+  - name: info
+    description: "Show info about the plot you're standing on"
+    permission: "jexplots.command.info"
+    senders: [player]
+
+  - name: trust
+    description: "Allow another player to build on this plot"
+    permission: "jexplots.command.trust"
+    senders: [player]
+    argumentSchema:
+      - { name: target, type: offline_player, required: true, description: "Player to trust" }
+
+  - name: untrust
+    description: "Remove a trusted player"
+    permission: "jexplots.command.untrust"
+    senders: [player]
+    argumentSchema:
+      - { name: target, type: offline_player, required: true, description: "Player to untrust" }
+
+  - name: deny
+    description: "Deny a player from entering this plot"
+    permission: "jexplots.command.deny"
+    senders: [player]
+    argumentSchema:
+      - { name: target, type: offline_player, required: true, description: "Player to deny" }
+
+  - name: undeny
+    description: "Lift a deny on a player"
+    permission: "jexplots.command.deny"
+    senders: [player]
+    argumentSchema:
+      - { name: target, type: offline_player, required: true, description: "Player to un-deny" }
+
+  - name: home
+    description: "Teleport to one of your plots"
+    permission: "jexplots.command.home"
+    senders: [player]
+    argumentSchema:
+      - { name: n, type: positive_long, required: false, defaultValue: "1", description: "Plot number (from /plot list)" }
+
+  - name: list
+    description: "List your owned plots"
+    permission: "jexplots.command.list"
+    senders: [player, console]
+
+  - name: flag
+    description: "Manage plot flags"
+    permission: "jexplots.command.flag"
+    senders: [player]
+    argumentSchema:
+      - { name: action, type: "enum(de.jexcellence.multiverse.command.PlotFlagAction)", required: true,  description: "set | remove | list" }
+      - { name: flag,   type: plot_flag,                                                 required: false, description: "Flag key (omit for action=list)" }
+      - { name: value,  type: string,                                                    required: false, description: "true / false (action=set only)" }
+
+  - name: menu
+    description: "Open the plot management GUI"
+    permission: "jexplots.command.menu"
+    senders: [player]
+
+  - name: border
+    description: "Change the wall material around your plot"
+    permission: "jexplots.command.border"
+    senders: [player]
+    argumentSchema:
+      - { name: material, type: wall_material, required: false, description: "Wall material name (omit to reset to default)" }
+
+  - name: merge
+    description: "Merge with the adjacent plot in the direction you're facing"
+    permission: "jexplots.command.merge"
+    senders: [player]
+
+  - name: unmerge
+    description: "Split this plot off the merge group"
+    permission: "jexplots.command.unmerge"
+    senders: [player]
+
+  - name: help
+    description: "Show /plot usage"
+    senders: [player, console]

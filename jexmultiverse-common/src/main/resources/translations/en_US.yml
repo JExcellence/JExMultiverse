@@ -1,0 +1,398 @@
+prefix:
+  - "<gradient:#ff7f50:#ff4500>Multiverse</gradient> <dark_gray>|</dark_gray> "
+
+multiverse:
+  invalid_environment: "<gradient:#dc143c:#b22222>Error:</gradient> <white>Unknown environment <gradient:#ff7f50:#ff4500>{environment}</gradient>. Use NORMAL, NETHER, or THE_END.</white>"
+  invalid_type: "<gradient:#dc143c:#b22222>Error:</gradient> <white>Unknown world type <gradient:#ff7f50:#ff4500>{type}</gradient>. Use DEFAULT, VOID, or PLOT.</white>"
+  type_not_available: "<gradient:#dc143c:#b22222>Error:</gradient> <white>World type <gradient:#ff7f50:#ff4500>{type}</gradient> is not available in this edition.</white>"
+  world_limit_reached: "<gradient:#dc143c:#b22222>Limit Reached:</gradient> <white>You have reached the maximum world limit (<gradient:#ff7f50:#ff4500>{max}</gradient>).</white>"
+  world_does_not_exist: "<gradient:#dc143c:#b22222>Error:</gradient> <white>World <gradient:#ff7f50:#ff4500>{world_name}</gradient> does not exist.</white>"
+  world_already_exists: "<gradient:#dc143c:#b22222>Error:</gradient> <white>World <gradient:#ff7f50:#ff4500>{world_name}</gradient> already exists.</white>"
+
+  creating_world: "<gradient:#ffa500:#ff8c00>Creating:</gradient> <white>Creating world <gradient:#ff7f50:#ff4500>{world_name}</gradient>...</white>"
+  create_success: "<gradient:#32cd32:#228b22>Created:</gradient> <white>World <gradient:#ff7f50:#ff4500>{world_name}</gradient> created. <gray>(type: {type}, env: {environment})</gray></white>"
+  create_failed: "<gradient:#dc143c:#b22222>Error:</gradient> <white>Failed to create world <gradient:#ff7f50:#ff4500>{world_name}</gradient>.</white>"
+
+  deleting_world: "<gradient:#ffa500:#ff8c00>Deleting:</gradient> <white>Deleting world <gradient:#ff7f50:#ff4500>{world_name}</gradient>...</white>"
+  delete_success: "<gradient:#32cd32:#228b22>Deleted:</gradient> <white>World <gradient:#ff7f50:#ff4500>{world_name}</gradient> has been deleted.</white>"
+  delete_failed: "<gradient:#dc143c:#b22222>Error:</gradient> <white>Failed to delete world <gradient:#ff7f50:#ff4500>{world_name}</gradient>.</white>"
+
+  teleporting: "<gradient:#ffa500:#ff8c00>Teleporting:</gradient> <white>Teleporting to <gradient:#ff7f50:#ff4500>{world_name}</gradient>...</white>"
+  teleported: "<gradient:#32cd32:#228b22>Teleported:</gradient> <white>You are now in <gradient:#ff7f50:#ff4500>{world_name}</gradient>.</white>"
+  world_not_loaded: "<gradient:#dc143c:#b22222>Error:</gradient> <white>World <gradient:#ff7f50:#ff4500>{world_name}</gradient> is not loaded.</white>"
+
+  already_loaded: "<gradient:#ffa500:#ff8c00>Info:</gradient> <white>World <gradient:#ff7f50:#ff4500>{world_name}</gradient> is already loaded.</white>"
+  loading_world: "<gradient:#ffa500:#ff8c00>Loading:</gradient> <white>Loading world <gradient:#ff7f50:#ff4500>{world_name}</gradient>...</white>"
+  load_success: "<gradient:#32cd32:#228b22>Loaded:</gradient> <white>World <gradient:#ff7f50:#ff4500>{world_name}</gradient> loaded.</white>"
+  load_failed: "<gradient:#dc143c:#b22222>Error:</gradient> <white>Failed to load world <gradient:#ff7f50:#ff4500>{world_name}</gradient>.</white>"
+
+  list_empty: "<gray>No managed worlds found.</gray>"
+  list_header: "<gradient:#ff7f50:#ff4500>Managed Worlds</gradient> <dark_gray>({count})</dark_gray>"
+  list_entry: " <gray>-</gray> <gradient:#ffa500:#ff6347>{world_name}</gradient> <dark_gray>[{type} / {environment}]</dark_gray> <gray>{status}</gray> <dark_gray>global:</dark_gray> <gray>{global_spawn}</gray>"
+  list_footer: "<dark_gray>{count}/{max} worlds</dark_gray>"
+
+  help_header: "<gradient:#ff7f50:#ff4500>Multiverse Commands</gradient>"
+  help_create: "<gradient:#ffa500:#ff6347>/{alias} create <name> [env] [type]</gradient> <gray>- Create a new world</gray>"
+  help_delete: "<gradient:#ffa500:#ff6347>/{alias} delete <world></gradient> <gray>- Delete a world</gray>"
+  help_edit: "<gradient:#ffa500:#ff6347>/{alias} edit <world></gradient> <gray>- Edit world settings</gray>"
+  help_teleport: "<gradient:#ffa500:#ff6347>/{alias} teleport <world></gradient> <gray>- Teleport to a world</gray>"
+  help_load: "<gradient:#ffa500:#ff6347>/{alias} load <world></gradient> <gray>- Load a world from the database</gray>"
+  help_list: "<gradient:#ffa500:#ff6347>/{alias} list</gradient> <gray>- List all managed worlds</gray>"
+  help_footer: "<dark_gray>───────────────────────────────</dark_gray>"
+
+  applyschematic_not_plot: "<gradient:#dc143c:#b22222>Error:</gradient> <white><gradient:#ff7f50:#ff4500>{world_name}</gradient> is not a PLOT world.</white>"
+  applyschematic_missing_name: "<gradient:#dc143c:#b22222>Error:</gradient> <white><gradient:#ff7f50:#ff4500>{world_name}</gradient> has no schematic configured. Pass one as the second argument.</white>"
+  applyschematic_not_found: "<gradient:#dc143c:#b22222>Error:</gradient> <white>Schematic <gradient:#ff7f50:#ff4500>{schematic}</gradient> not found in plugins/JExMultiverse/schematics/.</white>"
+  applyschematic_done: "<gradient:#32cd32:#228b22>Applied:</gradient> <white>Pasted <gradient:#ff7f50:#ff4500>{schematic}</gradient> at <gradient:#ff7f50:#ff4500>{count}</gradient> plot(s) in <gradient:#ff7f50:#ff4500>{world_name}</gradient> ({chunks} chunks scanned).</white>"
+
+multiverse_editor_ui:
+  title: "<gradient:#ff7f50:#ff4500>Edit World</gradient> <dark_gray>({world_name})</dark_gray>"
+  spawn:
+    name: "<gradient:#ff7f50:#ff4500>Set Spawn Point</gradient>"
+    lore:
+      - ""
+      - "<gray>Current:</gray> <gradient:#ffa500:#ff6347>{value}</gradient>"
+      - ""
+      - "<gradient:#ff7f50:#ff4500>Click</gradient> <gray>to set spawn to your location</gray>"
+    updated: "<gradient:#32cd32:#228b22>Spawn Updated:</gradient> <white>Spawn for <gradient:#ff7f50:#ff4500>{world_name}</gradient> set to your location.</white>"
+    wrong_world: "<gradient:#dc143c:#b22222>Error:</gradient> <white>You must be in <gradient:#ff7f50:#ff4500>{world_name}</gradient> to set its spawn point.</white>"
+  global_spawn:
+    name: "<gradient:#ff7f50:#ff4500>Global Spawn</gradient> <dark_gray>({value})</dark_gray>"
+    lore:
+      - ""
+      - "<gray>Status:</gray> <gradient:#ffa500:#ff6347>{value}</gradient>"
+      - ""
+      - "<gray>When enabled, all players will</gray>"
+      - "<gray>spawn in this world.</gray>"
+      - ""
+      - "<gradient:#ff7f50:#ff4500>Click</gradient> <gray>to toggle</gray>"
+    toggled: "<gradient:#32cd32:#228b22>Global Spawn:</gradient> <white><gradient:#ff7f50:#ff4500>{world_name}</gradient> is now <gradient:#ffa500:#ff6347>{value}</gradient>.</white>"
+    replaced: "<gradient:#ffa500:#ff8c00>Global Spawn:</gradient> <white>Replaced previous global spawn (<gradient:#ff7f50:#ff4500>{previous}</gradient>) with <gradient:#ff7f50:#ff4500>{world_name}</gradient>.</white>"
+  pvp:
+    name: "<gradient:#ff7f50:#ff4500>PvP Toggle</gradient> <dark_gray>({value})</dark_gray>"
+    lore:
+      - ""
+      - "<gray>Status:</gray> <gradient:#ffa500:#ff6347>{value}</gradient>"
+      - ""
+      - "<gray>Controls whether players can</gray>"
+      - "<gray>fight each other in this world.</gray>"
+      - ""
+      - "<gradient:#ff7f50:#ff4500>Click</gradient> <gray>to toggle</gray>"
+    toggled: "<gradient:#32cd32:#228b22>PvP:</gradient> <white>PvP in <gradient:#ff7f50:#ff4500>{world_name}</gradient> is now <gradient:#ffa500:#ff6347>{value}</gradient>.</white>"
+  time:
+    name: "<gradient:#ff7f50:#ff4500>Time of Day</gradient> <dark_gray>({value})</dark_gray>"
+    lore:
+      - ""
+      - "<gray>Current:</gray> <gradient:#ffa500:#ff6347>{value}</gradient>"
+      - ""
+      - "<gray>Cycles morning → noon → evening → night.</gray>"
+      - "<gray>Live world only — not persisted.</gray>"
+      - ""
+      - "<gradient:#ff7f50:#ff4500>Click</gradient> <gray>to advance</gray>"
+    updated: "<gradient:#32cd32:#228b22>Time:</gradient> <white>Time in <gradient:#ff7f50:#ff4500>{world_name}</gradient> set to <gradient:#ffa500:#ff6347>{value}</gradient>.</white>"
+  weather:
+    name: "<gradient:#ff7f50:#ff4500>Weather</gradient> <dark_gray>({value})</dark_gray>"
+    lore:
+      - ""
+      - "<gray>Current:</gray> <gradient:#ffa500:#ff6347>{value}</gradient>"
+      - ""
+      - "<gray>Cycles clear → rain → storm.</gray>"
+      - "<gray>Live world only — not persisted.</gray>"
+      - ""
+      - "<gradient:#ff7f50:#ff4500>Click</gradient> <gray>to advance</gray>"
+    updated: "<gradient:#32cd32:#228b22>Weather:</gradient> <white>Weather in <gradient:#ff7f50:#ff4500>{world_name}</gradient> set to <gradient:#ffa500:#ff6347>{value}</gradient>.</white>"
+  difficulty:
+    name: "<gradient:#ff7f50:#ff4500>Difficulty</gradient> <dark_gray>({value})</dark_gray>"
+    lore:
+      - ""
+      - "<gray>Current:</gray> <gradient:#ffa500:#ff6347>{value}</gradient>"
+      - ""
+      - "<gray>Cycles peaceful → easy → normal → hard.</gray>"
+      - "<gray>Live world only — not persisted.</gray>"
+      - ""
+      - "<gradient:#ff7f50:#ff4500>Click</gradient> <gray>to advance</gray>"
+    updated: "<gradient:#32cd32:#228b22>Difficulty:</gradient> <white>Difficulty in <gradient:#ff7f50:#ff4500>{world_name}</gradient> set to <gradient:#ffa500:#ff6347>{value}</gradient>.</white>"
+  save:
+    name: "<gradient:#32cd32:#228b22>Save Changes</gradient>"
+    lore:
+      - ""
+      - "<gray>Save all changes to <gradient:#ff7f50:#ff4500>{world_name}</gradient> to the database.</gray>"
+      - ""
+      - "<gradient:#32cd32:#228b22>Click</gradient> <gray>to save</gray>"
+    success: "<gradient:#32cd32:#228b22>Saved:</gradient> <white>Changes to <gradient:#ff7f50:#ff4500>{world_name}</gradient> saved.</white>"
+    failed: "<gradient:#dc143c:#b22222>Save Failed:</gradient> <white>Failed to save <gradient:#ff7f50:#ff4500>{world_name}</gradient>: <gray>{error}</gray></white>"
+
+plot:
+  protection:
+    denied: "<gradient:#dc143c:#b22222>Denied:</gradient> <white>This plot is owned by <gradient:#ff7f50:#ff4500>{owner_name}</gradient>.</white>"
+    road_denied: "<gradient:#dc143c:#b22222>Denied:</gradient> <white>You can't modify the plot road grid.</white>"
+    unclaimed_denied: "<gradient:#dc143c:#b22222>Denied:</gradient> <white>This plot is unclaimed. Run <gradient:#ff7f50:#ff4500>/plot claim</gradient> to claim it.</white>"
+  error:
+    not_on_plot: "<gradient:#dc143c:#b22222>Error:</gradient> <white>You're not standing on a plot.</white>"
+    already_claimed: "<gradient:#dc143c:#b22222>Error:</gradient> <white>This plot is already claimed by <gradient:#ff7f50:#ff4500>{owner_name}</gradient>.</white>"
+    not_owner: "<gradient:#dc143c:#b22222>Error:</gradient> <white>This plot is owned by <gradient:#ff7f50:#ff4500>{owner_name}</gradient>.</white>"
+    claim_limit: "<gradient:#dc143c:#b22222>Limit reached:</gradient> <white>You own <gradient:#ff7f50:#ff4500>{owned}</gradient>/<gradient:#ff7f50:#ff4500>{max}</gradient> plots.</white>"
+    claim_failed: "<gradient:#dc143c:#b22222>Error:</gradient> <white>Failed to claim plot.</white>"
+    unclaim_failed: "<gradient:#dc143c:#b22222>Error:</gradient> <white>Failed to unclaim plot.</white>"
+    member_failed: "<gradient:#dc143c:#b22222>Error:</gradient> <white>Failed to update member <gradient:#ff7f50:#ff4500>{target_name}</gradient>.</white>"
+    member_not_set: "<gradient:#dc143c:#b22222>Error:</gradient> <white><gradient:#ff7f50:#ff4500>{target_name}</gradient> doesn't have that role on this plot.</white>"
+    target_is_owner: "<gradient:#dc143c:#b22222>Error:</gradient> <white>You can't add the plot owner as a member.</white>"
+    no_plots: "<gradient:#dc143c:#b22222>Error:</gradient> <white>You don't own any plots.</white>"
+    no_such_home: "<gradient:#dc143c:#b22222>Error:</gradient> <white>No plot #{n} (you own {count}).</white>"
+    console_no_owner: "<gradient:#dc143c:#b22222>Error:</gradient> <white>Run /plot list as a player.</white>"
+    unknown_plot: "<gradient:#dc143c:#b22222>Error:</gradient> <white>Unknown plot: <gradient:#ff7f50:#ff4500>{plot}</gradient>.</white>"
+    unknown_flag: "<gradient:#dc143c:#b22222>Error:</gradient> <white>Unknown flag <gradient:#ff7f50:#ff4500>{flag}</gradient>. Allowed: <gray>{options}</gray>.</white>"
+    flag_set_usage: "<gradient:#dc143c:#b22222>Usage:</gradient> <white>/plot flag set <flag> <true|false></white>"
+    flag_remove_usage: "<gradient:#dc143c:#b22222>Usage:</gradient> <white>/plot flag remove <flag></white>"
+    flag_failed: "<gradient:#dc143c:#b22222>Error:</gradient> <white>Failed to update flag <gradient:#ff7f50:#ff4500>{flag}</gradient>.</white>"
+    merge_no_neighbor: "<gradient:#dc143c:#b22222>Error:</gradient> <white>No claimed plot to the <gradient:#ff7f50:#ff4500>{direction}</gradient>.</white>"
+    merge_different_owner: "<gradient:#dc143c:#b22222>Error:</gradient> <white>The adjacent plot is owned by someone else.</white>"
+    merge_limit: "<gradient:#dc143c:#b22222>Limit reached:</gradient> <white>Your merge cap is <gradient:#ff7f50:#ff4500>{max}</gradient> plots per group.</white>"
+    merge_not_adjacent: "<gradient:#dc143c:#b22222>Error:</gradient> <white>Plots aren't adjacent.</white>"
+    merge_failed: "<gradient:#dc143c:#b22222>Error:</gradient> <white>Failed to merge plots.</white>"
+    unmerge_not_merged: "<gradient:#dc143c:#b22222>Error:</gradient> <white>This plot isn't part of a merge group.</white>"
+    unmerge_failed: "<gradient:#dc143c:#b22222>Error:</gradient> <white>Failed to unmerge plot.</white>"
+    invalid_material: "<gradient:#dc143c:#b22222>Error:</gradient> <white><gradient:#ff7f50:#ff4500>{material}</gradient> is not a valid block material.</white>"
+    border_failed: "<gradient:#dc143c:#b22222>Error:</gradient> <white>Failed to update plot border.</white>"
+
+  claimed: "<gradient:#32cd32:#228b22>Claimed:</gradient> <white>Plot <gradient:#ff7f50:#ff4500>{grid_x},{grid_z}</gradient> in <gradient:#ff7f50:#ff4500>{world_name}</gradient> is yours.</white>"
+  unclaimed: "<gradient:#ffa500:#ff8c00>Unclaimed:</gradient> <white>Plot <gradient:#ff7f50:#ff4500>{grid_x},{grid_z}</gradient> released.</white>"
+  trusted: "<gradient:#32cd32:#228b22>Trusted:</gradient> <white><gradient:#ff7f50:#ff4500>{target_name}</gradient> can now build on this plot.</white>"
+  untrusted: "<gradient:#ffa500:#ff8c00>Untrusted:</gradient> <white><gradient:#ff7f50:#ff4500>{target_name}</gradient> can no longer build on this plot.</white>"
+  denied: "<gradient:#32cd32:#228b22>Denied:</gradient> <white><gradient:#ff7f50:#ff4500>{target_name}</gradient> is now denied from this plot.</white>"
+  undenied: "<gradient:#ffa500:#ff8c00>Un-denied:</gradient> <white><gradient:#ff7f50:#ff4500>{target_name}</gradient> can enter this plot again.</white>"
+  teleported: "<gradient:#32cd32:#228b22>Teleported:</gradient> <white>Plot <gradient:#ff7f50:#ff4500>{grid_x},{grid_z}</gradient> in <gradient:#ff7f50:#ff4500>{world_name}</gradient>.</white>"
+
+  info_header: "<gradient:#ff7f50:#ff4500>Plot {grid_x},{grid_z}</gradient> <dark_gray>in {world_name}</dark_gray>"
+  info_owner:  "  <gray>Owner:</gray> <gradient:#ffa500:#ff6347>{owner_name}</gradient>"
+  info_members: "  <gray>Trusted:</gray> <white>{trusted}</white> <dark_gray>·</dark_gray> <gray>Denied:</gray> <white>{denied}</white>"
+
+  list_empty: "<gray>You don't own any plots.</gray>"
+  list_header: "<gradient:#ff7f50:#ff4500>Your plots</gradient> <dark_gray>({count}/{max})</dark_gray>"
+  list_entry: " <gray>{n}.</gray> <gradient:#ffa500:#ff6347>{world_name}</gradient> <dark_gray>@ {grid_x},{grid_z}</dark_gray>"
+
+  help_header: "<gradient:#ff7f50:#ff4500>Plot commands</gradient>"
+  help_claim:   "<gradient:#ffa500:#ff6347>/{alias} claim</gradient> <gray>- claim the plot you're standing on</gray>"
+  help_unclaim: "<gradient:#ffa500:#ff6347>/{alias} unclaim</gradient> <gray>- release the plot you're standing on</gray>"
+  help_info:    "<gradient:#ffa500:#ff6347>/{alias} info</gradient> <gray>- show plot info</gray>"
+  help_trust:   "<gradient:#ffa500:#ff6347>/{alias} trust <player></gradient> <gray>- let a player build</gray>"
+  help_untrust: "<gradient:#ffa500:#ff6347>/{alias} untrust <player></gradient> <gray>- remove a trusted player</gray>"
+  help_deny:    "<gradient:#ffa500:#ff6347>/{alias} deny <player></gradient> <gray>- block a player from entering</gray>"
+  help_home:    "<gradient:#ffa500:#ff6347>/{alias} home [n]</gradient> <gray>- teleport to your plot</gray>"
+  help_list:    "<gradient:#ffa500:#ff6347>/{alias} list</gradient> <gray>- list your plots</gray>"
+  help_flag:    "<gradient:#ffa500:#ff6347>/{alias} flag <set|remove|list> [flag] [value]</gradient> <gray>- manage plot flags</gray>"
+  help_footer:  "<dark_gray>───────────────────────────────</dark_gray>"
+
+  flag_list_header: "<gradient:#ff7f50:#ff4500>Flags for plot {grid_x},{grid_z}</gradient>"
+  flag_list_entry:  " <gray>•</gray> <gradient:#ffa500:#ff6347>{flag}</gradient> <dark_gray>=</dark_gray> <white>{value}</white> <dark_gray>({source})</dark_gray>"
+  flag_set:         "<gradient:#32cd32:#228b22>Set:</gradient> <white>Flag <gradient:#ff7f50:#ff4500>{flag}</gradient> = <gradient:#ffa500:#ff6347>{value}</gradient>.</white>"
+  flag_removed:     "<gradient:#ffa500:#ff8c00>Removed:</gradient> <white>Flag <gradient:#ff7f50:#ff4500>{flag}</gradient> reset to default.</white>"
+
+  merged: "<gradient:#32cd32:#228b22>Merged:</gradient> <white>Joined with the plot to the <gradient:#ff7f50:#ff4500>{direction}</gradient>.</white>"
+  unmerged: "<gradient:#ffa500:#ff8c00>Unmerged:</gradient> <white>This plot is now standalone again.</white>"
+  help_merge:   "<gradient:#ffa500:#ff6347>/{alias} merge</gradient> <gray>- merge with the plot you're facing</gray>"
+  help_unmerge: "<gradient:#ffa500:#ff6347>/{alias} unmerge</gradient> <gray>- split this plot off the merge group</gray>"
+  help_menu:    "<gradient:#ffa500:#ff6347>/{alias} menu</gradient> <gray>- open the plot management GUI</gray>"
+  help_border:  "<gradient:#ffa500:#ff6347>/{alias} border [material]</gradient> <gray>- change your plot's wall material</gray>"
+
+  border_set:    "<gradient:#32cd32:#228b22>Border:</gradient> <white>Plot wall set to <gradient:#ff7f50:#ff4500>{material}</gradient>.</white>"
+  border_reset:  "<gradient:#ffa500:#ff8c00>Border:</gradient> <white>Plot wall reset to the default claimed material.</white>"
+
+plot_menu_ui:
+  title: "<gradient:#ff7f50:#ff4500>Plot</gradient> <dark_gray>{world_name} @ {grid_x},{grid_z}</dark_gray>"
+  info:
+    name: "<gradient:#ffa500:#ff6347>{owner_name}'s plot</gradient>"
+    lore:
+      - ""
+      - "<gray>Owner:</gray> <white>{owner_name}</white>"
+      - "<gray>World:</gray> <white>{world_name}</white>"
+      - "<gray>Grid:</gray> <white>{grid_x},{grid_z}</white>"
+      - "<gray>Trusted:</gray> <white>{trusted}</white> <dark_gray>·</dark_gray> <gray>Denied:</gray> <white>{denied}</white>"
+      - "<gray>Merged:</gray> <white>{merged}</white>"
+  members:
+    name: "<gradient:#ff7f50:#ff4500>Members</gradient>"
+    lore:
+      - ""
+      - "<gray>Click to view trusted</gray>"
+      - "<gray>and denied players.</gray>"
+  flags:
+    name: "<gradient:#ff7f50:#ff4500>Flags</gradient>"
+    lore:
+      - ""
+      - "<gray>Click to toggle plot flags</gray>"
+      - "<gray>like PvP, mob spawning,</gray>"
+      - "<gray>explosions, and fire.</gray>"
+  home:
+    name: "<gradient:#ff7f50:#ff4500>Teleport home</gradient>"
+    lore:
+      - ""
+      - "<gray>Click to teleport to the</gray>"
+      - "<gray>center of this plot.</gray>"
+  unclaim:
+    name: "<gradient:#dc143c:#b22222>Unclaim plot</gradient>"
+    lore:
+      - ""
+      - "<gray>Releases this plot.</gray>"
+      - "<gray>All members and flags are removed.</gray>"
+
+plot_flags_ui:
+  title: "<gradient:#ff7f50:#ff4500>Flags</gradient> <dark_gray>{grid_x},{grid_z}</dark_gray>"
+  flag:
+    pvp:
+      name: "<gradient:#ff7f50:#ff4500>PvP</gradient> <dark_gray>({value})</dark_gray>"
+      lore:
+        - ""
+        - "<gray>Status:</gray> <white>{value}</white> <dark_gray>({source})</dark_gray>"
+        - ""
+        - "<gray>When enabled, anyone can</gray>"
+        - "<gray>fight in this plot.</gray>"
+        - ""
+        - "<gradient:#ff7f50:#ff4500>Click</gradient> <gray>to toggle</gray>"
+    mob-spawning:
+      name: "<gradient:#ff7f50:#ff4500>Mob spawning</gradient> <dark_gray>({value})</dark_gray>"
+      lore:
+        - ""
+        - "<gray>Status:</gray> <white>{value}</white> <dark_gray>({source})</dark_gray>"
+        - ""
+        - "<gray>Controls hostile mobs from</gray>"
+        - "<gray>naturally spawning.</gray>"
+        - ""
+        - "<gradient:#ff7f50:#ff4500>Click</gradient> <gray>to toggle</gray>"
+    explosion:
+      name: "<gradient:#ff7f50:#ff4500>Explosions</gradient> <dark_gray>({value})</dark_gray>"
+      lore:
+        - ""
+        - "<gray>Status:</gray> <white>{value}</white> <dark_gray>({source})</dark_gray>"
+        - ""
+        - "<gray>When disabled, blocks in this</gray>"
+        - "<gray>plot survive creepers and TNT.</gray>"
+        - ""
+        - "<gradient:#ff7f50:#ff4500>Click</gradient> <gray>to toggle</gray>"
+    fire-spread:
+      name: "<gradient:#ff7f50:#ff4500>Fire spread</gradient> <dark_gray>({value})</dark_gray>"
+      lore:
+        - ""
+        - "<gray>Status:</gray> <white>{value}</white> <dark_gray>({source})</dark_gray>"
+        - ""
+        - "<gray>When disabled, fire won't</gray>"
+        - "<gray>spread or burn blocks.</gray>"
+        - ""
+        - "<gradient:#ff7f50:#ff4500>Click</gradient> <gray>to toggle</gray>"
+    keep-inventory:
+      name: "<gradient:#ff7f50:#ff4500>Keep inventory</gradient> <dark_gray>({value})</dark_gray>"
+      lore:
+        - ""
+        - "<gray>Status:</gray> <white>{value}</white> <dark_gray>({source})</dark_gray>"
+        - ""
+        - "<gray>When enabled, players keep their</gray>"
+        - "<gray>items and XP if they die here.</gray>"
+        - ""
+        - "<gradient:#ff7f50:#ff4500>Click</gradient> <gray>to toggle</gray>"
+    entry:
+      name: "<gradient:#ff7f50:#ff4500>Public entry</gradient> <dark_gray>({value})</dark_gray>"
+      lore:
+        - ""
+        - "<gray>Status:</gray> <white>{value}</white> <dark_gray>({source})</dark_gray>"
+        - ""
+        - "<gray>When disabled, only the owner</gray>"
+        - "<gray>and trusted members can enter.</gray>"
+        - ""
+        - "<gradient:#ff7f50:#ff4500>Click</gradient> <gray>to toggle</gray>"
+    liquid-flow:
+      name: "<gradient:#ff7f50:#ff4500>Liquid flow</gradient> <dark_gray>({value})</dark_gray>"
+      lore:
+        - ""
+        - "<gray>Status:</gray> <white>{value}</white> <dark_gray>({source})</dark_gray>"
+        - ""
+        - "<gray>When disabled, water and lava</gray>"
+        - "<gray>can't flow inside this plot.</gray>"
+        - ""
+        - "<gradient:#ff7f50:#ff4500>Click</gradient> <gray>to toggle</gray>"
+    ice-form-melt:
+      name: "<gradient:#ff7f50:#ff4500>Ice / snow form & melt</gradient> <dark_gray>({value})</dark_gray>"
+      lore:
+        - ""
+        - "<gray>Status:</gray> <white>{value}</white> <dark_gray>({source})</dark_gray>"
+        - ""
+        - "<gray>When disabled, ice and snow stay</gray>"
+        - "<gray>where you placed them regardless</gray>"
+        - "<gray>of biome / light level.</gray>"
+        - ""
+        - "<gradient:#ff7f50:#ff4500>Click</gradient> <gray>to toggle</gray>"
+
+plot_members_ui:
+  title: "<gradient:#ff7f50:#ff4500>Members</gradient> <dark_gray>{grid_x},{grid_z}</dark_gray>"
+  entry:
+    trusted:
+      name: "<gradient:#32cd32:#228b22>{member_name}</gradient> <dark_gray>(trusted)</dark_gray>"
+      lore:
+        - ""
+        - "<gray>#{index} · trusted to build</gray>"
+        - ""
+        - "<gradient:#dc143c:#b22222>Click</gradient> <gray>to remove trust</gray>"
+    denied:
+      name: "<gradient:#dc143c:#b22222>{member_name}</gradient> <dark_gray>(denied)</dark_gray>"
+      lore:
+        - ""
+        - "<gray>#{index} · denied entry</gray>"
+        - ""
+        - "<gradient:#32cd32:#228b22>Click</gradient> <gray>to lift the deny</gray>"
+  page:
+    name: "<gradient:#ff7f50:#ff4500>Page {page}/{total_pages}</gradient>"
+    lore:
+      - "<gray>Page {current_page} of {max_page}</gray>"
+  previous: "<gradient:#ff7f50:#ff4500>← Previous</gradient>"
+  next: "<gradient:#ff7f50:#ff4500>Next →</gradient>"
+  back: "<gradient:#ffa500:#ff6347>← Back</gradient>"
+  loading: "<gray>Loading...</gray>"
+
+multiverse_list_ui:
+  title: "<gradient:#ff7f50:#ff4500>Managed Worlds</gradient>"
+  entry:
+    name: "<gradient:#ffa500:#ff6347>{world_name}</gradient>"
+    lore:
+      - ""
+      - "<gray>Type:</gray> <white>{type}</white>"
+      - "<gray>Environment:</gray> <white>{environment}</white>"
+      - "<gray>Status:</gray> <white>{status}</white>"
+      - "<gray>Global spawn:</gray> <white>{global_spawn}</white>"
+      - "<gray>PvP:</gray> <white>{pvp}</white>"
+      - "<gray>Spawn:</gray> <white>{spawn}</white>"
+      - ""
+      - "<gradient:#ff7f50:#ff4500>Left-click</gradient> <gray>- teleport here</gray>"
+      - "<gradient:#ff7f50:#ff4500>Right-click</gradient> <gray>- edit settings</gray>"
+  page:
+    name: "<gradient:#ff7f50:#ff4500>Page {page}/{total_pages}</gradient>"
+    lore:
+      - "<gray>Showing page {current_page} of {max_page}</gray>"
+  previous: "<gradient:#ff7f50:#ff4500>← Previous</gradient>"
+  next: "<gradient:#ff7f50:#ff4500>Next →</gradient>"
+  loading: "<gray>Loading...</gray>"
+
+spawn:
+  teleporting_to_spawn: "<gradient:#ffa500:#ff8c00>Teleporting:</gradient> <white>Teleporting to spawn...</white>"
+  spawn_not_found: "<gradient:#dc143c:#b22222>Error:</gradient> <white>No spawn location configured.</white>"
+  teleported: "<gradient:#32cd32:#228b22>Teleported:</gradient> <white>You have been teleported to spawn.</white>"
+  teleport_failed: "<gradient:#dc143c:#b22222>Error:</gradient> <white>Failed to teleport to spawn. Please try again.</white>"
+
+# ── JExCommand framework keys (parse errors, usage, permission denials) ─────
+jexcommand:
+  usage: "<gradient:#ff7f50:#ff4500>Usage:</gradient> <white>{usage}</white>"
+  error:
+    missing-argument: "<gradient:#dc143c:#b22222>Missing argument:</gradient> <gold>{name}</gold> <dark_gray>(<gray>{type}</gray>)</dark_gray>"
+    too-many-arguments: "<gradient:#dc143c:#b22222>Too many arguments.</gradient>"
+    unknown-subcommand: "<gradient:#dc143c:#b22222>Unknown subcommand:</gradient> <gold>{name}</gold>"
+    no-permission: "<gradient:#dc143c:#b22222>No permission.</gradient> <dark_gray>(<gray>{permission}</gray>)</dark_gray>"
+    not-a-player: "<gradient:#dc143c:#b22222>Players only.</gradient>"
+    not-a-console: "<gradient:#dc143c:#b22222>Console only.</gradient>"
+    unknown-type: "<gradient:#dc143c:#b22222>Unknown argument type:</gradient> <gold>{type}</gold>"
+    internal: "<gradient:#dc143c:#b22222>Internal error:</gradient> <white>{message}</white>"
+    invalid-long: "<gradient:#dc143c:#b22222>Invalid integer:</gradient> <white>{value}</white>"
+    invalid-double: "<gradient:#dc143c:#b22222>Invalid number:</gradient> <white>{value}</white>"
+    not-positive-long: "<gradient:#dc143c:#b22222>Must be positive:</gradient> <white>{value}</white>"
+    not-positive-double: "<gradient:#dc143c:#b22222>Must be positive:</gradient> <white>{value}</white>"
+    player-not-online: "<gradient:#dc143c:#b22222>Not online:</gradient> <white>{value}</white>"
+    player-unknown: "<gradient:#dc143c:#b22222>Unknown player:</gradient> <white>{value}</white>"
+    invalid-enum: "<gradient:#dc143c:#b22222>Invalid value:</gradient> <white>{value}</white> <gray>(allowed: {options})</gray>"
+    invalid-uuid: "<gradient:#dc143c:#b22222>Invalid UUID:</gradient> <white>{value}</white>"
+    expected-single-word: "<gradient:#dc143c:#b22222>Expected a single word without spaces.</gradient>"

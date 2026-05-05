@@ -1,0 +1,53 @@
+# =============================================================================
+# JExMultiverse Configuration
+# =============================================================================
+# Settings for plot-world generation. Applied to every world created with
+# /mv create <name> <env> PLOT. Existing plot worlds keep their layout — only
+# newly created ones use the current config.
+#
+# To customize, edit this file and create a new plot world. Tweaks won't
+# retroactively change generated chunks.
+
+plot-world:
+  # Edge length (in blocks) of each plot. Plots are square.
+  # Smaller values mean more visible roads; larger values mean bigger plots.
+  plot-size: 16
+
+  # Width (in blocks) of the road grid separating plots.
+  road-width: 5
+
+  # Y-coordinate of the plot surface. Layers below this are filled per the
+  # `layers` list; above this is air.
+  plot-height: 64
+
+  # Material used for the road surface (top of the road grid).
+  road-material: STONE_BRICKS
+
+  # Wall height (blocks) above the plot surface. 0 disables walls entirely.
+  wall-height: 1
+
+  # Default wall material on UNCLAIMED plots. Used by the chunk generator
+  # at world creation time.
+  wall-material-unclaimed: STONE_BRICK_WALL
+
+  # Default wall material on CLAIMED plots whose owner hasn't picked a custom
+  # border via /plot border. Visual signal that the plot is owned.
+  wall-material-claimed: MOSSY_STONE_BRICK_WALL
+
+  # Backwards-compatibility alias — older configs only had `wall-material`.
+  # If wall-material-unclaimed is missing it falls back to this.
+  wall-material: STONE_BRICK_WALL
+
+  # Layered terrain inside each plot. Each layer fills [min-y .. max-y]
+  # inclusive with the given material. The bottom of the world (y=0) is
+  # always bedrock regardless of this list.
+  layers:
+    - { material: DIRT,        min-y: 1,  max-y: 62 }
+    - { material: GRASS_BLOCK, min-y: 63, max-y: 63 }
+
+  # Offset applied to schematic pastes, relative to each plot's NW corner at
+  # plot-height. Negative Y digs into the terrain (useful for buried
+  # foundations); positive Y raises the structure above the plot surface.
+  schematic-offset-x: 0
+  schematic-offset-y: 1
+  schematic-offset-z: 0

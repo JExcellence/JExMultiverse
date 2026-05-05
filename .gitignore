@@ -1,0 +1,68 @@
+# ── Gradle ────────────────────────────────────────────────────────────────
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+# ── IDE: IntelliJ IDEA ────────────────────────────────────────────────────
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+!**/src/main/**/out/
+!**/src/test/**/out/
+
+# ── IDE: VS Code ──────────────────────────────────────────────────────────
+.vscode/
+
+# ── IDE: Eclipse ──────────────────────────────────────────────────────────
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+bin/
+!**/src/main/**/bin/
+!**/src/test/**/bin/
+
+# ── IDE: NetBeans ─────────────────────────────────────────────────────────
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+# ── Tooling ───────────────────────────────────────────────────────────────
+.claude/
+.kiro/
+.qodo/
+.dual-graph/
+tools/
+.gradle-local/
+
+# ── OS ────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── Local secrets / overrides ─────────────────────────────────────────────
+*.local.bat
+*.local.sh
+.env
+.env.*
+!.env.example
+local.properties
+secrets.properties
+
+# ── Generated build outputs that live inside src/ ─────────────────────────
+# The jexsuite.dependencies-yml convention writes dependencies.yml files
+# into src/main/resources/dependency/ on every build. They're derived
+# from buildSrc/src/main/kotlin/RuntimeDependencies.kt — that's the
+# source of truth. Keeping them out of git avoids merge conflicts on
+# every dependency bump.
+**/src/main/resources/dependency/dependencies.yml
+**/src/main/resources/dependency/paper/dependencies.yml
+**/src/main/resources/dependency/spigot/dependencies.yml
