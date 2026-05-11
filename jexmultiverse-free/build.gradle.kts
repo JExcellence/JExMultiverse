@@ -16,6 +16,10 @@ dependenciesYml {
 
 dependencies {
     implementation(project(":JExMultiverse:jexmultiverse-common"))
+    // Folia-NMS runtime loader. Shipped in both Free and Premium JARs;
+    // the class is dormant on Paper/Spigot (FoliaRuntimeWorldLoader.isFolia
+    // returns false → resolver finds no usable backend → no behavior change).
+    implementation(project(":JExMultiverse:jexmultiverse-folia-nms"))
 
     compileOnly(libs.paper.api)
     compileOnly(libs.slf4j.api)

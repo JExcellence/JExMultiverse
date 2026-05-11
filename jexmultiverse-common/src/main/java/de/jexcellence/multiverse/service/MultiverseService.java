@@ -14,6 +14,8 @@ import de.jexcellence.multiverse.factory.BukkitYmlWriter;
 import de.jexcellence.multiverse.factory.WorldFactory;
 import de.jexcellence.multiverse.generator.GeneratorRegistry;
 import de.jexcellence.multiverse.nbt.LevelDatBuilder;
+import de.jexcellence.multiverse.spi.RuntimeWorldLoader;
+import de.jexcellence.multiverse.spi.RuntimeWorldLoaderResolver;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -627,6 +629,30 @@ public class MultiverseService implements MultiverseProvider {
             // it loads the freshly-discovered world directory.
             final String generator = GeneratorRegistry.voidGeneratorRef();
             final var writeResult = BukkitYmlWriter.declare(name, generator, logger);
+
+            // Step 3: try the runtime loader (Folia-NMS or inline-create
+            // on Paper). If it succeeds, the world is live NOW and the
+            // caller can immediately teleport into it; if not, we fall
+            // back to the pending-restart path below.
+            final Optional<RuntimeWorldLoader> backend = RuntimeWorldLoaderResolver.resolve(logger);
+            if (backend.isPresent()) {
+                try {
+                    final World loaded = backend.get().loadWorld(name, environment).join();
+                    logger.info("[worlds] '{}' loaded at runtime via {} backend",
+                            name, backend.get().backendId());
+                    // World is live — persist the MVWorld row using the
+                    // server-picked spawn so the entity faithfully
+                    // mirrors the on-disk world.
+                    return adoptLoadedWorld(loaded, type);
+                } catch (final Throwable ex) {
+                    // Don't fail the whole op — the skeleton + bukkit.yml
+                    // is already on disk, so the world will load on the
+                    // next restart. Log and fall through to pending mode.
+                    logger.warn("[worlds] runtime load failed for '{}' ({}): {} — falling back to pending-restart",
+                            name, backend.get().backendId(), rootMessage(ex));
+                }
+            }
+
             if (writeResult.alreadyDeclared()) {
                 logger.info("[worlds] '{}' skeleton written; already declared in bukkit.yml — restart the server to load it",
                         name);
@@ -656,6 +682,58 @@ public class MultiverseService implements MultiverseProvider {
             logger.error("Failed to declare world '{}' in bukkit.yml: {}", name, ex.getMessage());
             return CompletableFuture.completedFuture(Optional.empty());
         }
+    }
+
+    /**
+     * Builds + persists a {@link MVWorld} row for a {@link World} that
+     * was just loaded by a {@link RuntimeWorldLoader}. Mirrors the
+     * persistence half of {@link #createWorld} but skips the Bukkit
+     * create step (the loader already produced the world).
+     */
+    private @NotNull CompletableFuture<Optional<MVWorldSnapshot>> adoptLoadedWorld(
+            @NotNull World bukkitWorld,
+            @NotNull MVWorldType type) {
+        final var spawn = worldFactory.getDefaultSpawnForType(bukkitWorld, type);
+        final var mvWorld = MVWorld.builder()
+                .identifier(bukkitWorld.getName())
+                .type(type)
+                .environment(bukkitWorld.getEnvironment())
+                .spawnLocation(spawn)
+                .globalizedSpawn(false)
+                .pvpEnabled(true)
+                .build();
+
+        final var future = new CompletableFuture<Optional<MVWorldSnapshot>>();
+        repository.saveWorld(mvWorld).thenAccept(saved -> {
+            worldFactory.cacheWorld(saved);
+            logger.info("[worlds] adopted runtime-loaded world '{}' into JExMultiverse",
+                    bukkitWorld.getName());
+            future.complete(Optional.of(saved.toSnapshot()));
+        }).exceptionally(ex -> {
+            // Persist failure is non-fatal here: the world IS loaded,
+            // and a subsequent ensureWorld will see Bukkit.getWorld(name)
+            // != null and short-circuit (caller path 1 in ensureWorld).
+            logger.error("[worlds] runtime-loaded world '{}' but failed to persist: {}",
+                    bukkitWorld.getName(), rootMessage(ex));
+            future.complete(Optional.empty());
+            return null;
+        });
+        return future;
+    }
+
+    /**
+     * Unwraps {@code CompletionException}/{@code ExecutionException} to
+     * surface the underlying message in logs.
+     */
+    private static @NotNull String rootMessage(@NotNull Throwable t) {
+        Throwable cur = t;
+        while ((cur instanceof java.util.concurrent.CompletionException
+                || cur instanceof java.util.concurrent.ExecutionException)
+                && cur.getCause() != null) {
+            cur = cur.getCause();
+        }
+        final String msg = cur.getMessage();
+        return msg != null ? msg : cur.getClass().getSimpleName();
     }
 
     @Override

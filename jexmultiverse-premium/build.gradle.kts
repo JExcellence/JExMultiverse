@@ -16,6 +16,8 @@ dependenciesYml {
 
 dependencies {
     implementation(project(":JExMultiverse:jexmultiverse-common"))
+    // Folia-NMS runtime loader — see jexmultiverse-free build for rationale.
+    implementation(project(":JExMultiverse:jexmultiverse-folia-nms"))
 
     compileOnly(libs.paper.api)
     compileOnly(libs.slf4j.api)
