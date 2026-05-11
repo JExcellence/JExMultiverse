@@ -10,7 +10,10 @@ import de.jexcellence.multiverse.api.PlotCoord;
 import de.jexcellence.multiverse.api.PlotOwnership;
 import de.jexcellence.multiverse.database.entity.MVWorld;
 import de.jexcellence.multiverse.database.repository.MVWorldRepository;
+import de.jexcellence.multiverse.factory.BukkitYmlWriter;
 import de.jexcellence.multiverse.factory.WorldFactory;
+import de.jexcellence.multiverse.generator.GeneratorRegistry;
+import de.jexcellence.multiverse.nbt.LevelDatBuilder;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -612,15 +615,23 @@ public class MultiverseService implements MultiverseProvider {
             World.@NotNull Environment environment,
             @NotNull MVWorldType type) {
         try {
-            final String generator = de.jexcellence.multiverse.generator
-                    .GeneratorRegistry.voidGeneratorRef();
-            final var writeResult = de.jexcellence.multiverse.factory
-                    .BukkitYmlWriter.declare(name, generator, logger);
+            // Step 1: synthesise the on-disk world skeleton (<root>/<name>/level.dat
+            // + session.lock) so the server's startup scan discovers and
+            // loads it like any vanilla world directory. This is what
+            // actually triggers world load on Folia (and Paper/Spigot);
+            // bukkit.yml below only provides the generator config.
+            LevelDatBuilder.writeSkeleton(name, environment);
+
+            // Step 2: declare the generator in bukkit.yml so the server
+            // wires our ChunkGenerator override (JExMultiverse:void) when
+            // it loads the freshly-discovered world directory.
+            final String generator = GeneratorRegistry.voidGeneratorRef();
+            final var writeResult = BukkitYmlWriter.declare(name, generator, logger);
             if (writeResult.alreadyDeclared()) {
-                logger.info("[worlds] '{}' is already declared in bukkit.yml — restart the server to load it",
+                logger.info("[worlds] '{}' skeleton written; already declared in bukkit.yml — restart the server to load it",
                         name);
             } else if (writeResult.added()) {
-                logger.warn("[worlds] '{}' was added to bukkit.yml — restart the server to finish creating the world",
+                logger.warn("[worlds] '{}' skeleton + bukkit.yml entry written — restart the server to finish creating the world",
                         name);
             }
 
