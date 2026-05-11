@@ -11,6 +11,7 @@ import me.devnatan.inventoryframework.context.OpenContext;
 import me.devnatan.inventoryframework.context.RenderContext;
 import me.devnatan.inventoryframework.context.SlotClickContext;
 import me.devnatan.inventoryframework.state.State;
+import de.jexcellence.jexplatform.scheduler.PlatformScheduler;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.OfflinePlayer;
@@ -169,7 +170,7 @@ public class PlotMenuView extends BaseView {
             var loc = new org.bukkit.Location(bukkitWorld,
                     bounds.centerX() + 0.5, bounds.surfaceY() + 1, bounds.centerZ() + 0.5);
             click.closeForPlayer();
-            Bukkit.getScheduler().runTask(plugin, () -> {
+            PlatformScheduler.of(plugin).runSync(() -> {
                 p.teleport(loc);
                 R18nManager.getInstance().msg("plot.teleported").prefix()
                         .with("grid_x", String.valueOf(plot.getGridX()))
@@ -194,7 +195,7 @@ public class PlotMenuView extends BaseView {
             click.setCancelled(true);
             var p = click.getPlayer();
             click.closeForPlayer();
-            service.unclaim(plot).thenAccept(ok -> Bukkit.getScheduler().runTask(plugin, () -> {
+            service.unclaim(plot).thenAccept(ok -> PlatformScheduler.of(plugin).runSync(() -> {
                 R18nManager.getInstance()
                         .msg(ok ? "plot.unclaimed" : "plot.error.unclaim_failed")
                         .prefix()

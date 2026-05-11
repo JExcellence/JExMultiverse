@@ -4,6 +4,7 @@ import com.raindropcentral.commands.v2.CommandContext;
 import com.raindropcentral.commands.v2.CommandHandler;
 import de.jexcellence.jextranslate.R18nManager;
 import de.jexcellence.multiverse.service.MultiverseService;
+import de.jexcellence.jexplatform.scheduler.PlatformScheduler;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -50,17 +51,17 @@ public class SpawnHandler {
 
         service.getSpawnLocation(player).thenAccept(location -> {
             if (location == null) {
-                Bukkit.getScheduler().runTask(plugin, () ->
+                PlatformScheduler.of(plugin).runSync(() ->
                         R18nManager.getInstance().msg("spawn.spawn_not_found").prefix().send(player));
                 return;
             }
-            Bukkit.getScheduler().runTask(plugin, () -> {
+            PlatformScheduler.of(plugin).runSync(() -> {
                 ensureSafeLanding(location);
                 player.teleport(location);
                 R18nManager.getInstance().msg("spawn.teleported").prefix().send(player);
             });
         }).exceptionally(ex -> {
-            Bukkit.getScheduler().runTask(plugin, () ->
+            PlatformScheduler.of(plugin).runSync(() ->
                     R18nManager.getInstance().msg("spawn.teleport_failed").prefix().send(player));
             return null;
         });

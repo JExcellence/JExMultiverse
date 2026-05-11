@@ -7,6 +7,7 @@ import de.jexcellence.multiverse.service.MultiverseService;
 import me.devnatan.inventoryframework.context.RenderContext;
 import me.devnatan.inventoryframework.context.SlotClickContext;
 import me.devnatan.inventoryframework.state.State;
+import de.jexcellence.jexplatform.scheduler.PlatformScheduler;
 import org.bukkit.Bukkit;
 import org.bukkit.Difficulty;
 import org.bukkit.Material;
@@ -219,7 +220,7 @@ public class MultiverseEditorView extends BaseView {
                                 .send(p)
                 );
             }
-            Bukkit.getScheduler().runTask(pluginState.get(click), () -> refreshSlot(click, globalItem(p, world)));
+            PlatformScheduler.of(pluginState.get(click)).runSync(() -> refreshSlot(click, globalItem(p, world)));
         });
     }
 
@@ -307,7 +308,7 @@ public class MultiverseEditorView extends BaseView {
         var p = click.getPlayer();
         var plugin = pluginState.get(click);
         service.updateWorld(world).thenAccept(saved ->
-                Bukkit.getScheduler().runTask(plugin, () ->
+                PlatformScheduler.of(plugin).runSync(() ->
                         R18nManager.getInstance()
                                 .msg("multiverse_editor_ui.save.success").prefix()
                                 .with("world_name", saved.getIdentifier())
@@ -318,7 +319,7 @@ public class MultiverseEditorView extends BaseView {
             var rootCause = ex.getCause() != null ? ex.getCause() : ex;
             var msg = rootCause.getClass().getSimpleName()
                     + (rootCause.getMessage() != null ? ": " + rootCause.getMessage() : "");
-            Bukkit.getScheduler().runTask(plugin, () ->
+            PlatformScheduler.of(plugin).runSync(() ->
                     R18nManager.getInstance()
                             .msg("multiverse_editor_ui.save.failed").prefix()
                             .with("world_name", world.getIdentifier())

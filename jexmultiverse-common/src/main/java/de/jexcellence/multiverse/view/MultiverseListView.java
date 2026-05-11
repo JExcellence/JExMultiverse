@@ -8,6 +8,7 @@ import de.jexcellence.multiverse.service.MultiverseService;
 import me.devnatan.inventoryframework.component.BukkitItemComponentBuilder;
 import me.devnatan.inventoryframework.context.Context;
 import me.devnatan.inventoryframework.state.State;
+import de.jexcellence.jexplatform.scheduler.PlatformScheduler;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -122,7 +123,7 @@ public class MultiverseListView extends PaginatedView<MVWorld> {
                     ? entry.getSpawnLocation()
                     : bukkit.get().getSpawnLocation();
             click.closeForPlayer();
-            Bukkit.getScheduler().runTask(plugin, () -> {
+            PlatformScheduler.of(plugin).runSync(() -> {
                 p.teleport(spawn);
                 R18nManager.getInstance()
                         .msg("multiverse.teleported")

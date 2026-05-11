@@ -11,6 +11,7 @@ import me.devnatan.inventoryframework.context.OpenContext;
 import me.devnatan.inventoryframework.context.RenderContext;
 import me.devnatan.inventoryframework.context.SlotClickContext;
 import me.devnatan.inventoryframework.state.State;
+import de.jexcellence.jexplatform.scheduler.PlatformScheduler;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -86,7 +87,7 @@ public class PlotFlagsView extends BaseView {
                     click.setCancelled(true);
                     var current = service.getFlag(plot, flag);
                     var plugin = pluginState.get(click);
-                    service.setFlag(plot, flag, !current).thenAccept(ok -> Bukkit.getScheduler().runTask(plugin, () -> {
+                    service.setFlag(plot, flag, !current).thenAccept(ok -> PlatformScheduler.of(plugin).runSync(() -> {
                         if (ok) {
                             click.getClickedContainer().renderItem(
                                     click.getClickedSlot(),

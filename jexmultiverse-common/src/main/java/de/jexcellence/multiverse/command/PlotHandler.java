@@ -12,6 +12,7 @@ import de.jexcellence.multiverse.service.PlotFlag;
 import de.jexcellence.multiverse.service.PlotService;
 import de.jexcellence.multiverse.view.PlotMenuView;
 import me.devnatan.inventoryframework.ViewFrame;
+import de.jexcellence.jexplatform.scheduler.PlatformScheduler;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.command.CommandSender;
@@ -110,7 +111,7 @@ public final class PlotHandler {
             return;
         }
 
-        plots.claim(player, player.getLocation()).thenAccept(opt -> Bukkit.getScheduler().runTask(plugin, () -> {
+        plots.claim(player, player.getLocation()).thenAccept(opt -> PlatformScheduler.of(plugin).runSync(() -> {
             if (opt.isPresent()) {
                 r18n().msg("plot.claimed").prefix()
                         .with("grid_x", String.valueOf(coord.gridX()))
@@ -140,7 +141,7 @@ public final class PlotHandler {
             return;
         }
 
-        plots.unclaim(plot).thenAccept(success -> Bukkit.getScheduler().runTask(plugin, () -> {
+        plots.unclaim(plot).thenAccept(success -> PlatformScheduler.of(plugin).runSync(() -> {
             if (success) {
                 r18n().msg("plot.unclaimed").prefix()
                         .with("grid_x", String.valueOf(plot.getGridX()))
@@ -208,7 +209,7 @@ public final class PlotHandler {
             return;
         }
 
-        plots.setMember(plot, target, role).thenAccept(ok -> Bukkit.getScheduler().runTask(plugin, () -> {
+        plots.setMember(plot, target, role).thenAccept(ok -> PlatformScheduler.of(plugin).runSync(() -> {
             var key = role == MemberRole.TRUSTED ? "plot.trusted" : "plot.denied";
             r18n().msg(ok ? key : "plot.error.member_failed").prefix()
                     .with("target_name", String.valueOf(target.getName()))
@@ -237,7 +238,7 @@ public final class PlotHandler {
             return;
         }
 
-        plots.removeMember(plot, target.getUniqueId()).thenAccept(ok -> Bukkit.getScheduler().runTask(plugin, () -> {
+        plots.removeMember(plot, target.getUniqueId()).thenAccept(ok -> PlatformScheduler.of(plugin).runSync(() -> {
             var key = role == MemberRole.TRUSTED ? "plot.untrusted" : "plot.undenied";
             r18n().msg(ok ? key : "plot.error.member_failed").prefix()
                     .with("target_name", String.valueOf(target.getName()))
@@ -277,7 +278,7 @@ public final class PlotHandler {
         if (bounds == null) return;
         var loc = new org.bukkit.Location(bukkit, bounds.centerX() + 0.5,
                 bounds.surfaceY() + 1, bounds.centerZ() + 0.5);
-        Bukkit.getScheduler().runTask(plugin, () -> {
+        PlatformScheduler.of(plugin).runSync(() -> {
             player.teleport(loc);
             r18n().msg("plot.teleported").prefix()
                     .with("grid_x", String.valueOf(plot.getGridX()))
@@ -365,7 +366,7 @@ public final class PlotHandler {
                     r18n().msg("plot.error.flag_set_usage").prefix().send(player);
                     return;
                 }
-                plots.setFlag(plot, flag, value).thenAccept(ok -> Bukkit.getScheduler().runTask(plugin, () ->
+                plots.setFlag(plot, flag, value).thenAccept(ok -> PlatformScheduler.of(plugin).runSync(() ->
                         r18n().msg(ok ? "plot.flag_set" : "plot.error.flag_failed").prefix()
                                 .with("flag", flag.key())
                                 .with("value", String.valueOf(value))
@@ -377,7 +378,7 @@ public final class PlotHandler {
                     r18n().msg("plot.error.flag_remove_usage").prefix().send(player);
                     return;
                 }
-                plots.removeFlag(plot, flag).thenAccept(ok -> Bukkit.getScheduler().runTask(plugin, () ->
+                plots.removeFlag(plot, flag).thenAccept(ok -> PlatformScheduler.of(plugin).runSync(() ->
                         r18n().msg(ok ? "plot.flag_removed" : "plot.error.flag_failed").prefix()
                                 .with("flag", flag.key())
                                 .send(player)));
@@ -411,7 +412,7 @@ public final class PlotHandler {
         }
 
         var material = ctx.get("material", org.bukkit.Material.class).orElse(null);
-        plots.setBorder(plot, material).thenAccept(ok -> Bukkit.getScheduler().runTask(plugin, () -> {
+        plots.setBorder(plot, material).thenAccept(ok -> PlatformScheduler.of(plugin).runSync(() -> {
             if (!ok) {
                 r18n().msg("plot.error.border_failed").prefix().send(player);
                 return;
@@ -456,7 +457,7 @@ public final class PlotHandler {
         }
 
         var facing = player.getFacing(); // already horizontal-flattened
-        plots.merge(player, plot, facing).thenAccept(result -> Bukkit.getScheduler().runTask(plugin, () -> {
+        plots.merge(player, plot, facing).thenAccept(result -> PlatformScheduler.of(plugin).runSync(() -> {
             switch (result) {
                 case OK -> r18n().msg("plot.merged").prefix()
                         .with("direction", facing.name().toLowerCase()).send(player);
@@ -489,7 +490,7 @@ public final class PlotHandler {
             return;
         }
 
-        plots.unmerge(plot).thenAccept(ok -> Bukkit.getScheduler().runTask(plugin, () ->
+        plots.unmerge(plot).thenAccept(ok -> PlatformScheduler.of(plugin).runSync(() ->
                 r18n().msg(ok ? "plot.unmerged" : "plot.error.unmerge_failed").prefix().send(player)));
     }
 

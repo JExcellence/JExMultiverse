@@ -10,6 +10,7 @@ import de.jexcellence.multiverse.database.repository.PlotFlagRepository;
 import de.jexcellence.multiverse.database.repository.PlotMemberRepository;
 import de.jexcellence.multiverse.database.repository.PlotRepository;
 import de.jexcellence.multiverse.factory.WorldFactory;
+import de.jexcellence.jexplatform.scheduler.PlatformScheduler;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -353,7 +354,7 @@ public class PlotService {
                 if (p.getId() != plot.getId()) mergedIds.add(p.getId());
             }
         }
-        Bukkit.getScheduler().runTask(plugin, () ->
+        PlatformScheduler.of(plugin).runSync(() ->
                 PlotWallOps.applyWalls(bukkit, plot, plotSize, roadWidth, config, material,
                         mergedIds,
                         coords -> getPlot(plot.getWorldName(), coords[0], coords[1]).orElse(null)));
@@ -610,7 +611,7 @@ public class PlotService {
             if (bukkitWorld != null && mvWorld != null) {
                 int plotSize = worldFactory.effectivePlotSize(mvWorld);
                 int roadWidth = worldFactory.effectiveRoadWidth(mvWorld);
-                Bukkit.getScheduler().runTask(plugin, () ->
+                PlatformScheduler.of(plugin).runSync(() ->
                         PlotMergeOps.applyMerge(bukkitWorld, plot, neighbor, plotSize, roadWidth,
                                 worldFactory.plotConfig()));
             }
@@ -661,7 +662,7 @@ public class PlotService {
             if (bukkitWorld != null && mvWorld != null) {
                 int plotSize = worldFactory.effectivePlotSize(mvWorld);
                 int roadWidth = worldFactory.effectiveRoadWidth(mvWorld);
-                Bukkit.getScheduler().runTask(plugin, () -> {
+                PlatformScheduler.of(plugin).runSync(() -> {
                     for (var other : others) {
                         // Use the claimed material — both plots in this unmerge
                         // are still claimed, so the restored wall stripe should

@@ -1,6 +1,7 @@
 package de.jexcellence.multiverse.api;
 
 import org.bukkit.Location;
+import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
@@ -25,6 +26,34 @@ public interface MultiverseProvider {
      * @return a future containing the snapshot, or empty if not found
      */
     @NotNull CompletableFuture<Optional<MVWorldSnapshot>> getWorld(@NotNull String identifier);
+
+    /**
+     * Idempotently ensures a managed world exists. If the world is
+     * already registered in JExMultiverse, this is a no-op that returns
+     * the existing snapshot. If it is not registered, the world is
+     * created, persisted, and loaded — matching the behaviour of
+     * {@code /mv create} but invokable programmatically.
+     *
+     * <p>Use case: sister plugins that need their own world (JExOneblock
+     * for {@code oneblock_overworld}, etc.) call this on enable so the
+     * world becomes part of JExMultiverse's loaded set on every
+     * subsequent start. The plugin no longer has to manage its own
+     * world bootstrap.
+     *
+     * <p>Folia-safe: world creation routes through PlatformScheduler
+     * internally.
+     *
+     * @param name        the world identifier (also the on-disk folder name)
+     * @param environment the world environment (NORMAL / NETHER / THE_END)
+     * @param type        the JExMultiverse world generation type
+     * @return a future resolving to the snapshot, or empty when the
+     *         creation failed (world limit reached, type not allowed in
+     *         this edition, etc.)
+     * @since 3.3.0
+     */
+    @NotNull CompletableFuture<Optional<MVWorldSnapshot>> ensureWorld(@NotNull String name,
+                                                                       World.@NotNull Environment environment,
+                                                                       @NotNull MVWorldType type);
 
     /**
      * Retrieves the world designated as the global spawn.

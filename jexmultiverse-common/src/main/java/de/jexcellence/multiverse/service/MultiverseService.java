@@ -1,6 +1,7 @@
 package de.jexcellence.multiverse.service;
 
 import de.jexcellence.jexplatform.logging.JExLogger;
+import de.jexcellence.jexplatform.scheduler.PlatformScheduler;
 import de.jexcellence.multiverse.api.MVWorldSnapshot;
 import de.jexcellence.multiverse.api.MVWorldType;
 import de.jexcellence.multiverse.api.MultiverseProvider;
@@ -41,6 +42,7 @@ public class MultiverseService implements MultiverseProvider {
     private final WorldFactory worldFactory;
     private final JExLogger logger;
     private final JavaPlugin plugin;
+    private final PlatformScheduler scheduler;
 
     /** Late-bound: PlotService is wired after both services are constructed. */
     private @Nullable PlotService plotService;
@@ -49,12 +51,14 @@ public class MultiverseService implements MultiverseProvider {
                              @NotNull MVWorldRepository repository,
                              @NotNull WorldFactory worldFactory,
                              @NotNull JExLogger logger,
-                             @NotNull JavaPlugin plugin) {
+                             @NotNull JavaPlugin plugin,
+                             @NotNull PlatformScheduler scheduler) {
         this.edition = edition;
         this.repository = repository;
         this.worldFactory = worldFactory;
         this.logger = logger;
         this.plugin = plugin;
+        this.scheduler = scheduler;
     }
 
     // ── Edition queries ─────────────────────────────────────────────────────────
@@ -165,7 +169,11 @@ public class MultiverseService implements MultiverseProvider {
         var effectiveSchematic = type == MVWorldType.PLOT ? schematicName : null;
 
         var future = new CompletableFuture<Optional<MVWorld>>();
-        Bukkit.getScheduler().runTask(plugin, () -> {
+        // PlatformScheduler.runSync hits GlobalRegionScheduler on Folia
+        // (where Bukkit.createWorld requires the global region) and the
+        // main thread on Paper. Bukkit.getScheduler() throws UOE on
+        // Folia outright.
+        scheduler.runSync(() -> {
             var bukkitWorld = worldFactory.createBukkitWorld(name, environment, type,
                     effectivePlotSize, effectiveRoadWidth, effectiveSchematic);
             if (bukkitWorld == null) {
@@ -222,7 +230,7 @@ public class MultiverseService implements MultiverseProvider {
 
         cascadeDeletePlots(identifier)
                 .thenCompose(v -> repository.deleteByIdentifier(identifier))
-                .thenAccept(dbDeleted -> Bukkit.getScheduler().runTask(plugin, () -> {
+                .thenAccept(dbDeleted -> scheduler.runSync(() -> {
                     if (!dbDeleted) {
                         future.complete(false);
                         return;
@@ -548,6 +556,27 @@ public class MultiverseService implements MultiverseProvider {
     }
 
     @Override
+    public @NotNull CompletableFuture<Optional<MVWorldSnapshot>> ensureWorld(@NotNull String name,
+                                                                              World.@NotNull Environment environment,
+                                                                              @NotNull MVWorldType type) {
+        // Already managed → return the existing snapshot. We check both
+        // the in-memory cache and Bukkit's world list so a world that
+        // exists on disk but isn't yet registered with us (e.g. a
+        // pre-Multiverse world the operator created via the server
+        // config) still short-circuits the create path.
+        var cached = worldFactory.getCachedWorld(name);
+        if (cached.isPresent()) {
+            return CompletableFuture.completedFuture(Optional.of(cached.get().toSnapshot()));
+        }
+        // Not in our cache yet — delegate to createWorld, which handles
+        // the WorldCreator call, persistence, and Folia-safe scheduling.
+        // On limit / edition restriction it returns empty; on success a
+        // MVWorld which we lift into a snapshot for the public API.
+        return createWorld(name, environment, type).thenApply(opt ->
+                opt.map(MVWorld::toSnapshot));
+    }
+
+    @Override
     public boolean isRoadOrBorder(@NotNull Location location) {
         var w = location.getWorld();
         if (w == null) return false;
@@ -560,7 +589,10 @@ public class MultiverseService implements MultiverseProvider {
     public @NotNull CompletableFuture<Boolean> spawn(@NotNull Player player) {
         return getSpawnLocation(player).thenApply(location -> {
             if (location == null) return false;
-            Bukkit.getScheduler().runTask(plugin, () -> player.teleport(location));
+            // Player teleport touches entity state — Folia requires the
+            // player's region thread. runAtEntity collapses to main on
+            // Paper. Bukkit.getScheduler() would throw UOE on Folia.
+            scheduler.runAtEntity(player, () -> player.teleport(location));
             return true;
         }).exceptionally(ex -> {
             logger.error("Failed to teleport player '{}' to spawn", player.getName(), ex);

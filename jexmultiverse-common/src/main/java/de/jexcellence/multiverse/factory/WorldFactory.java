@@ -1,6 +1,7 @@
 package de.jexcellence.multiverse.factory;
 
 import de.jexcellence.jexplatform.logging.JExLogger;
+import de.jexcellence.jexplatform.scheduler.PlatformScheduler;
 import de.jexcellence.multiverse.api.MVWorldType;
 import de.jexcellence.multiverse.config.PlotWorldConfig;
 import de.jexcellence.multiverse.database.entity.MVWorld;
@@ -42,6 +43,7 @@ public class WorldFactory {
     private final JavaPlugin plugin;
     private final MVWorldRepository repository;
     private final JExLogger logger;
+    private final PlatformScheduler scheduler;
 
     private final ChunkGenerator voidGenerator;
     private final ChunkGenerator plotGenerator;
@@ -52,10 +54,12 @@ public class WorldFactory {
 
     public WorldFactory(@NotNull JavaPlugin plugin,
                         @NotNull MVWorldRepository repository,
-                        @NotNull JExLogger logger) {
+                        @NotNull JExLogger logger,
+                        @NotNull PlatformScheduler scheduler) {
         this.plugin = plugin;
         this.repository = repository;
         this.logger = logger;
+        this.scheduler = scheduler;
         this.voidGenerator = new VoidChunkGenerator();
         this.plotConfig = PlotWorldConfig.load(plugin.getDataFolder());
         this.schematics = new SchematicService(plugin, logger, plotConfig);
@@ -224,11 +228,16 @@ public class WorldFactory {
             // block until every world is actually in Bukkit + cached. Otherwise
             // services that depend on the world cache (PlotService, the
             // protection listener, etc.) start running before the worlds exist.
-            logger.info("Loading {} world(s) from database on main thread...", worlds.size());
+            // Each world creation runs on the appropriate platform
+            // thread (main on Paper, global region on Folia) and signals
+            // its CompletableFuture when done. Bukkit.getScheduler()
+            // throws UOE on Folia — PlatformScheduler.runSync targets
+            // GlobalRegionScheduler there.
+            logger.info("Loading {} world(s) from database...", worlds.size());
             var futures = new java.util.ArrayList<CompletableFuture<Void>>(worlds.size());
             for (var mvWorld : worlds) {
                 var f = new CompletableFuture<Void>();
-                Bukkit.getScheduler().runTask(plugin, () -> {
+                scheduler.runSync(() -> {
                     try {
                         loadWorld(mvWorld);
                     } catch (Throwable t) {

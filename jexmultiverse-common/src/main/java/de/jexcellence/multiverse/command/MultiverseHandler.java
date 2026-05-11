@@ -10,6 +10,7 @@ import de.jexcellence.multiverse.service.MultiverseService;
 import de.jexcellence.multiverse.view.MultiverseEditorView;
 import de.jexcellence.multiverse.view.MultiverseListView;
 import me.devnatan.inventoryframework.ViewFrame;
+import de.jexcellence.jexplatform.scheduler.PlatformScheduler;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
@@ -112,7 +113,7 @@ public final class MultiverseHandler {
                 .send(sender);
 
         service.createWorld(name, environment, worldType, plotSize, roadWidth, schematic).thenAccept(opt -> {
-            Bukkit.getScheduler().runTask(plugin, () -> {
+            PlatformScheduler.of(plugin).runSync(() -> {
                 if (opt.isPresent()) {
                     r18n().msg("multiverse.create_success").prefix()
                             .with("world_name", name)
@@ -126,7 +127,7 @@ public final class MultiverseHandler {
                 }
             });
         }).exceptionally(ex -> {
-            Bukkit.getScheduler().runTask(plugin, () ->
+            PlatformScheduler.of(plugin).runSync(() ->
                     r18n().msg("multiverse.create_failed").prefix()
                             .with("world_name", name)
                             .send(sender));
@@ -145,7 +146,7 @@ public final class MultiverseHandler {
                 .send(sender);
 
         service.deleteWorld(world.getIdentifier()).thenAccept(success -> {
-            Bukkit.getScheduler().runTask(plugin, () -> {
+            PlatformScheduler.of(plugin).runSync(() -> {
                 if (success) {
                     r18n().msg("multiverse.delete_success").prefix()
                             .with("world_name", world.getIdentifier())
@@ -157,7 +158,7 @@ public final class MultiverseHandler {
                 }
             });
         }).exceptionally(ex -> {
-            Bukkit.getScheduler().runTask(plugin, () ->
+            PlatformScheduler.of(plugin).runSync(() ->
                     r18n().msg("multiverse.delete_failed").prefix()
                             .with("world_name", world.getIdentifier())
                             .send(sender));
@@ -203,7 +204,7 @@ public final class MultiverseHandler {
                 .with("world_name", world.getIdentifier())
                 .send(player);
 
-        Bukkit.getScheduler().runTask(plugin, () -> {
+        PlatformScheduler.of(plugin).runSync(() -> {
             player.teleport(target);
             r18n().msg("multiverse.teleported").prefix()
                     .with("world_name", world.getIdentifier())
@@ -228,7 +229,7 @@ public final class MultiverseHandler {
                 .with("world_name", world.getIdentifier())
                 .send(sender);
 
-        Bukkit.getScheduler().runTask(plugin, () -> {
+        PlatformScheduler.of(plugin).runSync(() -> {
             var loaded = worldFactory.loadWorld(world);
             if (loaded != null) {
                 r18n().msg("multiverse.load_success").prefix()

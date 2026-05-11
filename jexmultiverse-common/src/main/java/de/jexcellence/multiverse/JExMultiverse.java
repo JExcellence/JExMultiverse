@@ -213,9 +213,9 @@ public abstract class JExMultiverse {
         plotMemberRepository = repos.get(PlotMemberRepository.class);
         plotFlagRepository = repos.get(PlotFlagRepository.class);
 
-        worldFactory = new WorldFactory(plugin, worldRepository, logger);
+        worldFactory = new WorldFactory(plugin, worldRepository, logger, platform.scheduler());
         multiverseService = new MultiverseService(
-                edition(), worldRepository, worldFactory, logger, plugin);
+                edition(), worldRepository, worldFactory, logger, plugin, platform.scheduler());
         plotService = new PlotService(multiverseService, worldFactory, plotRepository,
                 plotMemberRepository, plotFlagRepository, logger, plugin);
         // Late-bind plot service into the multiverse service so the public

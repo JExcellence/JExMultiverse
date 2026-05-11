@@ -10,6 +10,7 @@ import me.devnatan.inventoryframework.component.BukkitItemComponentBuilder;
 import me.devnatan.inventoryframework.context.Context;
 import me.devnatan.inventoryframework.context.OpenContext;
 import me.devnatan.inventoryframework.state.State;
+import de.jexcellence.jexplatform.scheduler.PlatformScheduler;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -106,7 +107,7 @@ public class PlotMembersView extends PaginatedView<PlotMembersView.Entry> {
             var plot = plotState.get(click);
             var service = serviceState.get(click);
             var plugin = pluginState.get(click);
-            service.removeMember(plot, entry.uuid()).thenAccept(ok -> Bukkit.getScheduler().runTask(plugin, () -> {
+            service.removeMember(plot, entry.uuid()).thenAccept(ok -> PlatformScheduler.of(plugin).runSync(() -> {
                 R18nManager.getInstance()
                         .msg(ok ? "plot." + (entry.role() == MemberRole.TRUSTED ? "untrusted" : "undenied")
                                 : "plot.error.member_failed").prefix()
