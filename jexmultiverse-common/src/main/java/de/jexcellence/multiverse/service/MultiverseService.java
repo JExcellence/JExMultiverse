@@ -592,12 +592,20 @@ public class MultiverseService implements MultiverseProvider {
     /**
      * Folia path: writes a {@code worlds.<name>} entry to
      * {@code bukkit.yml} (the platform-sanctioned way to register a new
-     * world on Folia per PaperMC/Folia#396), persists the matching
-     * {@link MVWorld} row so the world appears in {@code /mv list}
-     * across restarts, and returns the snapshot. The caller's
-     * {@code ensureWorld} sees a successful result but the actual world
-     * doesn't load until the next server restart — operators see a
-     * loud info line in console telling them so.
+     * world on Folia per PaperMC/Folia#396) and returns a pending-load
+     * snapshot. The DB row is NOT persisted yet because the
+     * {@link MVWorld#getSpawnLocation()} column is non-nullable and the
+     * world doesn't exist on disk — we can't synthesize a valid
+     * {@link org.bukkit.Location} (it'd need a {@link World} reference)
+     * until after the operator restarts. The runtime path back through
+     * {@link #ensureWorld} on the second start will see the world
+     * cached and short-circuit there.
+     *
+     * <p>If/when JExMultiverse grows a "scan loaded worlds, backfill
+     * MVWorld rows on startup" pass, the pending-load worlds will pick
+     * up persistence automatically. For now they're known to
+     * JExMultiverse only via bukkit.yml, which is the same place
+     * operators would manage them manually.
      */
     private @NotNull CompletableFuture<Optional<MVWorldSnapshot>> ensureViaBukkitYml(
             @NotNull String name,
@@ -616,23 +624,23 @@ public class MultiverseService implements MultiverseProvider {
                         name);
             }
 
-            // Persist the MV row so the world shows up in /mv list and
-            // the registry knows about it. The row is "pending load" —
-            // the cache won't see a Bukkit world reference until the
-            // operator restarts and the world actually loads.
-            final var mvWorld = MVWorld.builder()
-                    .identifier(name)
-                    .type(type)
-                    .environment(environment)
-                    .globalizedSpawn(false)
-                    .pvpEnabled(true)
-                    .build();
-            return repository.saveWorld(mvWorld)
-                    .thenApply(saved -> Optional.of(saved.toSnapshot()))
-                    .exceptionally(ex -> {
-                        logger.error("Failed to persist pending world '{}'", name, ex);
-                        return Optional.empty();
-                    });
+            // Pending-load synthetic snapshot. id == 0 marks it as
+            // "not persisted yet" — callers can use that to detect the
+            // pending state. Spawn defaults to (0, 0, 0); the real
+            // spawn lands in the DB once the operator restarts and
+            // JExMultiverse sees the loaded world.
+            final var snapshot = new MVWorldSnapshot(
+                    0L,                  // id — 0 == pending, not yet in DB
+                    name,
+                    type,
+                    environment.name(),
+                    0.0, 0.0, 0.0,       // spawnX/Y/Z
+                    0.0f, 0.0f,          // spawnYaw/Pitch
+                    false,               // globalSpawn
+                    true,                // pvpEnabled
+                    null                 // enterPermission
+            );
+            return CompletableFuture.completedFuture(Optional.of(snapshot));
         } catch (final java.io.IOException ex) {
             logger.error("Failed to declare world '{}' in bukkit.yml: {}", name, ex.getMessage());
             return CompletableFuture.completedFuture(Optional.empty());

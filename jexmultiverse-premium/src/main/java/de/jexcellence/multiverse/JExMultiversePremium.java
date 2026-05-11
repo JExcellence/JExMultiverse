@@ -49,8 +49,7 @@ public final class JExMultiversePremium extends JavaPlugin {
     /**
      * Bukkit hook invoked at server startup when {@code bukkit.yml} declares
      * a world with {@code generator: "JExMultiverse[:id]"}. See
-     * {@link JExMultiverseFree#getDefaultWorldGenerator} for the full
-     * contract — this Premium variant defers to the same registry so
+     * this Premium variant defers to the same registry so
      * the two editions stay aligned.
      */
     @Override
