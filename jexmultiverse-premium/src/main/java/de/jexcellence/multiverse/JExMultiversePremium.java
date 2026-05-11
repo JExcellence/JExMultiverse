@@ -45,4 +45,18 @@ public final class JExMultiversePremium extends JavaPlugin {
     public JExMultiversePremiumImpl getImpl() {
         return this.implementation;
     }
+
+    /**
+     * Bukkit hook invoked at server startup when {@code bukkit.yml} declares
+     * a world with {@code generator: "JExMultiverse[:id]"}. See
+     * {@link JExMultiverseFree#getDefaultWorldGenerator} for the full
+     * contract — this Premium variant defers to the same registry so
+     * the two editions stay aligned.
+     */
+    @Override
+    public org.bukkit.generator.ChunkGenerator getDefaultWorldGenerator(
+            @org.jetbrains.annotations.NotNull String worldName,
+            @org.jetbrains.annotations.Nullable String id) {
+        return de.jexcellence.multiverse.generator.GeneratorRegistry.resolve(id);
+    }
 }

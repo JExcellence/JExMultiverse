@@ -45,4 +45,23 @@ public final class JExMultiverseFree extends JavaPlugin {
     public JExMultiverseFreeImpl getImpl() {
         return this.implementation;
     }
+
+    /**
+     * Bukkit hook invoked at server startup when {@code bukkit.yml} declares
+     * a world with {@code generator: "JExMultiverse[:id]"}. The {@code id}
+     * suffix (after the colon) selects which JExMultiverse generator to
+     * use. Called once per declared world, BEFORE {@link #onEnable()} —
+     * this is how Folia (and Paper/Spigot) creates worlds without going
+     * through the runtime {@code Bukkit.createWorld} API.
+     *
+     * @param worldName the world being created (also the on-disk folder name)
+     * @param id        the generator id from bukkit.yml — e.g. "void", "plot"
+     * @return a chunk generator, or {@code null} to use the server default
+     */
+    @Override
+    public org.bukkit.generator.ChunkGenerator getDefaultWorldGenerator(
+            @org.jetbrains.annotations.NotNull String worldName,
+            @org.jetbrains.annotations.Nullable String id) {
+        return de.jexcellence.multiverse.generator.GeneratorRegistry.resolve(id);
+    }
 }

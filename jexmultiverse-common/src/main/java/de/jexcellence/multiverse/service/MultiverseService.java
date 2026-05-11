@@ -568,12 +568,75 @@ public class MultiverseService implements MultiverseProvider {
         if (cached.isPresent()) {
             return CompletableFuture.completedFuture(Optional.of(cached.get().toSnapshot()));
         }
+
+        // Folia blocks Bukkit.createWorld at the API surface — there is
+        // no runtime path to create a fresh world on Folia. The
+        // maintainer-blessed alternative (Folia issue #396) is to
+        // declare the world in bukkit.yml so it loads at next server
+        // startup via the same code path that brings up the default
+        // world. Detect Folia and route through that path; on Paper /
+        // Spigot fall through to the normal runtime createWorld.
+        if (de.jexcellence.jexplatform.server.ServerDetector.detect()
+                instanceof de.jexcellence.jexplatform.server.ServerType.Folia) {
+            return ensureViaBukkitYml(name, environment, type);
+        }
+
         // Not in our cache yet — delegate to createWorld, which handles
         // the WorldCreator call, persistence, and Folia-safe scheduling.
         // On limit / edition restriction it returns empty; on success a
         // MVWorld which we lift into a snapshot for the public API.
         return createWorld(name, environment, type).thenApply(opt ->
                 opt.map(MVWorld::toSnapshot));
+    }
+
+    /**
+     * Folia path: writes a {@code worlds.<name>} entry to
+     * {@code bukkit.yml} (the platform-sanctioned way to register a new
+     * world on Folia per PaperMC/Folia#396), persists the matching
+     * {@link MVWorld} row so the world appears in {@code /mv list}
+     * across restarts, and returns the snapshot. The caller's
+     * {@code ensureWorld} sees a successful result but the actual world
+     * doesn't load until the next server restart — operators see a
+     * loud info line in console telling them so.
+     */
+    private @NotNull CompletableFuture<Optional<MVWorldSnapshot>> ensureViaBukkitYml(
+            @NotNull String name,
+            World.@NotNull Environment environment,
+            @NotNull MVWorldType type) {
+        try {
+            final String generator = de.jexcellence.multiverse.generator
+                    .GeneratorRegistry.voidGeneratorRef();
+            final var writeResult = de.jexcellence.multiverse.factory
+                    .BukkitYmlWriter.declare(name, generator, logger);
+            if (writeResult.alreadyDeclared()) {
+                logger.info("[worlds] '{}' is already declared in bukkit.yml — restart the server to load it",
+                        name);
+            } else if (writeResult.added()) {
+                logger.warn("[worlds] '{}' was added to bukkit.yml — restart the server to finish creating the world",
+                        name);
+            }
+
+            // Persist the MV row so the world shows up in /mv list and
+            // the registry knows about it. The row is "pending load" —
+            // the cache won't see a Bukkit world reference until the
+            // operator restarts and the world actually loads.
+            final var mvWorld = MVWorld.builder()
+                    .identifier(name)
+                    .type(type)
+                    .environment(environment)
+                    .globalizedSpawn(false)
+                    .pvpEnabled(true)
+                    .build();
+            return repository.saveWorld(mvWorld)
+                    .thenApply(saved -> Optional.of(saved.toSnapshot()))
+                    .exceptionally(ex -> {
+                        logger.error("Failed to persist pending world '{}'", name, ex);
+                        return Optional.empty();
+                    });
+        } catch (final java.io.IOException ex) {
+            logger.error("Failed to declare world '{}' in bukkit.yml: {}", name, ex.getMessage());
+            return CompletableFuture.completedFuture(Optional.empty());
+        }
     }
 
     @Override
