@@ -2,6 +2,8 @@ package de.jexcellence.multiverse.service;
 
 import de.jexcellence.jexplatform.logging.JExLogger;
 import de.jexcellence.jexplatform.scheduler.PlatformScheduler;
+import de.jexcellence.jexplatform.server.ServerDetector;
+import de.jexcellence.jexplatform.server.ServerType;
 import de.jexcellence.multiverse.api.MVWorldSnapshot;
 import de.jexcellence.multiverse.api.MVWorldType;
 import de.jexcellence.multiverse.api.MultiverseProvider;
@@ -16,6 +18,7 @@ import de.jexcellence.multiverse.generator.GeneratorRegistry;
 import de.jexcellence.multiverse.nbt.LevelDatBuilder;
 import de.jexcellence.multiverse.spi.RuntimeWorldLoader;
 import de.jexcellence.multiverse.spi.RuntimeWorldLoaderResolver;
+import de.jexcellence.multiverse.util.CompanionWorldNameGenerator;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -51,6 +54,14 @@ public class MultiverseService implements MultiverseProvider {
 
     /** Late-bound: PlotService is wired after both services are constructed. */
     private @Nullable PlotService plotService;
+
+    /**
+     * Set once the runtime loader has logged a failure for the current
+     * session. Subsequent per-world failures are demoted to {@code debug}
+     * to keep the log clean — the operator already knows runtime load
+     * doesn't work on this server build.
+     */
+    private volatile boolean runtimeLoadFailureLogged;
 
     public MultiverseService(@NotNull MultiverseEdition edition,
                              @NotNull MVWorldRepository repository,
@@ -449,6 +460,21 @@ public class MultiverseService implements MultiverseProvider {
     }
 
     /**
+     * Returns the server's default world (the first world in Bukkit's world list).
+     * This world serves as the parent for NORMAL companion worlds on Folia.
+     *
+     * @return the default world, or {@code null} if no worlds are loaded
+     */
+    private @Nullable World getDefaultWorld() {
+        var worlds = Bukkit.getWorlds();
+        if (worlds.isEmpty()) {
+            logger.error("Cannot resolve default world: server has no loaded worlds");
+            return null;
+        }
+        return worlds.get(0);
+    }
+
+    /**
      * Checks whether the world limit has been reached for the current edition.
      */
     public boolean isAtWorldLimit() {
@@ -535,6 +561,117 @@ public class MultiverseService implements MultiverseProvider {
         this.plotService = plotService;
     }
 
+    /**
+     * Detects and adopts companion worlds that were created at runtime but are not
+     * yet tracked by JExMultiverse. This runs on server startup after loading all
+     * persisted worlds from the database.
+     * <p>
+     * Companion worlds follow the naming pattern {@code <parent>_<custom_name>}.
+     * For example, if the default world is "world", a companion world might be
+     * "world_oneblock_overworld".
+     * <p>
+     * This method:
+     * <ol>
+     *   <li>Iterates through all loaded Bukkit worlds</li>
+     *   <li>Checks if each world matches the companion naming pattern</li>
+     *   <li>Verifies the parent world exists</li>
+     *   <li>Adopts the companion world if it's not already cached</li>
+     * </ol>
+     *
+     * @return a future that completes when all companion worlds are adopted
+     */
+    public @NotNull CompletableFuture<Void> adoptCompanionWorldsOnStartup() {
+        var serverType = ServerDetector.detect();
+        boolean isFolia = serverType instanceof ServerType.Folia;
+        
+        if (!isFolia) {
+            // Companion world adoption only applies to Folia
+            logger.debug("[startup] Skipping companion world adoption (not running on Folia)");
+            return CompletableFuture.completedFuture(null);
+        }
+        
+        logger.info("[startup] Scanning for companion worlds to adopt...");
+        
+        var adoptionFutures = new java.util.ArrayList<CompletableFuture<Void>>();
+        var bukkitWorlds = Bukkit.getWorlds();
+        
+        for (var world : bukkitWorlds) {
+            var worldName = world.getName();
+            
+            // Skip if already cached
+            if (worldFactory.getCachedWorld(worldName).isPresent()) {
+                continue;
+            }
+            
+            // Filter out Bukkit auto-generated nether/end companions. Bukkit auto-pairs
+            // every overworld with "<name>_nether" and "<name>_the_end" worlds — those
+            // are companions of the OVERWORLD, not user-created JExMultiverse worlds.
+            // Adopting them would corrupt the world limit count and treat dimensional
+            // siblings as standalone managed worlds.
+            if (worldName.endsWith("_nether") || worldName.endsWith("_the_end") || worldName.endsWith("_end")) {
+                continue;
+            }
+
+            // Check if this world matches the companion naming pattern: <parent>_<custom_name>
+            // The pattern requires at least one underscore
+            var underscoreIndex = worldName.indexOf('_');
+            if (underscoreIndex <= 0 || underscoreIndex >= worldName.length() - 1) {
+                // No underscore, or underscore at start/end - not a companion world
+                continue;
+            }
+
+            // Extract potential parent name (everything before the first underscore)
+            var potentialParentName = worldName.substring(0, underscoreIndex);
+
+            // Verify the parent world exists
+            var parentWorld = Bukkit.getWorld(potentialParentName);
+            if (parentWorld == null) {
+                // Parent doesn't exist - not a valid companion world
+                continue;
+            }
+
+            // Defensive guard: the parent world should NOT itself be a Folia
+            // companion (i.e. end with _nether/_the_end). If we somehow land
+            // here it means the world is e.g. "world_nether_custom" — the
+            // "parent" lookup would resolve "world" which is wrong. Skip.
+            final String parent = parentWorld.getName();
+            if (parent.endsWith("_nether") || parent.endsWith("_the_end") || parent.endsWith("_end")) {
+                continue;
+            }
+            
+            // This looks like a companion world - adopt it
+            logger.info("[startup] Detected companion world '{}' (parent: '{}') - adopting into JExMultiverse",
+                    worldName, potentialParentName);
+            
+            // Adopt with DEFAULT type as the default - the actual type will be
+            // loaded from the database if a row already exists
+            var adoptionFuture = adoptLoadedWorld(world, de.jexcellence.multiverse.api.MVWorldType.DEFAULT)
+                    .thenAccept(snapshot -> {
+                        if (snapshot.isPresent()) {
+                            logger.info("[startup] Successfully adopted companion world '{}'", worldName);
+                        } else {
+                            logger.warn("[startup] Failed to adopt companion world '{}'", worldName);
+                        }
+                    })
+                    .exceptionally(ex -> {
+                        logger.error("[startup] Error adopting companion world '{}': {}",
+                                worldName, rootMessage(ex));
+                        return null;
+                    })
+                    .thenApply(v -> (Void) null); // Convert to CompletableFuture<Void>
+
+            adoptionFutures.add(adoptionFuture);
+        }
+        
+        if (adoptionFutures.isEmpty()) {
+            logger.info("[startup] No companion worlds found to adopt");
+            return CompletableFuture.completedFuture(null);
+        }
+        
+        return CompletableFuture.allOf(adoptionFutures.toArray(new CompletableFuture[0]))
+                .thenRun(() -> logger.info("[startup] Companion world adoption complete"));
+    }
+
     @Override
     public @NotNull Optional<PlotOwnership> plotOwnership(@NotNull Location location) {
         if (plotService == null) return Optional.empty();
@@ -574,24 +711,106 @@ public class MultiverseService implements MultiverseProvider {
             return CompletableFuture.completedFuture(Optional.of(cached.get().toSnapshot()));
         }
 
-        // Folia blocks Bukkit.createWorld at the API surface — there is
-        // no runtime path to create a fresh world on Folia. The
-        // maintainer-blessed alternative (Folia issue #396) is to
-        // declare the world in bukkit.yml so it loads at next server
-        // startup via the same code path that brings up the default
-        // world. Detect Folia and route through that path; on Paper /
-        // Spigot fall through to the normal runtime createWorld.
-        if (de.jexcellence.jexplatform.server.ServerDetector.detect()
-                instanceof de.jexcellence.jexplatform.server.ServerType.Folia) {
-            return ensureViaBukkitYml(name, environment, type);
+        // Edition + limit checks BEFORE any disk/Bukkit work. These previously
+        // only fired inside createWorld(...) which meant the Folia companion
+        // path and ensureViaBukkitYml bypassed them entirely. We re-evaluate
+        // here so every code path enforces the same rules.
+        // Existing-but-not-cached worlds (Bukkit.getWorld != null) are still
+        // adopted further down — they were created via some other path and
+        // adopting them is not a "new" creation.
+        if (Bukkit.getWorld(name) == null && !isWorldTypeAvailable(type)) {
+            logger.warn("[worlds] world type '{}' not available in current edition — rejecting '{}'", type, name);
+            return CompletableFuture.completedFuture(Optional.empty());
+        }
+        if (Bukkit.getWorld(name) == null && isAtWorldLimit()) {
+            logger.warn("[worlds] world limit reached ({}/{}) — rejecting '{}'",
+                    getWorldCount(), getMaxWorlds(), name);
+            return CompletableFuture.completedFuture(Optional.empty());
         }
 
-        // Not in our cache yet — delegate to createWorld, which handles
-        // the WorldCreator call, persistence, and Folia-safe scheduling.
-        // On limit / edition restriction it returns empty; on success a
-        // MVWorld which we lift into a snapshot for the public API.
-        return createWorld(name, environment, type).thenApply(opt ->
-                opt.map(MVWorld::toSnapshot));
+        // Detect platform for routing decisions
+        var serverType = ServerDetector.detect();
+        boolean isFolia = serverType instanceof ServerType.Folia;
+
+        // On Folia, ALL environments (NORMAL, NETHER, THE_END) use companion world creation.
+        // Check the companion name in the cache before proceeding.
+        if (isFolia) {
+            final String companionSuffix;
+            if (environment == World.Environment.NORMAL) {
+                // For NORMAL worlds on Folia, generate companion name using the default world as parent
+                var defaultWorld = getDefaultWorld();
+                if (defaultWorld != null) {
+                    final String companionName = CompanionWorldNameGenerator.generateCompanionName(
+                            defaultWorld.getName(), name);
+                    
+                    // Check cache for companion name
+                    var companionCached = worldFactory.getCachedWorld(companionName);
+                    if (companionCached.isPresent()) {
+                        logger.info("[worlds] Companion world '{}' already exists in cache, returning existing world", companionName);
+                        return CompletableFuture.completedFuture(Optional.of(companionCached.get().toSnapshot()));
+                    }
+                    
+                    // Check if companion world is loaded in Bukkit but not cached
+                    var companionWorld = Bukkit.getWorld(companionName);
+                    if (companionWorld != null) {
+                        logger.info("[worlds] Companion world '{}' already exists in Bukkit, adopting into JExMultiverse", companionName);
+                        return adoptLoadedWorld(companionWorld, type);
+                    }
+                }
+            } else if (environment == World.Environment.NETHER || environment == World.Environment.THE_END) {
+                // Existing NETHER/END companion logic
+                companionSuffix = environment == World.Environment.NETHER ? "_nether" : "_the_end";
+                final String overworldName = name.endsWith(companionSuffix)
+                        ? name.substring(0, name.length() - companionSuffix.length())
+                        : name;
+                final String companionName = overworldName + companionSuffix;
+                if (!companionName.equals(name)) {
+                    var companionCached = worldFactory.getCachedWorld(companionName);
+                    if (companionCached.isPresent()) {
+                        return CompletableFuture.completedFuture(Optional.of(companionCached.get().toSnapshot()));
+                    }
+                }
+            }
+        }
+
+        // If the world is already loaded in Bukkit but has no MVWorld row yet
+        // (e.g. it was declared in bukkit.yml on a previous run via the
+        // pending-restart path but the DB row was never written), adopt it now
+        // so the row is persisted and the cache is populated. This covers both
+        // Folia and Paper restarts where the world loaded from bukkit.yml but
+        // ensureViaBukkitYml never reached adoptLoadedWorld.
+        var liveWorld = Bukkit.getWorld(name);
+        if (liveWorld != null) {
+            logger.info("[worlds] '{}' is loaded in Bukkit but not in cache -- adopting into JExMultiverse", name);
+            return adoptLoadedWorld(liveWorld, type);
+        }
+
+        // Platform-based routing:
+        // - On Folia: NORMAL environments use companion creation, NETHER/END use bukkit.yml path
+        // - On Paper/Spigot: NORMAL worlds use primary world creation, NETHER/END use existing logic
+        if (isFolia) {
+            if (environment == World.Environment.NORMAL) {
+                // NORMAL worlds on Folia: create as companion to default world
+                return createNormalCompanion(name, type);
+            } else {
+                // NETHER/END on Folia: use bukkit.yml path (existing logic)
+                // Folia blocks Bukkit.createWorld at the API surface — there is
+                // no runtime path to create a fresh world on Folia. The
+                // maintainer-blessed alternative (Folia issue #396) is to
+                // declare the world in bukkit.yml so it loads at next server
+                // startup via the same code path that brings up the default
+                // world. Route NETHER/END environments through the bukkit.yml path.
+                return ensureViaBukkitYml(name, environment, type);
+            }
+        } else {
+            // Paper/Spigot: NORMAL worlds use primary world creation
+            // Not in our cache yet — delegate to createWorld, which handles
+            // the WorldCreator call, persistence, and Folia-safe scheduling.
+            // On limit / edition restriction it returns empty; on success a
+            // MVWorld which we lift into a snapshot for the public API.
+            return createWorld(name, environment, type).thenApply(opt ->
+                    opt.map(MVWorld::toSnapshot));
+        }
     }
 
     /**
@@ -606,23 +825,112 @@ public class MultiverseService implements MultiverseProvider {
      * {@link #ensureWorld} on the second start will see the world
      * cached and short-circuit there.
      *
-     * <p>If/when JExMultiverse grows a "scan loaded worlds, backfill
-     * MVWorld rows on startup" pass, the pending-load worlds will pick
-     * up persistence automatically. For now they're known to
-     * JExMultiverse only via bukkit.yml, which is the same place
-     * operators would manage them manually.
+     * <p>On the next server start, {@link #ensureWorld} will detect the world
+     * is loaded in Bukkit (via bukkit.yml) but not in the cache, and will call
+     * {@link #adoptLoadedWorld} to persist the DB row automatically.
+     *
+     * @see #ensureWorld
      */
     private @NotNull CompletableFuture<Optional<MVWorldSnapshot>> ensureViaBukkitYml(
             @NotNull String name,
             World.@NotNull Environment environment,
             @NotNull MVWorldType type) {
+        // On Folia, NETHER and THE_END worlds are NOT independent top-level worlds.
+        // When Folia loads an OVERWORLD from bukkit.yml it auto-creates companion
+        // worlds named "<overworld>_nether" and "<overworld>_the_end". Declaring
+        // oneblock_nether as a separate bukkit.yml entry causes a UUID collision
+        // with the auto-generated oneblock_overworld_nether companion.
+        //
+        // Fix: for NETHER/THE_END, derive the overworld name, ensure the overworld
+        // is declared in bukkit.yml, and resolve the Folia companion world name.
+        if (environment == World.Environment.NETHER || environment == World.Environment.THE_END) {
+            final String companionSuffix = environment == World.Environment.NETHER ? "_nether" : "_the_end";
+
+            // Derive the base name by stripping the environment suffix if present.
+            // Common patterns:
+            //   oneblock_nether → base: oneblock
+            //   oneblock_end → base: oneblock (note: _end, not _the_end)
+            //   oneblock_the_end → base: oneblock
+            final String baseName;
+            if (name.endsWith("_nether")) {
+                baseName = name.substring(0, name.length() - "_nether".length());
+            } else if (name.endsWith("_the_end")) {
+                baseName = name.substring(0, name.length() - "_the_end".length());
+            } else if (name.endsWith("_end")) {
+                baseName = name.substring(0, name.length() - "_end".length());
+            } else {
+                // Name doesn't follow the convention — use as-is
+                baseName = name;
+            }
+
+            // The overworld name is typically <base>_overworld. If the base already
+            // ends with _overworld, use it as-is; otherwise append _overworld.
+            final String overworldName = baseName.endsWith("_overworld")
+                    ? baseName
+                    : baseName + "_overworld";
+
+            // The Folia companion world name: <overworld>_nether or <overworld>_the_end
+            final String companionName = overworldName + companionSuffix;
+
+            // If the companion is already loaded, adopt it directly
+            final World companionWorld = Bukkit.getWorld(companionName);
+            if (companionWorld != null) {
+                logger.info("[worlds] '{}' resolved to Folia companion '{}' — adopting", name, companionName);
+                return adoptLoadedWorld(companionWorld, type);
+            }
+
+            // Companion not loaded yet — ensure the overworld is declared so
+            // Folia creates the companions on next restart. Return a pending
+            // snapshot using the companion name so callers know what to expect.
+            logger.info("[worlds] '{}' is a Folia companion — ensuring overworld '{}' is declared in bukkit.yml", name, overworldName);
+            return ensureViaBukkitYml(overworldName, World.Environment.NORMAL, type)
+                    .thenApply(opt -> {
+                        if (opt.isEmpty()) return Optional.<MVWorldSnapshot>empty();
+                        return Optional.of(new MVWorldSnapshot(
+                                0L,
+                                companionName,
+                                type,
+                                environment.name(),
+                                0.0, 0.0, 0.0,
+                                0.0f, 0.0f,
+                                false,
+                                true,
+                                null
+                        ));
+                    });
+        }
+
         try {
             // Step 1: synthesise the on-disk world skeleton (<root>/<name>/level.dat
             // + session.lock) so the server's startup scan discovers and
             // loads it like any vanilla world directory. This is what
             // actually triggers world load on Folia (and Paper/Spigot);
             // bukkit.yml below only provides the generator config.
-            LevelDatBuilder.writeSkeleton(name, environment);
+            //
+            // If the world directory already exists (e.g. from a previous
+            // pending-restart run), do NOT re-write level.dat. Re-writing it
+            // causes Bukkit to assign a new UUID on next load, which collides
+            // with the uid.dat written during the previous load and produces
+            // "duplicate world" errors. Instead, just delete the stale uid.dat
+            // so the next startup loads cleanly.
+            final java.io.File worldContainer;
+            try {
+                worldContainer = org.bukkit.Bukkit.getWorldContainer();
+            } catch (final Throwable ignored2) {
+                // Bukkit not yet initialised (e.g. tests) -- fall back to CWD
+                throw new java.io.IOException("Bukkit.getWorldContainer() unavailable");
+            }
+            final java.io.File worldDir = new java.io.File(worldContainer, name);
+            if (worldDir.exists() && new java.io.File(worldDir, "level.dat").exists()) {
+                // World directory already on disk -- only clean up uid.dat
+                final java.io.File uidDat = new java.io.File(worldDir, "uid.dat");
+                if (uidDat.exists()) {
+                    uidDat.delete(); // best-effort; safe to ignore failure
+                }
+                logger.debug("[worlds] '{}' world directory already exists -- skipping skeleton write", name);
+            } else {
+                LevelDatBuilder.writeSkeleton(name, environment);
+            }
 
             // Step 2: declare the generator in bukkit.yml so the server
             // wires our ChunkGenerator override (JExMultiverse:void) when
@@ -640,42 +948,41 @@ public class MultiverseService implements MultiverseProvider {
                     final World loaded = backend.get().loadWorld(name, environment).join();
                     logger.info("[worlds] '{}' loaded at runtime via {} backend",
                             name, backend.get().backendId());
-                    // World is live — persist the MVWorld row using the
-                    // server-picked spawn so the entity faithfully
-                    // mirrors the on-disk world.
                     return adoptLoadedWorld(loaded, type);
                 } catch (final Throwable ex) {
-                    // Don't fail the whole op — the skeleton + bukkit.yml
-                    // is already on disk, so the world will load on the
-                    // next restart. Log and fall through to pending mode.
-                    logger.warn("[worlds] runtime load failed for '{}' ({}): {} — falling back to pending-restart",
-                            name, backend.get().backendId(), rootMessage(ex));
+                    // First failure of the session: warn so operators see it.
+                    // Subsequent failures: debug. On Folia 1.21.x runtime load
+                    // is fundamentally unavailable (no API), so spamming warn
+                    // per world isn't useful.
+                    if (!runtimeLoadFailureLogged) {
+                        runtimeLoadFailureLogged = true;
+                        logger.warn("[worlds] runtime load unavailable via {} backend: {} -- all new worlds will use pending-restart path",
+                                backend.get().backendId(), rootMessage(ex));
+                    } else {
+                        logger.debug("[worlds] runtime load failed for '{}' (already-known limitation): {}",
+                                name, rootMessage(ex));
+                    }
                 }
             }
 
             if (writeResult.alreadyDeclared()) {
-                logger.info("[worlds] '{}' skeleton written; already declared in bukkit.yml — restart the server to load it",
+                logger.info("[worlds] '{}' skeleton written; already declared in bukkit.yml -- restart the server to load it",
                         name);
             } else if (writeResult.added()) {
-                logger.warn("[worlds] '{}' skeleton + bukkit.yml entry written — restart the server to finish creating the world",
+                logger.warn("[worlds] '{}' skeleton + bukkit.yml entry written -- restart the server to finish creating the world",
                         name);
             }
 
-            // Pending-load synthetic snapshot. id == 0 marks it as
-            // "not persisted yet" — callers can use that to detect the
-            // pending state. Spawn defaults to (0, 0, 0); the real
-            // spawn lands in the DB once the operator restarts and
-            // JExMultiverse sees the loaded world.
             final var snapshot = new MVWorldSnapshot(
-                    0L,                  // id — 0 == pending, not yet in DB
+                    0L,
                     name,
                     type,
                     environment.name(),
-                    0.0, 0.0, 0.0,       // spawnX/Y/Z
-                    0.0f, 0.0f,          // spawnYaw/Pitch
-                    false,               // globalSpawn
-                    true,                // pvpEnabled
-                    null                 // enterPermission
+                    0.0, 0.0, 0.0,
+                    0.0f, 0.0f,
+                    false,
+                    true,
+                    null
             );
             return CompletableFuture.completedFuture(Optional.of(snapshot));
         } catch (final java.io.IOException ex) {
@@ -685,40 +992,157 @@ public class MultiverseService implements MultiverseProvider {
     }
 
     /**
-     * Builds + persists a {@link MVWorld} row for a {@link World} that
-     * was just loaded by a {@link RuntimeWorldLoader}. Mirrors the
-     * persistence half of {@link #createWorld} but skips the Bukkit
-     * create step (the loader already produced the world).
+     * Creates a NORMAL companion world on Folia using the RuntimeWorldLoader SPI.
+     * <p>
+     * On Folia, NORMAL worlds are created as companions to the server's default world
+     * (the first world in Bukkit's world list). The companion name follows the pattern
+     * {@code <parent>_<requested_name>}.
+     * <p>
+     * This method:
+     * <ol>
+     *   <li>Resolves the default world as the parent</li>
+     *   <li>Generates the companion name using {@link CompanionWorldNameGenerator}</li>
+     *   <li>Checks for existing companion world (conflict detection)</li>
+     *   <li>Writes level.dat skeleton via {@link LevelDatBuilder}</li>
+     *   <li>Invokes {@link RuntimeWorldLoader#loadWorld} to create the companion</li>
+     *   <li>Adopts the loaded world into JExMultiverse</li>
+     * </ol>
+     * <p>
+     * If the RuntimeWorldLoader is not available, falls back to the bukkit.yml
+     * pending-restart path.
+     *
+     * @param requestedName the requested world name (not the companion name)
+     * @param type          the world generation type (VOID, PLOT, DEFAULT)
+     * @return a future containing the companion world snapshot, or empty on failure
+     * @see RuntimeWorldLoaderResolver
+     * @see CompanionWorldNameGenerator
      */
+    private @NotNull CompletableFuture<Optional<MVWorldSnapshot>> createNormalCompanion(
+            @NotNull String requestedName,
+            @NotNull MVWorldType type) {
+        
+        // Step 1: Get the default world (parent for NORMAL companions)
+        final World defaultWorld = getDefaultWorld();
+        if (defaultWorld == null) {
+            logger.error("Cannot create NORMAL companion '{}': no default world found", requestedName);
+            return CompletableFuture.completedFuture(Optional.empty());
+        }
+        
+        // Step 2: Generate companion name: <parent>_<requested_name>
+        final String parentName = defaultWorld.getName();
+        final String companionName = CompanionWorldNameGenerator.generateCompanionName(
+                parentName, requestedName);
+        
+        logger.debug("[worlds] Creating NORMAL companion '{}' (parent: '{}', requested: '{}')",
+                companionName, parentName, requestedName);
+        
+        // Step 3: Check if companion already exists (conflict detection)
+        final World existingCompanion = Bukkit.getWorld(companionName);
+        if (existingCompanion != null) {
+            logger.info("[worlds] Companion world '{}' already exists, adopting", companionName);
+            return adoptLoadedWorld(existingCompanion, type);
+        }
+        
+        // Step 4: Check cache for companion name
+        final var cachedCompanion = worldFactory.getCachedWorld(companionName);
+        if (cachedCompanion.isPresent()) {
+            logger.info("[worlds] Companion world '{}' already in cache, returning existing", companionName);
+            return CompletableFuture.completedFuture(
+                    Optional.of(cachedCompanion.get().toSnapshot()));
+        }
+        
+        // Step 5: Write level.dat skeleton for companion world
+        try {
+            LevelDatBuilder.writeSkeleton(companionName, World.Environment.NORMAL);
+        } catch (final java.io.IOException ex) {
+            logger.error("Failed to write skeleton for companion '{}': {}", companionName, ex.getMessage());
+            return CompletableFuture.completedFuture(Optional.empty());
+        }
+        
+        // Step 6: Invoke RuntimeWorldLoader to create companion via NMS
+        final Optional<RuntimeWorldLoader> loaderOpt = RuntimeWorldLoaderResolver.resolve(logger);
+        if (loaderOpt.isEmpty()) {
+            logger.warn("[worlds] No RuntimeWorldLoader available for '{}', falling back to pending-restart",
+                    companionName);
+            return ensureViaBukkitYml(companionName, World.Environment.NORMAL, type);
+        }
+        
+        final RuntimeWorldLoader loader = loaderOpt.get();
+        final CompletableFuture<World> loadFuture;
+        try {
+            loadFuture = loader.loadWorld(companionName, World.Environment.NORMAL);
+        } catch (final java.io.IOException ex) {
+            logger.error("[worlds] level.dat missing for companion '{}': {} — falling back to pending-restart",
+                    companionName, ex.getMessage());
+            return ensureViaBukkitYml(companionName, World.Environment.NORMAL, type);
+        }
+        return loadFuture
+                .thenCompose(world -> {
+                    logger.info("[worlds] Created NORMAL companion '{}' at runtime via {} backend",
+                            companionName, loader.backendId());
+                    return adoptLoadedWorld(world, type);
+                })
+                .exceptionally(ex -> {
+                    if (!runtimeLoadFailureLogged) {
+                        runtimeLoadFailureLogged = true;
+                        logger.warn("[worlds] runtime companion-load unavailable via {} backend: {} -- '{}' will be created on next server start",
+                                loader.backendId(), rootMessage(ex), companionName);
+                    } else {
+                        logger.debug("[worlds] companion-load failed for '{}' (already-known limitation): {}",
+                                companionName, rootMessage(ex));
+                    }
+                    // On failure, try the bukkit.yml fallback path
+                    try {
+                        return ensureViaBukkitYml(companionName, World.Environment.NORMAL, type).join();
+                    } catch (final Throwable fallbackEx) {
+                        logger.error("[worlds] Fallback to bukkit.yml also failed for '{}': {}",
+                                companionName, rootMessage(fallbackEx));
+                        return Optional.empty();
+                    }
+                });
+    }
+
     private @NotNull CompletableFuture<Optional<MVWorldSnapshot>> adoptLoadedWorld(
             @NotNull World bukkitWorld,
             @NotNull MVWorldType type) {
-        final var spawn = worldFactory.getDefaultSpawnForType(bukkitWorld, type);
-        final var mvWorld = MVWorld.builder()
-                .identifier(bukkitWorld.getName())
-                .type(type)
-                .environment(bukkitWorld.getEnvironment())
-                .spawnLocation(spawn)
-                .globalizedSpawn(false)
-                .pvpEnabled(true)
-                .build();
+        final String worldName = bukkitWorld.getName();
+        
+        // First check if this world already exists in the database
+        return repository.findByIdentifierAsync(worldName).thenCompose(existing -> {
+            if (existing.isPresent()) {
+                // World already in database - cache it and return
+                worldFactory.cacheWorld(existing.get());
+                logger.info("[worlds] '{}' already persisted — reusing existing record", worldName);
+                return CompletableFuture.completedFuture(Optional.of(existing.get().toSnapshot()));
+            }
+            
+            // World not in database - create new record
+            final var spawn = worldFactory.getDefaultSpawnForType(bukkitWorld, type);
+            final var mvWorld = MVWorld.builder()
+                    .identifier(worldName)
+                    .type(type)
+                    .environment(bukkitWorld.getEnvironment())
+                    .spawnLocation(spawn)
+                    .globalizedSpawn(false)
+                    .pvpEnabled(true)
+                    .build();
 
-        final var future = new CompletableFuture<Optional<MVWorldSnapshot>>();
-        repository.saveWorld(mvWorld).thenAccept(saved -> {
-            worldFactory.cacheWorld(saved);
-            logger.info("[worlds] adopted runtime-loaded world '{}' into JExMultiverse",
-                    bukkitWorld.getName());
-            future.complete(Optional.of(saved.toSnapshot()));
-        }).exceptionally(ex -> {
-            // Persist failure is non-fatal here: the world IS loaded,
-            // and a subsequent ensureWorld will see Bukkit.getWorld(name)
-            // != null and short-circuit (caller path 1 in ensureWorld).
-            logger.error("[worlds] runtime-loaded world '{}' but failed to persist: {}",
-                    bukkitWorld.getName(), rootMessage(ex));
-            future.complete(Optional.empty());
-            return null;
+            final var future = new CompletableFuture<Optional<MVWorldSnapshot>>();
+            repository.saveWorld(mvWorld).thenAccept(saved -> {
+                worldFactory.cacheWorld(saved);
+                logger.info("[worlds] adopted runtime-loaded world '{}' into JExMultiverse", worldName);
+                future.complete(Optional.of(saved.toSnapshot()));
+            }).exceptionally(ex -> {
+                // Persist failure is non-fatal here: the world IS loaded,
+                // and a subsequent ensureWorld will see Bukkit.getWorld(name)
+                // != null and short-circuit (caller path 1 in ensureWorld).
+                logger.error("[worlds] runtime-loaded world '{}' but failed to persist: {}",
+                        worldName, rootMessage(ex));
+                future.complete(Optional.empty());
+                return null;
+            });
+            return future;
         });
-        return future;
     }
 
     /**

@@ -227,41 +227,27 @@ public final class FoliaRuntimeWorldLoader implements RuntimeWorldLoader {
         }
 
         /**
-         * Folia-specific NMS path.
+         * Folia-specific runtime registration.
          *
-         * <p>Implementation note: rather than re-implementing the full
-         * {@code ServerLevel} constructor invocation by reflection
-         * (which would require resolving ~14 internal types: registry
-         * keys, level stems, executors, chunk listeners, custom
-         * spawners, random sequences, dimension data storage, …), we
-         * use a much smaller trick:
+         * <p><b>Reality check:</b> as of Folia 1.21.x, no public-API or
+         * NMS helper for runtime world load exists. PaperMC/Folia issue
+         * <a href="https://github.com/PaperMC/Folia/issues/134">#134</a>
+         * remains open. We probe a handful of plausible Folia-supplied
+         * helper names ({@code loadLevel}, {@code prepareLevel},
+         * {@code createServerLevel}); if none of them are present we
+         * throw {@link UnsupportedOperationException} so the caller
+         * falls back to the pending-restart path.
          *
-         * <p>Folia patches {@code CraftServer#createWorld} to throw, but
-         * does <em>not</em> remove {@code MinecraftServer#addLevel} nor
-         * the package-private factory the default-world bootstrap uses.
-         * We re-invoke {@code CraftServer#createWorld}'s pre-patch body
-         * through the bytecode that still exists in the underlying
-         * {@code MinecraftServer} via reflection:
+         * <p>This method <em>will</em> throw on every current Folia
+         * build. It is kept in place as a forward-compat hook: once
+         * Folia exposes a runtime entry point, adding its method name
+         * to the candidate list is the only change needed.
          *
-         * <ol>
-         *   <li>Resolve the {@code MinecraftServer} instance from
-         *       {@code CraftServer.getServer()}.</li>
-         *   <li>Resolve {@code MinecraftServer.loadLevel(String)} — a
-         *       Folia-added helper (patch
-         *       {@code 0007-Folia-Add-Folia-Scheduler-API.patch} and
-         *       follow-ups) which exists specifically to allow plugins
-         *       to do what {@code createWorld} used to do. If absent
-         *       (older Folia), we fall through.</li>
-         *   <li>If unavailable, throw with a clear message — the caller
-         *       knows to surface the pending-restart path.</li>
-         * </ol>
-         *
-         * <p>This is intentionally conservative: a small, well-defined
-         * NMS surface is far easier to keep working across Folia patch
-         * versions than a full reflective re-implementation of
-         * createWorld. If Folia adds an official Bukkit-API entry point
-         * (issue PaperMC/Folia#134), this whole class becomes a thin
-         * delegator.
+         * <p>Implementing the full {@code ServerLevel} construction via
+         * reflection (~14 internal parameter types, region-thread
+         * setup) is intentionally out of scope here — too fragile
+         * across Folia patches, and far easier to maintain once an
+         * official API lands.
          */
         private static @NotNull World registerOnFolia(@NotNull String worldName,
                                                        World.@NotNull Environment environment) throws Exception {

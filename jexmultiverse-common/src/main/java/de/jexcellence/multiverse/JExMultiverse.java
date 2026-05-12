@@ -32,6 +32,7 @@ import de.jexcellence.multiverse.view.PlotFlagsView;
 import de.jexcellence.multiverse.view.PlotMembersView;
 import de.jexcellence.multiverse.view.PlotMenuView;
 import me.devnatan.inventoryframework.ViewFrame;
+import java.io.File;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -87,6 +88,12 @@ public abstract class JExMultiverse {
 
         logger = platform.logger();
         logger.info("Loading JExMultiverse {} Edition", edition);
+
+        // Clean up stale uid.dat files from worlds declared in bukkit.yml
+        // BEFORE Bukkit loads them. If a uid.dat from a previous run exists,
+        // CraftServer will detect a UUID collision and refuse to load the world.
+        // This must happen in onLoad() (before world loading) not onEnable().
+        cleanupStaleUidFiles();
     }
 
     /**
@@ -167,6 +174,74 @@ public abstract class JExMultiverse {
      */
     protected abstract MultiverseEdition edition();
 
+    /**
+     * Scans bukkit.yml for worlds with JExMultiverse generators and deletes
+     * their uid.dat files if present. This prevents 'duplicate world' errors
+     * when Bukkit loads worlds from bukkit.yml that were created via the
+     * pending-restart path (skeleton + bukkit.yml entry written, but world
+     * never loaded at runtime).
+     *
+     * <p>Also removes bukkit.yml entries for NETHER and THE_END worlds that
+     * were incorrectly declared as top-level worlds. On Folia, these are
+     * auto-created as companion worlds of the overworld and must NOT be
+     * declared separately — doing so causes UUID collisions.
+     *
+     * <p>Must run in onLoad() BEFORE Bukkit's world-loading phase.
+     */
+    private void cleanupStaleUidFiles() {
+        try {
+            final File bukkitYml = new File("bukkit.yml");
+            if (!bukkitYml.exists()) return;
+
+            final org.bukkit.configuration.file.YamlConfiguration config =
+                    org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(bukkitYml);
+            final var worldsSection = config.getConfigurationSection("worlds");
+            if (worldsSection == null) return;
+
+            final File container;
+            File container1;
+            try {
+                container1 = Bukkit.getWorldContainer();
+            } catch (final Throwable ignored) {
+                container1 = new File(".");
+            }
+
+            container = container1;
+            boolean configDirty = false;
+            for (final String worldName : new java.util.ArrayList<>(worldsSection.getKeys(false))) {
+                final String generator = worldsSection.getString(worldName + ".generator");
+                if (generator == null || !generator.startsWith("JExMultiverse:")) continue;
+
+                // Remove NETHER and THE_END worlds from bukkit.yml — on Folia these
+                // are auto-created as companion worlds of the overworld. Declaring
+                // them separately causes UUID collisions with the auto-generated
+                // companions (e.g. oneblock_nether collides with oneblock_overworld_nether).
+                if (worldName.endsWith("_nether") || worldName.endsWith("_the_end")) {
+                    config.set("worlds." + worldName, null);
+                    configDirty = true;
+                    logger.info("[startup] Removed stale bukkit.yml entry for Folia companion world '{}'", worldName);
+                    continue;
+                }
+
+                // Delete stale uid.dat for overworld entries
+                final File worldDir = new File(container, worldName);
+                final File uidDat = new File(worldDir, "uid.dat");
+                if (uidDat.exists()) {
+                    if (uidDat.delete()) {
+                        logger.debug("[startup] Deleted stale uid.dat for world '{}'", worldName);
+                    }
+                }
+            }
+
+            if (configDirty) {
+                config.save(bukkitYml);
+                logger.info("[startup] Saved bukkit.yml after removing stale companion world entries");
+            }
+        } catch (final Exception ex) {
+            logger.warn("[startup] Failed to clean up stale uid.dat files: {}", ex.getMessage());
+        }
+    }
+
     // ── Initialization pipeline ─────────────────────────────────────────────────
 
     private void initializeDatabase() {
@@ -226,6 +301,9 @@ public abstract class JExMultiverse {
                 MultiverseProvider.class, multiverseService, plugin, ServicePriority.Normal);
 
         worldFactory.loadAllWorlds().join();
+        // After loading all persisted worlds, scan for and adopt companion worlds
+        // that were created at runtime but not yet tracked by JExMultiverse
+        multiverseService.adoptCompanionWorldsOnStartup().join();
         plotService.loadAll().join();
         logger.info("Multiverse + plot services ready");
     }

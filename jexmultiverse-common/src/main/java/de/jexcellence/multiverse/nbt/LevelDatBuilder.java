@@ -107,6 +107,18 @@ public final class LevelDatBuilder {
             throw new IOException("Failed to create session.lock for " + worldName);
         }
 
+        // uid.dat stores the world's unique UUID. If a stale uid.dat
+        // from a previous (failed or aborted) skeleton-write is still
+        // on disk, CraftServer will detect a UUID collision with any
+        // other world that was assigned the same UUID and refuse to
+        // load this world with "duplicate world" in the log. Deleting
+        // it here is safe: the server regenerates uid.dat on first load
+        // from the world's level.dat seed, so we never lose data.
+        final File uidDat = new File(worldDir, "uid.dat");
+        if (uidDat.exists()) {
+            uidDat.delete(); // best-effort; failure is non-fatal
+        }
+
         final File levelDat = new File(worldDir, "level.dat");
         try (var out = new FileOutputStream(levelDat)) {
             NbtWriter.writeLevelDat(out, buildRoot(worldName, environment));

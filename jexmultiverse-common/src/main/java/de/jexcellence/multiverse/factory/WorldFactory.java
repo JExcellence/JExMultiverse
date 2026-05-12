@@ -214,8 +214,10 @@ public class WorldFactory {
 
     /**
      * Loads all worlds from the database into Bukkit and caches them.
+     * After loading persisted worlds, scans for companion worlds that were
+     * created at runtime and adopts them into JExMultiverse.
      *
-     * @return a future that completes when all worlds are loaded
+     * @return a future that completes when all worlds are loaded and adopted
      */
     public @NotNull CompletableFuture<Void> loadAllWorlds() {
         return repository.findAllAsync().thenCompose(worlds -> {

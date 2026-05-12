@@ -124,12 +124,15 @@ public class MultiverseListView extends PaginatedView<MVWorld> {
                     : bukkit.get().getSpawnLocation();
             click.closeForPlayer();
             PlatformScheduler.of(plugin).runSync(() -> {
-                p.teleport(spawn);
-                R18nManager.getInstance()
-                        .msg("multiverse.teleported")
-                        .prefix()
-                        .with("world_name", entry.getIdentifier())
-                        .send(p);
+                p.teleportAsync(spawn).thenAccept(success -> {
+                    if (success) {
+                        R18nManager.getInstance()
+                                .msg("multiverse.teleported")
+                                .prefix()
+                                .with("world_name", entry.getIdentifier())
+                                .send(p);
+                    }
+                });
             });
         });
     }

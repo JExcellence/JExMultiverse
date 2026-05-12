@@ -48,6 +48,8 @@ public interface RuntimeWorldLoader {
             throws IOException;
 
     /**
+     * Returns a backendId.
+     *
      * @return a short identifier for logging — e.g. {@code "folia-nms"}
      */
     @NotNull String backendId();
