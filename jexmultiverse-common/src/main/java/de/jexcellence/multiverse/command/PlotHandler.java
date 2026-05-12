@@ -279,7 +279,7 @@ public final class PlotHandler {
         var loc = new org.bukkit.Location(bukkit, bounds.centerX() + 0.5,
                 bounds.surfaceY() + 1, bounds.centerZ() + 0.5);
         PlatformScheduler.of(plugin).runSync(() -> {
-            player.teleport(loc);
+            player.teleportAsync(loc);
             r18n().msg("plot.teleported").prefix()
                     .with("grid_x", String.valueOf(plot.getGridX()))
                     .with("grid_z", String.valueOf(plot.getGridZ()))

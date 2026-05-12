@@ -205,7 +205,7 @@ public final class MultiverseHandler {
                 .send(player);
 
         PlatformScheduler.of(plugin).runSync(() -> {
-            player.teleport(target);
+            player.teleportAsync(target);
             r18n().msg("multiverse.teleported").prefix()
                     .with("world_name", world.getIdentifier())
                     .send(player);

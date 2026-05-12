@@ -57,7 +57,7 @@ public class SpawnHandler {
             }
             PlatformScheduler.of(plugin).runSync(() -> {
                 ensureSafeLanding(location);
-                player.teleport(location);
+                player.teleportAsync(location);
                 R18nManager.getInstance().msg("spawn.teleported").prefix().send(player);
             });
         }).exceptionally(ex -> {

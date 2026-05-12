@@ -171,7 +171,7 @@ public class PlotMenuView extends BaseView {
                     bounds.centerX() + 0.5, bounds.surfaceY() + 1, bounds.centerZ() + 0.5);
             click.closeForPlayer();
             PlatformScheduler.of(plugin).runSync(() -> {
-                p.teleport(loc);
+                p.teleportAsync(loc);
                 R18nManager.getInstance().msg("plot.teleported").prefix()
                         .with("grid_x", String.valueOf(plot.getGridX()))
                         .with("grid_z", String.valueOf(plot.getGridZ()))

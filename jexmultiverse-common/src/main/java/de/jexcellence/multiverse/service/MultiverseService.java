@@ -896,7 +896,7 @@ public class MultiverseService implements MultiverseProvider {
             // Player teleport touches entity state — Folia requires the
             // player's region thread. runAtEntity collapses to main on
             // Paper. Bukkit.getScheduler() would throw UOE on Folia.
-            scheduler.runAtEntity(player, () -> player.teleport(location));
+            scheduler.runAtEntity(player, () -> player.teleportAsync(location));
             return true;
         }).exceptionally(ex -> {
             logger.error("Failed to teleport player '{}' to spawn", player.getName(), ex);
