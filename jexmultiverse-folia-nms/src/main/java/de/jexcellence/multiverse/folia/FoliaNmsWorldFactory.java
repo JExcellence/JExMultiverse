@@ -1,58 +1,47 @@
 package de.jexcellence.multiverse.folia;
 
-import com.google.common.collect.ImmutableList;
-import com.google.gson.JsonObject;
 import org.bukkit.Bukkit;
-import org.bukkit.NamespacedKey;
 import org.bukkit.World;
-import org.bukkit.generator.ChunkGenerator;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.nio.file.Path;
-import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ThreadLocalRandom;
 
 /**
- * Reflective recreation of {@code CraftServer#createWorld}'s pre-Folia-patch
- * body. Constructs a {@code ServerLevel} via NMS, registers it with
- * {@code MinecraftServer#addLevel}, and runs the post-registration init
- * steps so the world behaves identically to one loaded at server boot.
+ * Reflective driver for Paper/Folia 1.21.11's new world-creation API.
  *
- * <p>Mirrors the implementation in
- * <a href="https://github.com/TheNextLvl-net/worlds/blob/main/version-specifics/v26.1.2/src/main/java/net/thenextlvl/worlds/versions/v26_1_2/SimpleVersionHandler.java">TheNextLvl/worlds#SimpleVersionHandler.createAsync</a>
- * (GPL-3.0). This is a clean-room reimplementation against the same
- * public NMS surface (the Paper-internal classes are not GPL-protected,
- * only the original Java source is). Behaviour is intentionally identical.
+ * <p>The Paper 1.21.11 refactor replaced the manual {@code ServerLevel}
+ * constructor invocation (16+ params) with a single
+ * {@code MinecraftServer#createLevel(LevelStem, WorldLoadingInfo,
+ * LevelStorageAccess, PrimaryLevelData)} call that does all the heavy
+ * lifting internally — including reading
+ * {@code CraftServer#getGenerator(name)} for the chunk generator override.
  *
- * <p>All NMS lookups are cached in a {@link ConcurrentHashMap} keyed by
- * a simple identifier, populated lazily on first use. Failure to resolve
- * any binding throws {@link IllegalStateException} with the bind name —
- * the caller surfaces that to operators rather than silently failing.
+ * <p>Our job here is:
+ * <ol>
+ *   <li>Open a {@code LevelStorageAccess} for the world directory;</li>
+ *   <li>Call {@code PaperWorldLoader.getLevelData(access)} to read or
+ *       initialise the data tag;</li>
+ *   <li>Build a {@code PrimaryLevelData} (new world → {@code Main
+ *       .createNewWorldData}; existing → {@code LevelStorageSource
+ *       .getLevelDataAndDimensions});</li>
+ *   <li>Pick a {@code LevelStem} template (OVERWORLD/NETHER/END) from
+ *       the registry;</li>
+ *   <li>Construct a {@code WorldLoadingInfo} with a <em>unique</em>
+ *       {@code stemKey} (so the dimensionKey doesn't collide with the
+ *       default world);</li>
+ *   <li>Invoke {@code createLevel(...)} which registers the level with
+ *       {@code MinecraftServer.levels} and Bukkit;</li>
+ *   <li>Return {@code Bukkit.getWorld(name)}.</li>
+ * </ol>
  *
- * <p>Pinned to Paper 1.21.x internals. The following symbols must exist:
- * <ul>
- *   <li>{@code net.minecraft.server.MinecraftServer} — fields
- *       {@code executor}, {@code storageSource}, {@code worldLoaderContext};
- *       methods {@code addLevel}, {@code initWorld}, {@code prepareLevel},
- *       {@code registryAccess}, {@code getWorldData}</li>
- *   <li>{@code net.minecraft.server.level.ServerLevel} — 16-arg constructor</li>
- *   <li>{@code net.minecraft.world.level.dimension.LevelStem} — constants
- *       OVERWORLD/NETHER/END</li>
- *   <li>{@code net.minecraft.world.level.levelgen.WorldGenSettings},
- *       {@code WorldDimensions}, {@code WorldOptions}</li>
- *   <li>{@code io.papermc.paper.world.PaperWorldLoader} — static methods
- *       {@code dimensionKey}, {@code loadWorldData}; nested record
- *       {@code LoadedWorldData}</li>
- *   <li>{@code io.papermc.paper.FeatureHooks} — static
- *       {@code tickEntityManager} (no-op on Paper, required on Folia)</li>
- *   <li>{@code org.bukkit.craftbukkit.CraftServer},
- *       {@code org.bukkit.craftbukkit.generator.CraftWorldInfo}</li>
- * </ul>
+ * <p>All NMS access is reflective and cached. Missing bindings throw
+ * {@link IllegalStateException} with the bind name so failures point
+ * directly at the moved/renamed symbol.
  *
  * @author JExcellence
  * @since 3.5.0
@@ -69,267 +58,233 @@ final class FoliaNmsWorldFactory {
     //  Entry point
     // ─────────────────────────────────────────────────────────────────────
 
-    /**
-     * Build and register a {@code ServerLevel} for the given world name,
-     * then return its Bukkit {@link World} wrapper.
-     *
-     * <p>Must be invoked on the server's global region thread (Folia) or
-     * main thread (Paper). The caller's
-     * {@link FoliaRuntimeWorldLoader#loadWorld} handles the hop.
-     */
     static @NotNull World registerWorld(@NotNull String worldName,
                                          World.@NotNull Environment environment) throws Exception {
 
-        // Resolve classes once + cache
+        // ── Class lookups ──────────────────────────────────────────────
         final Class<?> cMinecraftServer  = cls("net.minecraft.server.MinecraftServer");
-        final Class<?> cServerLevel      = cls("net.minecraft.server.level.ServerLevel");
         final Class<?> cLevelStem        = cls("net.minecraft.world.level.dimension.LevelStem");
         final Class<?> cResourceKey      = cls("net.minecraft.resources.ResourceKey");
+        final Class<?> cIdentifier       = clsAny(
+                "net.minecraft.resources.Identifier",
+                "net.minecraft.resources.ResourceLocation");
         final Class<?> cRegistries       = cls("net.minecraft.core.registries.Registries");
-        final Class<?> cBiomeManager     = cls("net.minecraft.world.level.biome.BiomeManager");
+        final Class<?> cRegistry         = cls("net.minecraft.core.Registry");
         final Class<?> cCraftServer      = cls("org.bukkit.craftbukkit.CraftServer");
         final Class<?> cPaperWorldLoader = cls("io.papermc.paper.world.PaperWorldLoader");
-        final Class<?> cWorldGenSettings = cls("net.minecraft.world.level.levelgen.WorldGenSettings");
-        final Class<?> cWorldOptions     = cls("net.minecraft.world.level.levelgen.WorldOptions");
-        final Class<?> cWorldDimensions  = cls("net.minecraft.world.level.levelgen.WorldDimensions");
-        final Class<?> cWorldDimComplete = cls("net.minecraft.world.level.levelgen.WorldDimensions$Complete");
-        final Class<?> cDedSrvProps      = cls("net.minecraft.server.dedicated.DedicatedServerProperties");
-        final Class<?> cWorldDimData     = cls("net.minecraft.server.dedicated.DedicatedServerProperties$WorldDimensionData");
-        final Class<?> cIdentifier       = cls("net.minecraft.resources.Identifier"); // Paper-mapped (= ResourceLocation in vanilla)
-        final Class<?> cRegistry         = cls("net.minecraft.core.Registry");
-        // SavedDataStorage is a recent Paper refactor; older / parallel Paper builds
-        // still ship the vanilla-named DimensionDataStorage at the same location.
-        // Both have the same 3-arg constructor (Path, DataFixer, RegistryAccess).
-        final Class<?> cSavedDataStorage = clsAny(
-                "net.minecraft.world.level.storage.SavedDataStorage",
-                "net.minecraft.world.level.storage.DimensionDataStorage");
-        final Class<?> cLevelResource    = cls("net.minecraft.world.level.storage.LevelResource");
-        final Class<?> cCraftWorldInfo   = cls("org.bukkit.craftbukkit.generator.CraftWorldInfo");
-        final Class<?> cFeatureHooks     = cls("io.papermc.paper.FeatureHooks");
+        final Class<?> cWorldLoadingInfo = cls("io.papermc.paper.world.PaperWorldLoader$WorldLoadingInfo");
+        final Class<?> cLevelDataResult  = cls("io.papermc.paper.world.PaperWorldLoader$LevelDataResult");
+        final Class<?> cLevelStorageSrc  = cls("net.minecraft.world.level.storage.LevelStorageSource");
+        final Class<?> cLevelStorageAcc  = cls("net.minecraft.world.level.storage.LevelStorageSource$LevelStorageAccess");
         final Class<?> cPrimaryLevelData = cls("net.minecraft.world.level.storage.PrimaryLevelData");
+        final Class<?> cMain             = cls("net.minecraft.server.Main");
+        final Class<?> cFeatureHooks     = cls("io.papermc.paper.FeatureHooks");
 
-        // CraftServer + MinecraftServer
+        // ── CraftServer + MinecraftServer ──────────────────────────────
         final Object craftServer = Bukkit.getServer();
-        final Method getServer = cCraftServer.getMethod("getServer");
-        final Object console = getServer.invoke(craftServer);
+        final Object console = cCraftServer.getMethod("getServer").invoke(craftServer);
 
-        // Preflight: main level must exist
-        final Method getAllLevels = cMinecraftServer.getMethod("getAllLevels");
-        if (!((Iterable<?>) getAllLevels.invoke(console)).iterator().hasNext()) {
+        // Preflight: main level must already exist
+        if (!((Iterable<?>) cMinecraftServer.getMethod("getAllLevels").invoke(console)).iterator().hasNext()) {
             throw new IllegalStateException("Cannot create worlds before main level is created");
         }
 
-        // Build identifier from the simple world name (namespace=minecraft, path=name)
-        final Object worldIdentifier = newIdentifier(cIdentifier, "minecraft", worldName);
-        // ResourceKey<LevelStem> resourceKey = ResourceKey.create(Registries.LEVEL_STEM, identifier)
-        final Object levelStemRegistryKey = field(cRegistries, "LEVEL_STEM");
-        final Object resourceKey = invokeStatic(cResourceKey, "create",
-                new Class[]{ cResourceKey, cIdentifier },
-                levelStemRegistryKey, worldIdentifier);
-
-        // dimensionKey = PaperWorldLoader.dimensionKey(resourceKey)
-        final Object dimensionKey = invokeStatic(cPaperWorldLoader, "dimensionKey",
-                new Class[]{ cResourceKey }, resourceKey);
-
-        // actualDimension = LevelStem.OVERWORLD/NETHER/END (these are ResourceKey<LevelStem> constants)
-        final Object actualDimension = switch (environment) {
+        // ── Resolve the stem template + a UNIQUE stemKey for this world ─
+        // The stem template provides the dimension type and the vanilla
+        // generator default; our ChunkGenerator override applies on top
+        // via CraftServer.getGenerator(worldName) inside createLevel.
+        //
+        // The stemKey identifier must be UNIQUE per world (it builds the
+        // dimensionKey for the levels map). Using LevelStem.OVERWORLD
+        // verbatim would collide with the default world.
+        final Object stemRegistryKey = field(cRegistries, "LEVEL_STEM");
+        final Object templateStemKey = switch (environment) {
             case NETHER  -> field(cLevelStem, "NETHER");
             case THE_END -> field(cLevelStem, "END");
             default      -> field(cLevelStem, "OVERWORLD");
         };
-
-        // context = console.worldLoaderContext (field), then datapackDimensions() + lookupOrThrow
-        final Object context = readField(console, "worldLoaderContext");
-        final Method datapackDimensions = context.getClass().getMethod("datapackDimensions");
-        Object registryAccess = datapackDimensions.invoke(context);
-        Object levelStemRegistry = invokeOnRegistryAccess(registryAccess, levelStemRegistryKey);
-
-        // Build a fresh WorldGenSettings (we skip the "load existing" branch — new world)
-        final long seed = ThreadLocalRandom.current().nextLong();
-        final Object worldOptions = newWorldOptions(cWorldOptions, seed, /*generateStructures*/ false, /*bonusChest*/ false);
-
-        // generatorSettings JSON (empty) + levelType ("normal") → WorldDimensionData
-        final JsonObject genSettingsJson = new JsonObject();
-        final String levelTypeName = "normal";
-        final Object worldDimensionData = newInstance(cWorldDimData,
-                new Class[]{ JsonObject.class, String.class },
-                genSettingsJson, levelTypeName);
-
-        // WorldDimensions worldDimensions = properties.create(context.datapackWorldgen())
-        final Method datapackWorldgen = context.getClass().getMethod("datapackWorldgen");
-        final Object datapackWg = datapackWorldgen.invoke(context);
-        Object worldDimensions = worldDimensionData.getClass()
-                .getMethod("create", datapackWg.getClass().getInterfaces().length > 0
-                        ? findHolderLookupProviderInterface(datapackWg) : datapackWg.getClass())
-                .invoke(worldDimensionData, datapackWg);
-
-        // complete = worldDimensions.bake(contextLevelStemRegistry)
-        final Method bake = cWorldDimensions.getMethod("bake", cRegistry);
-        final Object complete = bake.invoke(worldDimensions, levelStemRegistry);
-
-        // genSettings = new WorldGenSettings(worldOptions, worldDimensions)
-        final Constructor<?> wgsCtor = cWorldGenSettings.getConstructor(cWorldOptions, cWorldDimensions);
-        final Object genSettings = wgsCtor.newInstance(worldOptions, worldDimensions);
-
-        // registryAccess from complete.dimensionsRegistryAccess()
-        final Method dimRegAccess = cWorldDimComplete.getMethod("dimensionsRegistryAccess");
-        registryAccess = dimRegAccess.invoke(complete);
-        levelStemRegistry = invokeOnRegistryAccess(registryAccess, levelStemRegistryKey);
-
-        // loadedWorldData = PaperWorldLoader.loadWorldData(console, dimensionKey, worldName)
-        final Method loadWorldDataM = cPaperWorldLoader.getMethod("loadWorldData",
-                cMinecraftServer, cResourceKey, String.class);
-        final Object loadedWorldData = loadWorldDataM.invoke(null, console, dimensionKey, worldName);
-
-        // primaryLevelData (for isDebugWorld + enabledFeatures)
-        final Method getWorldData = cMinecraftServer.getMethod("getWorldData");
-        final Object primaryLevelData = getWorldData.invoke(console);
-        final boolean isDebugWorld = (boolean) cPrimaryLevelData.getMethod("isDebugWorld").invoke(primaryLevelData);
-        final Object enabledFeatures = cPrimaryLevelData.getMethod("enabledFeatures").invoke(primaryLevelData);
-
-        // biomeZoomSeed = BiomeManager.obfuscateSeed(genSettings.options().seed())
-        final Method optionsM = cWorldGenSettings.getMethod("options");
-        final Object effectiveOptions = optionsM.invoke(genSettings);
-        final long effectiveSeed = (long) cWorldOptions.getMethod("seed").invoke(effectiveOptions);
-        final long biomeZoomSeed = (long) cBiomeManager.getMethod("obfuscateSeed", long.class)
-                .invoke(null, effectiveSeed);
-
-        // customStem = genSettings.dimensions().get(actualDimension).orElseGet(registry.getValue(actualDimension))
-        final Method dimensionsM = cWorldGenSettings.getMethod("dimensions");
-        final Object dimensionsObj = dimensionsM.invoke(genSettings);
-        Object customStem = findStem(dimensionsObj, actualDimension);
-        if (customStem == null) {
-            customStem = cRegistry.getMethod("getValue", cResourceKey).invoke(levelStemRegistry, actualDimension);
-        }
-        if (customStem == null) {
-            throw new IllegalStateException("Missing LevelStem for " + actualDimension);
+        final Object registryAccess = cMinecraftServer.getMethod("registryAccess").invoke(console);
+        final Object stemRegistry = invokeLookupOrThrow(registryAccess, stemRegistryKey);
+        final Object templateStem = cRegistry.getMethod("getValue", cResourceKey)
+                .invoke(stemRegistry, templateStemKey);
+        if (templateStem == null) {
+            throw new IllegalStateException("Stem template not found in registry for env " + environment);
         }
 
-        // Resolve dimension type + chunk generator (from the stem)
-        final Method stemType = cLevelStem.getMethod("type");
-        final Object dimTypeHolder = stemType.invoke(customStem);
-        final Method holderValue = dimTypeHolder.getClass().getMethod("value");
-        final Object dimensionType = holderValue.invoke(dimTypeHolder);
-        final Method stemGenerator = cLevelStem.getMethod("generator");
-        final Object vanillaGenerator = stemGenerator.invoke(customStem);
+        // Unique stem key for this world: jexmultiverse:<worldName>
+        // (different from the template stemKey, so the OVERWORLD-special-case
+        // inside MinecraftServer#createLevel doesn't fire for our worlds)
+        final Object uniqueIdentifier = newIdentifier(cIdentifier, "jexmultiverse", worldName);
+        final Object uniqueStemKey = cResourceKey.getMethod("create", cResourceKey, cIdentifier)
+                .invoke(null, stemRegistryKey, uniqueIdentifier);
 
-        // Build CraftWorldInfo (Bukkit-facing world metadata) for biomeProvider lookup
-        // Signature (Paper 1.21.x):
-        //   CraftWorldInfo(String name, NamespacedKey worldKey, long seed,
-        //                  FeatureFlagSet enabledFeatures, World.Environment env,
-        //                  DimensionType dimType, Object generator,
-        //                  RegistryAccess registryAccess, UUID uuid)
-        final String bukkitName  = (String) loadedWorldData.getClass().getMethod("bukkitName").invoke(loadedWorldData);
-        final Object loadedUuid  = loadedWorldData.getClass().getMethod("uuid").invoke(loadedWorldData);
+        // ── Build LevelStorageAccess ───────────────────────────────────
+        final Path worldContainer = ((java.io.File) cCraftServer.getMethod("getWorldContainer").invoke(craftServer)).toPath();
+        final Object storageSource = cLevelStorageSrc.getMethod("createDefault", Path.class)
+                .invoke(null, worldContainer);
+        // validateAndCreateAccess(String, ResourceKey<LevelStem>)
+        final Object access = cLevelStorageSrc.getMethod("validateAndCreateAccess", String.class, cResourceKey)
+                .invoke(storageSource, worldName, templateStemKey);
 
-        final NamespacedKey nsKey = NamespacedKey.minecraft(worldName);
-        final Object craftWorldInfo = newCraftWorldInfo(cCraftWorldInfo, bukkitName, nsKey, effectiveSeed,
-                enabledFeatures, environment, dimensionType, vanillaGenerator,
-                cMinecraftServer.getMethod("registryAccess").invoke(console), loadedUuid);
-
-        // Resolve chunk generator + biome provider via CraftServer reflection
-        // (CraftBukkit classes aren't on the paper-api compile classpath).
-        ChunkGenerator chunkGenerator = (ChunkGenerator) cCraftServer
-                .getMethod("getGenerator", String.class).invoke(craftServer, worldName);
-        org.bukkit.generator.BiomeProvider biomeProvider = (org.bukkit.generator.BiomeProvider)
-                cCraftServer.getMethod("getBiomeProvider", String.class).invoke(craftServer, worldName);
-        if (biomeProvider == null && chunkGenerator != null) {
-            biomeProvider = chunkGenerator.getDefaultBiomeProvider(
-                    (org.bukkit.generator.WorldInfo) craftWorldInfo);
+        // ── Read level data (or detect "new world") via PaperWorldLoader ─
+        final Object levelDataResult = cPaperWorldLoader.getMethod("getLevelData", cLevelStorageAcc)
+                .invoke(null, access);
+        final boolean fatalError = (boolean) cLevelDataResult.getMethod("fatalError").invoke(levelDataResult);
+        if (fatalError) {
+            throw new IllegalStateException("PaperWorldLoader.getLevelData reported fatalError for '" + worldName + "'");
         }
+        final Object dataTag = cLevelDataResult.getMethod("dataTag").invoke(levelDataResult);
 
-        // SavedDataStorage(dimensionPath/data, dataFixer, registryAccess)
-        final Object storageSource = readField(console, "storageSource");
-        final Method getDimensionPath = storageSource.getClass().getMethod("getDimensionPath", cResourceKey);
-        final Path dimDir = (Path) getDimensionPath.invoke(storageSource, dimensionKey);
-        final Object dataLevelRes = field(cLevelResource, "DATA");
-        final String dataResId = (String) cLevelResource.getMethod("id").invoke(dataLevelRes);
-        final Path dataPath = dimDir.resolve(dataResId);
-        final Object dataFixer = cMinecraftServer.getMethod("getFixerUpper").invoke(console);
-        final Object consoleRegistryAccess = cMinecraftServer.getMethod("registryAccess").invoke(console);
-        final Constructor<?> sdsCtor = findConstructor(cSavedDataStorage, 3); // (Path, DataFixer, RegistryAccess)
-        final Object savedDataStorage = sdsCtor.newInstance(dataPath, dataFixer, consoleRegistryAccess);
+        // ── Build/load PrimaryLevelData ────────────────────────────────
+        final Object primaryLevelData = (dataTag == null)
+                ? createNewWorldData(cMain, console, cMinecraftServer)
+                : loadExistingWorldData(cLevelStorageSrc, dataTag, console, cMinecraftServer);
 
-        // Persist WorldGenSettings into the storage. This is a best-effort
-        // step — TheNextLvl does it on the new SavedDataStorage API, but
-        // older Paper builds with DimensionDataStorage don't have the
-        // typed set(Type, T) call. If we can't write it, the data layer
-        // will populate on first save instead.
+        // primaryLevelData.checkName(name)
         try {
-            final Object wgsType = field(cWorldGenSettings, "TYPE");
-            cSavedDataStorage.getMethod("set", wgsType.getClass(), Object.class)
-                    .invoke(savedDataStorage, wgsType,
-                            wgsCtor.newInstance(effectiveOptions, dimensionsM.invoke(genSettings)));
-        } catch (final Throwable nonFatal) {
-            // Log via stderr; the JExLogger isn't reachable from here. The
-            // world will still create — this just defers WorldGenSettings
-            // persistence to the next save tick.
-            System.err.println("[JExMultiverse] [folia-nms] WorldGenSettings preseed skipped (non-fatal): "
-                    + nonFatal.getMessage());
-        }
-
-        // CustomSpawner list — empty for non-overworld
-        // TheNextLvl uses a non-empty list for overworld (Phantom, Patrol, Cat, Siege, WanderingTrader);
-        // we ship an empty list for now — those are nice-to-have, not blocking creation. JExMultiverse's
-        // void worlds don't need vanilla mob-cap spawners.
-        final List<?> customSpawners = ImmutableList.of();
-
-        // ─── Construct ServerLevel ────────────────────────────────────────
-        final Constructor<?> levelCtor = findServerLevelConstructor(cServerLevel);
-        levelCtor.setAccessible(true);
-        final Object serverLevel = levelCtor.newInstance(
-                console,                                                            // MinecraftServer
-                readField(console, "executor"),                                     // Executor
-                storageSource,                                                      // LevelStorageAccess
-                genSettings,                                                        // WorldGenSettings
-                dimensionKey,                                                       // ResourceKey<Level>
-                customStem,                                                         // LevelStem
-                isDebugWorld,                                                       // boolean isDebug
-                biomeZoomSeed,                                                      // long
-                customSpawners,                                                     // List<CustomSpawner>
-                true,                                                               // boolean tickTime
-                actualDimension,                                                    // ResourceKey<LevelStem>
-                environment,                                                        // World.Environment
-                chunkGenerator,                                                     // ChunkGenerator
-                biomeProvider,                                                      // BiomeProvider
-                savedDataStorage,                                                   // SavedDataStorage
-                loadedWorldData                                                     // LoadedWorldData
-        );
-
-        // ─── Register with MinecraftServer ────────────────────────────────
-        cMinecraftServer.getMethod("addLevel", cServerLevel).invoke(console, serverLevel);
-
-        // initWorld(serverLevel, @Nullable WorldCreator)
-        try {
-            cMinecraftServer.getMethod("initWorld", cServerLevel, org.bukkit.WorldCreator.class)
-                    .invoke(console, serverLevel, (Object) null);
+            cPrimaryLevelData.getMethod("checkName", String.class).invoke(primaryLevelData, worldName);
         } catch (final NoSuchMethodException ignored) {
-            // Older Paper builds had a single-arg initWorld; try that
-            cMinecraftServer.getMethod("initWorld", cServerLevel).invoke(console, serverLevel);
+            // Method may not exist on all Paper builds; non-fatal
         }
 
-        cServerLevel.getMethod("setSpawnSettings", boolean.class).invoke(serverLevel, true);
+        // ── Build WorldLoadingInfo ─────────────────────────────────────
+        // WorldLoadingInfo(int dimension, String name, String worldType,
+        //                  ResourceKey<LevelStem> stemKey, boolean enabled)
+        final int dimensionInt = switch (environment) {
+            case NETHER  -> -1;
+            case THE_END -> 1;
+            default      -> 0;
+        };
+        final String worldTypeStr = environment.name().toLowerCase(Locale.ROOT);
+        final Object loadingInfo = cWorldLoadingInfo
+                .getConstructor(int.class, String.class, String.class, cResourceKey, boolean.class)
+                .newInstance(dimensionInt, worldName, worldTypeStr, uniqueStemKey, true);
 
-        // FeatureHooks.tickEntityManager — Folia-only (no-op on Paper)
-        try {
-            cFeatureHooks.getMethod("tickEntityManager", cServerLevel).invoke(null, serverLevel);
-        } catch (final NoSuchMethodException notFolia) {
-            // FeatureHooks exists on Paper but tickEntityManager is a Folia-specific
-            // signal — fine to skip.
-        }
+        // ── createLevel(stem, info, access, primaryLevelData) ──────────
+        cMinecraftServer.getMethod("createLevel",
+                        cLevelStem, cWorldLoadingInfo, cLevelStorageAcc, cPrimaryLevelData)
+                .invoke(console, templateStem, loadingInfo, access, primaryLevelData);
 
-        cMinecraftServer.getMethod("prepareLevel", cServerLevel).invoke(console, serverLevel);
-
-        // Return Bukkit wrapper
-        final Object bukkitWorld = cServerLevel.getMethod("getWorld").invoke(serverLevel);
+        // ── Post-init: tickEntityManager on Folia (no-op on Paper) ─────
+        // After createLevel, the new ServerLevel is registered. We need
+        // to fetch it to call FeatureHooks.tickEntityManager (Folia
+        // start-region-tick signal). Get via reflection from the levels
+        // map.
+        final World bukkitWorld = Bukkit.getWorld(worldName);
         if (bukkitWorld == null) {
-            throw new IllegalStateException("ServerLevel.getWorld() returned null after registration");
+            throw new IllegalStateException(
+                    "createLevel completed but Bukkit.getWorld('" + worldName + "') is null — registration didn't propagate");
         }
-        return (World) bukkitWorld;
+
+        // Get the underlying ServerLevel via CraftWorld#getHandle (reflect)
+        try {
+            final Object craftWorld = bukkitWorld;
+            final Method getHandleM = bukkitWorld.getClass().getMethod("getHandle");
+            final Object serverLevel = getHandleM.invoke(craftWorld);
+            final Class<?> cServerLevel = serverLevel.getClass();
+            // FeatureHooks.tickEntityManager(ServerLevel)
+            try {
+                cFeatureHooks.getMethod("tickEntityManager", cServerLevel.getSuperclass() != null ? cls("net.minecraft.server.level.ServerLevel") : cServerLevel)
+                        .invoke(null, serverLevel);
+            } catch (final NoSuchMethodException notFolia) {
+                // Paper without Folia patches: no tickEntityManager — fine.
+            }
+        } catch (final Throwable t) {
+            // Non-fatal: world is registered, FeatureHooks polish failed.
+            System.err.println("[JExMultiverse] [folia-nms] FeatureHooks.tickEntityManager skipped: " + t.getMessage());
+        }
+
+        return bukkitWorld;
     }
 
     // ─────────────────────────────────────────────────────────────────────
-    //  Reflection helpers (all binding-cached)
+    //  PrimaryLevelData helpers
+    // ─────────────────────────────────────────────────────────────────────
+
+    /**
+     * Equivalent of:
+     * <pre>{@code
+     * Main.createNewWorldData(
+     *     ((DedicatedServer) server).settings,
+     *     server.worldLoaderContext,
+     *     server.worldLoaderContext.datapackDimensions().lookupOrThrow(Registries.LEVEL_STEM),
+     *     server.isDemo(),
+     *     server.options.has("bonusChest")
+     * ).cookie()
+     * }</pre>
+     */
+    private static Object createNewWorldData(@NotNull Class<?> cMain,
+                                              @NotNull Object console,
+                                              @NotNull Class<?> cMinecraftServer) throws Exception {
+        final Class<?> cDedicatedServer = cls("net.minecraft.server.dedicated.DedicatedServer");
+        final Class<?> cRegistries = cls("net.minecraft.core.registries.Registries");
+        final Object settings = readField(console, "settings");
+        final Object context = readField(console, "worldLoaderContext");
+        final Object datapackDimensions = context.getClass().getMethod("datapackDimensions").invoke(context);
+        final Object stemRegistryKey = field(cRegistries, "LEVEL_STEM");
+        final Object stemRegistry = invokeLookupOrThrow(datapackDimensions, stemRegistryKey);
+        final boolean isDemo = (boolean) cMinecraftServer.getMethod("isDemo").invoke(console);
+
+        // Find createNewWorldData(Settings, DataLoadContext, Registry<LevelStem>, boolean, boolean)
+        Method createNewWorldDataM = null;
+        for (final Method m : cMain.getDeclaredMethods()) {
+            if (m.getName().equals("createNewWorldData") && m.getParameterCount() == 5) {
+                createNewWorldDataM = m;
+                break;
+            }
+        }
+        if (createNewWorldDataM == null) {
+            throw new IllegalStateException("Main.createNewWorldData(5-arg) not found");
+        }
+        createNewWorldDataM.setAccessible(true);
+        final Object cookieHolder = createNewWorldDataM.invoke(null,
+                settings, context, stemRegistry, isDemo, /*bonusChest*/ false);
+        // .cookie() returns the WorldData (== PrimaryLevelData)
+        final Method cookieM = cookieHolder.getClass().getMethod("cookie");
+        return cookieM.invoke(cookieHolder);
+    }
+
+    /**
+     * Equivalent of:
+     * <pre>{@code
+     * (PrimaryLevelData) LevelStorageSource.getLevelDataAndDimensions(
+     *     dataTag,
+     *     server.worldLoaderContext.dataConfiguration(),
+     *     server.worldLoaderContext.datapackDimensions().lookupOrThrow(Registries.LEVEL_STEM),
+     *     server.worldLoaderContext.datapackWorldgen()
+     * ).worldData()
+     * }</pre>
+     */
+    private static Object loadExistingWorldData(@NotNull Class<?> cLevelStorageSource,
+                                                  @NotNull Object dataTag,
+                                                  @NotNull Object console,
+                                                  @NotNull Class<?> cMinecraftServer) throws Exception {
+        final Class<?> cRegistries = cls("net.minecraft.core.registries.Registries");
+        final Object context = readField(console, "worldLoaderContext");
+        final Object dataConfig = context.getClass().getMethod("dataConfiguration").invoke(context);
+        final Object datapackDimensions = context.getClass().getMethod("datapackDimensions").invoke(context);
+        final Object stemRegistryKey = field(cRegistries, "LEVEL_STEM");
+        final Object stemRegistry = invokeLookupOrThrow(datapackDimensions, stemRegistryKey);
+        final Object datapackWorldgen = context.getClass().getMethod("datapackWorldgen").invoke(context);
+
+        // Find getLevelDataAndDimensions(Dynamic, DataConfiguration, Registry, HolderLookup$Provider) → 4 args
+        Method m4 = null;
+        for (final Method m : cLevelStorageSource.getDeclaredMethods()) {
+            if (m.getName().equals("getLevelDataAndDimensions") && m.getParameterCount() == 4) {
+                m4 = m;
+                break;
+            }
+        }
+        if (m4 == null) {
+            throw new IllegalStateException("LevelStorageSource.getLevelDataAndDimensions(4-arg) not found");
+        }
+        m4.setAccessible(true);
+        final Object levelDataAndDimensions = m4.invoke(null, dataTag, dataConfig, stemRegistry, datapackWorldgen);
+        return levelDataAndDimensions.getClass().getMethod("worldData").invoke(levelDataAndDimensions);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    //  Reflection helpers
     // ─────────────────────────────────────────────────────────────────────
 
     private static Class<?> cls(@NotNull String name) {
@@ -341,10 +296,6 @@ final class FoliaNmsWorldFactory {
         });
     }
 
-    /**
-     * Tries multiple candidate class names in order. Returns the first one
-     * that resolves; throws if none are present.
-     */
     private static Class<?> clsAny(@NotNull String... candidates) {
         for (final String name : candidates) {
             try { return Class.forName(name); }
@@ -380,48 +331,23 @@ final class FoliaNmsWorldFactory {
         throw new IllegalStateException("Field not found on " + instance.getClass() + ": " + fieldName);
     }
 
-    private static Object invokeStatic(@NotNull Class<?> owner, @NotNull String method,
-                                        @NotNull Class<?>[] paramTypes,
-                                        @NotNull Object... args) throws Exception {
-        final Method m = owner.getMethod(method, paramTypes);
-        return m.invoke(null, args);
-    }
-
-    private static Object newInstance(@NotNull Class<?> owner,
-                                       @NotNull Class<?>[] paramTypes,
-                                       @NotNull Object... args) throws Exception {
-        final Constructor<?> c = owner.getConstructor(paramTypes);
-        c.setAccessible(true);
-        return c.newInstance(args);
-    }
-
-    private static Constructor<?> findConstructor(@NotNull Class<?> owner, int paramCount) {
-        for (final Constructor<?> c : owner.getDeclaredConstructors()) {
-            if (c.getParameterCount() == paramCount) {
-                c.setAccessible(true);
-                return c;
+    /** RegistryAccess#lookupOrThrow(ResourceKey<Registry<X>>) — found by name+arity. */
+    private static Object invokeLookupOrThrow(@NotNull Object registryAccess,
+                                                @NotNull Object registryKey) throws Exception {
+        for (final Method m : registryAccess.getClass().getMethods()) {
+            if (m.getName().equals("lookupOrThrow") && m.getParameterCount() == 1) {
+                return m.invoke(registryAccess, registryKey);
             }
         }
-        throw new IllegalStateException("No " + paramCount + "-arg constructor on " + owner.getName());
+        throw new IllegalStateException("lookupOrThrow(1-arg) not found on "
+                + registryAccess.getClass().getName());
     }
 
-    /**
-     * Locate the 16-argument {@code ServerLevel} constructor by parameter
-     * count. Pinning by exact signature would be brittle; arity + the call
-     * site's type list is enough.
-     */
-    private static Constructor<?> findServerLevelConstructor(@NotNull Class<?> serverLevel) {
-        for (final Constructor<?> c : serverLevel.getDeclaredConstructors()) {
-            if (c.getParameterCount() == 16) return c;
-        }
-        throw new IllegalStateException("ServerLevel 16-arg constructor not found — Paper version mismatch?");
-    }
-
-    /** Builds a Mojang {@code Identifier} ({@code ResourceLocation}) via reflection. */
+    /** Build a Mojang {@code Identifier} / {@code ResourceLocation}. */
     private static Object newIdentifier(@NotNull Class<?> cIdentifier,
-                                         @NotNull String namespace,
-                                         @NotNull String path) throws Exception {
-        // Identifier has a static factory `tryBuild` / `tryParse` / direct ctor depending on version.
+                                          @NotNull String namespace,
+                                          @NotNull String path) throws Exception {
+        // Try static factories first, fall back to ctor
         try {
             return cIdentifier.getMethod("fromNamespaceAndPath", String.class, String.class)
                     .invoke(null, namespace, path);
@@ -434,93 +360,5 @@ final class FoliaNmsWorldFactory {
                         .invoke(null, namespace, path);
             }
         }
-    }
-
-    private static Object newWorldOptions(@NotNull Class<?> cWorldOptions,
-                                           long seed, boolean structures, boolean bonusChest) throws Exception {
-        // Paper 1.21.x: new WorldOptions(long seed, boolean generateStructures, boolean bonusChest)
-        return cWorldOptions.getConstructor(long.class, boolean.class, boolean.class)
-                .newInstance(seed, structures, bonusChest);
-    }
-
-    /** Walks RegistryAccess#lookupOrThrow(ResourceKey<Registry<X>>). */
-    private static Object invokeOnRegistryAccess(@NotNull Object registryAccess,
-                                                  @NotNull Object registryKey) throws Exception {
-        // RegistryAccess interface declares lookupOrThrow(ResourceKey<Registry<E>>)
-        for (final Method m : registryAccess.getClass().getMethods()) {
-            if (m.getName().equals("lookupOrThrow") && m.getParameterCount() == 1) {
-                return m.invoke(registryAccess, registryKey);
-            }
-        }
-        throw new IllegalStateException("RegistryAccess.lookupOrThrow not found on "
-                + registryAccess.getClass().getName());
-    }
-
-    /** Walks {@code dimensions.get(actualDimension)} returning the contained LevelStem or null. */
-    @Nullable
-    private static Object findStem(@NotNull Object dimensionsObj, @NotNull Object actualDimension) throws Exception {
-        // dimensions.get(...) returns Optional<LevelStem>
-        Method getM = null;
-        for (final Method m : dimensionsObj.getClass().getMethods()) {
-            if (m.getName().equals("get") && m.getParameterCount() == 1) {
-                getM = m;
-                break;
-            }
-        }
-        if (getM == null) return null;
-        final Object opt = getM.invoke(dimensionsObj, actualDimension);
-        if (opt == null) return null;
-        // Optional.orElse(null)
-        return opt.getClass().getMethod("orElse", Object.class).invoke(opt, (Object) null);
-    }
-
-    /**
-     * Find a {@code HolderLookup$Provider} super-interface on the
-     * {@code datapackWorldgen()} return value. Needed because the
-     * {@code WorldDimensionData.create(...)} signature is declared against
-     * the interface, not the concrete impl class.
-     */
-    private static Class<?> findHolderLookupProviderInterface(@NotNull Object datapackWg) {
-        for (final Class<?> i : datapackWg.getClass().getInterfaces()) {
-            if (i.getName().equals("net.minecraft.core.HolderLookup$Provider")) return i;
-        }
-        // Walk superclasses
-        Class<?> c = datapackWg.getClass().getSuperclass();
-        while (c != null) {
-            for (final Class<?> i : c.getInterfaces()) {
-                if (i.getName().equals("net.minecraft.core.HolderLookup$Provider")) return i;
-            }
-            c = c.getSuperclass();
-        }
-        try {
-            return Class.forName("net.minecraft.core.HolderLookup$Provider");
-        } catch (final ClassNotFoundException ex) {
-            throw new IllegalStateException("HolderLookup$Provider class missing", ex);
-        }
-    }
-
-    /**
-     * Build a {@code CraftWorldInfo} via its constructor. Signature has
-     * shifted between Paper minor versions; we pick the 9-arg constructor
-     * by parameter count to stay loose.
-     */
-    private static Object newCraftWorldInfo(@NotNull Class<?> cCraftWorldInfo,
-                                             @NotNull String name,
-                                             @NotNull NamespacedKey worldKey,
-                                             long seed,
-                                             @NotNull Object enabledFeatures,
-                                             @NotNull World.Environment environment,
-                                             @NotNull Object dimensionType,
-                                             @Nullable Object generator,
-                                             @NotNull Object registryAccess,
-                                             @NotNull Object uuid) throws Exception {
-        for (final Constructor<?> c : cCraftWorldInfo.getDeclaredConstructors()) {
-            if (c.getParameterCount() == 9) {
-                c.setAccessible(true);
-                return c.newInstance(name, worldKey, seed, enabledFeatures, environment,
-                        dimensionType, generator, registryAccess, uuid);
-            }
-        }
-        throw new IllegalStateException("CraftWorldInfo 9-arg constructor not found");
     }
 }
