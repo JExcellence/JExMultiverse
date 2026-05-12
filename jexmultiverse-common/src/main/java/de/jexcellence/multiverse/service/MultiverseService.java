@@ -183,6 +183,26 @@ public class MultiverseService implements MultiverseProvider {
         var effectiveRoadWidth = type == MVWorldType.PLOT ? roadWidthOverride : null;
         var effectiveSchematic = type == MVWorldType.PLOT ? schematicName : null;
 
+        // On Folia, Bukkit.createWorld throws UOE — route through the NMS-based
+        // ensureViaNms path (same code path used by ensureWorld). The PLOT
+        // overrides (plotSize/roadWidth/schematic) aren't yet plumbed through
+        // the NMS factory; for now they're silently dropped on Folia and the
+        // world is created with the type's default generator. Warn so the
+        // operator knows.
+        if (ServerDetector.detect() instanceof ServerType.Folia) {
+            if (effectivePlotSize != null || effectiveRoadWidth != null || effectiveSchematic != null) {
+                logger.warn("[worlds] PLOT overrides (size/road/schematic) not yet supported on Folia — creating '{}' with defaults",
+                        name);
+            }
+            return ensureViaNms(name, environment, type).thenCompose(snapOpt -> {
+                if (snapOpt.isEmpty()) {
+                    return CompletableFuture.completedFuture(Optional.empty());
+                }
+                // Re-hydrate from cache (ensureViaNms persists via adoptLoadedWorld)
+                return CompletableFuture.completedFuture(worldFactory.getCachedWorld(name));
+            });
+        }
+
         var future = new CompletableFuture<Optional<MVWorld>>();
         // PlatformScheduler.runSync hits GlobalRegionScheduler on Folia
         // (where Bukkit.createWorld requires the global region) and the

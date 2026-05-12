@@ -97,7 +97,12 @@ final class FoliaNmsWorldFactory {
         final Class<?> cWorldDimData     = cls("net.minecraft.server.dedicated.DedicatedServerProperties$WorldDimensionData");
         final Class<?> cIdentifier       = cls("net.minecraft.resources.Identifier"); // Paper-mapped (= ResourceLocation in vanilla)
         final Class<?> cRegistry         = cls("net.minecraft.core.Registry");
-        final Class<?> cSavedDataStorage = cls("net.minecraft.world.level.storage.SavedDataStorage");
+        // SavedDataStorage is a recent Paper refactor; older / parallel Paper builds
+        // still ship the vanilla-named DimensionDataStorage at the same location.
+        // Both have the same 3-arg constructor (Path, DataFixer, RegistryAccess).
+        final Class<?> cSavedDataStorage = clsAny(
+                "net.minecraft.world.level.storage.SavedDataStorage",
+                "net.minecraft.world.level.storage.DimensionDataStorage");
         final Class<?> cLevelResource    = cls("net.minecraft.world.level.storage.LevelResource");
         final Class<?> cCraftWorldInfo   = cls("org.bukkit.craftbukkit.generator.CraftWorldInfo");
         final Class<?> cFeatureHooks     = cls("io.papermc.paper.FeatureHooks");
@@ -245,11 +250,23 @@ final class FoliaNmsWorldFactory {
         final Constructor<?> sdsCtor = findConstructor(cSavedDataStorage, 3); // (Path, DataFixer, RegistryAccess)
         final Object savedDataStorage = sdsCtor.newInstance(dataPath, dataFixer, consoleRegistryAccess);
 
-        // Persist WorldGenSettings into the SavedDataStorage (TheNextLvl does this)
-        final Object wgsType = field(cWorldGenSettings, "TYPE");
-        cSavedDataStorage.getMethod("set", wgsType.getClass(), Object.class)
-                .invoke(savedDataStorage, wgsType,
-                        wgsCtor.newInstance(effectiveOptions, dimensionsM.invoke(genSettings)));
+        // Persist WorldGenSettings into the storage. This is a best-effort
+        // step — TheNextLvl does it on the new SavedDataStorage API, but
+        // older Paper builds with DimensionDataStorage don't have the
+        // typed set(Type, T) call. If we can't write it, the data layer
+        // will populate on first save instead.
+        try {
+            final Object wgsType = field(cWorldGenSettings, "TYPE");
+            cSavedDataStorage.getMethod("set", wgsType.getClass(), Object.class)
+                    .invoke(savedDataStorage, wgsType,
+                            wgsCtor.newInstance(effectiveOptions, dimensionsM.invoke(genSettings)));
+        } catch (final Throwable nonFatal) {
+            // Log via stderr; the JExLogger isn't reachable from here. The
+            // world will still create — this just defers WorldGenSettings
+            // persistence to the next save tick.
+            System.err.println("[JExMultiverse] [folia-nms] WorldGenSettings preseed skipped (non-fatal): "
+                    + nonFatal.getMessage());
+        }
 
         // CustomSpawner list — empty for non-overworld
         // TheNextLvl uses a non-empty list for overworld (Phantom, Patrol, Cat, Siege, WanderingTrader);
@@ -322,6 +339,18 @@ final class FoliaNmsWorldFactory {
                 throw new IllegalStateException("NMS class not found: " + name, ex);
             }
         });
+    }
+
+    /**
+     * Tries multiple candidate class names in order. Returns the first one
+     * that resolves; throws if none are present.
+     */
+    private static Class<?> clsAny(@NotNull String... candidates) {
+        for (final String name : candidates) {
+            try { return Class.forName(name); }
+            catch (final ClassNotFoundException ignored) { /* try next */ }
+        }
+        throw new IllegalStateException("None of these NMS classes resolved: " + String.join(", ", candidates));
     }
 
     private static Object field(@NotNull Class<?> owner, @NotNull String fieldName) {
