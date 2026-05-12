@@ -105,8 +105,7 @@ final class FoliaNmsWorldFactory {
         };
         final Object registryAccess = cMinecraftServer.getMethod("registryAccess").invoke(console);
         final Object stemRegistry = invokeLookupOrThrow(registryAccess, stemRegistryKey);
-        final Object templateStem = cRegistry.getMethod("getValue", cResourceKey)
-                .invoke(stemRegistry, templateStemKey);
+        final Object templateStem = registryLookup(stemRegistry, templateStemKey, cResourceKey);
         if (templateStem == null) {
             throw new IllegalStateException("Stem template not found in registry for env " + environment);
         }
@@ -329,6 +328,63 @@ final class FoliaNmsWorldFactory {
             }
         }
         throw new IllegalStateException("Field not found on " + instance.getClass() + ": " + fieldName);
+    }
+
+    /**
+     * Looks up a value in a {@code Registry} by {@code ResourceKey}. Tries
+     * the standard {@code getValue(ResourceKey)} first, then falls back to
+     * walking declared methods looking for a single-arg method whose
+     * parameter type is assignable from {@code ResourceKey} — this catches
+     * Paper-internal renames (e.g. {@code getValueOrThrow}, {@code get},
+     * {@code getOrThrow}) and erasure quirks where {@code getMethod} can't
+     * resolve the generic-parameter override.
+     */
+    private static Object registryLookup(@NotNull Object registry,
+                                          @NotNull Object resourceKey,
+                                          @NotNull Class<?> cResourceKey) throws Exception {
+        // Fast path
+        try {
+            final Method m = registry.getClass().getMethod("getValue", cResourceKey);
+            return m.invoke(registry, resourceKey);
+        } catch (final NoSuchMethodException ignored) { /* fall through */ }
+
+        // Try common alternatives by name
+        for (final String candidateName : new String[]{ "getValue", "getOrThrow", "get", "getValueOrThrow" }) {
+            Class<?> c = registry.getClass();
+            while (c != null) {
+                for (final Method m : c.getDeclaredMethods()) {
+                    if (!m.getName().equals(candidateName)) continue;
+                    if (m.getParameterCount() != 1) continue;
+                    final Class<?> paramType = m.getParameterTypes()[0];
+                    if (!paramType.isAssignableFrom(cResourceKey)) continue;
+                    m.setAccessible(true);
+                    final Object result = m.invoke(registry, resourceKey);
+                    // For Optional return, unwrap
+                    if (result != null && result.getClass().getName().equals("java.util.Optional")) {
+                        return ((java.util.Optional<?>) result).orElse(null);
+                    }
+                    return result;
+                }
+                c = c.getSuperclass();
+            }
+            // Also walk interfaces
+            for (final Class<?> i : registry.getClass().getInterfaces()) {
+                for (final Method m : i.getMethods()) {
+                    if (!m.getName().equals(candidateName)) continue;
+                    if (m.getParameterCount() != 1) continue;
+                    final Class<?> paramType = m.getParameterTypes()[0];
+                    if (!paramType.isAssignableFrom(cResourceKey)) continue;
+                    m.setAccessible(true);
+                    final Object result = m.invoke(registry, resourceKey);
+                    if (result != null && result.getClass().getName().equals("java.util.Optional")) {
+                        return ((java.util.Optional<?>) result).orElse(null);
+                    }
+                    return result;
+                }
+            }
+        }
+        throw new IllegalStateException("No suitable get-by-ResourceKey method found on "
+                + registry.getClass().getName());
     }
 
     /** RegistryAccess#lookupOrThrow(ResourceKey<Registry<X>>) — found by name+arity. */
