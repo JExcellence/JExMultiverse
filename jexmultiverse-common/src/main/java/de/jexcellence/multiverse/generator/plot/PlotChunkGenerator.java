@@ -61,48 +61,53 @@ public class PlotChunkGenerator extends ChunkGenerator {
         int startX = chunkX << 4;
         int startZ = chunkZ << 4;
 
-        // Walls run along the plot edges (the column adjacent to the road on
-        // each side of the plot), 3 blocks tall above the plot surface so
-        // they're clearly visible from inside and outside the plot.
         for (int x = 0; x < 16; x++) {
             for (int z = 0; z < 16; z++) {
-                int worldX = startX + x;
-                int worldZ = startZ + z;
+                generateColumn(chunkData, x, z, startX + x, startZ + z);
+            }
+        }
+    }
 
-                int modX = Math.floorMod(worldX, totalInterval);
-                int modZ = Math.floorMod(worldZ, totalInterval);
+    private void generateColumn(@NotNull ChunkData chunkData, int x, int z, int worldX, int worldZ) {
+        int modX = Math.floorMod(worldX, totalInterval);
+        int modZ = Math.floorMod(worldZ, totalInterval);
 
-                boolean isRoadX = modX >= plotSize;
-                boolean isRoadZ = modZ >= plotSize;
-                // Walls live on the ROAD side now — first / last road column
-                // along each axis. That keeps the plot's full plot-size by
-                // plot-size square free for the owner; previously the walls
-                // ate two columns of plot interior.
-                boolean isRoadEdgeX = isRoadX && (modX == plotSize || modX == totalInterval - 1);
-                boolean isRoadEdgeZ = isRoadZ && (modZ == plotSize || modZ == totalInterval - 1);
+        boolean isRoadX = modX >= plotSize;
+        boolean isRoadZ = modZ >= plotSize;
 
-                if (isRoadX || isRoadZ) {
-                    // Road: stone substrate, road-material surface, optional
-                    // wall on the road-edge columns.
-                    for (int y = 0; y < plotHeight; y++) {
-                        chunkData.setBlock(x, y, z, Material.STONE);
-                    }
-                    chunkData.setBlock(x, plotHeight, z, roadMaterial);
-                    if (wallHeight > 0 && (isRoadEdgeX || isRoadEdgeZ)) {
-                        for (int dy = 1; dy <= wallHeight; dy++) {
-                            chunkData.setBlock(x, plotHeight + dy, z, wallMaterial);
-                        }
-                    }
-                } else {
-                    // Plot interior: pure layered terrain — no walls inside.
-                    for (PlotLayer layer : layers) {
-                        for (int y = layer.minY(); y <= layer.maxY() && y <= plotHeight; y++) {
-                            chunkData.setBlock(x, y, z, layer.material());
-                        }
-                    }
-                }
+        chunkData.setBlock(x, 0, z, Material.BEDROCK);
 
-                chunkData.setBlock(x, 0, z, Material.BEDROCK);
+        if (isRoadX || isRoadZ) {
+            generateRoadColumn(chunkData, x, z, modX, modZ, isRoadX, isRoadZ);
+        } else {
+            generatePlotColumn(chunkData, x, z);
+        }
+    }
+
+    private void generateRoadColumn(@NotNull ChunkData chunkData, int x, int z,
+                                     int modX, int modZ, boolean isRoadX, boolean isRoadZ) {
+        for (int y = 0; y < plotHeight; y++) {
+            chunkData.setBlock(x, y, z, Material.STONE);
+        }
+        chunkData.setBlock(x, plotHeight, z, roadMaterial);
+
+        if (wallHeight > 0 && isWallEdge(modX, modZ, isRoadX, isRoadZ)) {
+            for (int dy = 1; dy <= wallHeight; dy++) {
+                chunkData.setBlock(x, plotHeight + dy, z, wallMaterial);
+            }
+        }
+    }
+
+    private boolean isWallEdge(int modX, int modZ, boolean isRoadX, boolean isRoadZ) {
+        boolean isRoadEdgeX = isRoadX && (modX == plotSize || modX == totalInterval - 1);
+        boolean isRoadEdgeZ = isRoadZ && (modZ == plotSize || modZ == totalInterval - 1);
+        return isRoadEdgeX || isRoadEdgeZ;
+    }
+
+    private void generatePlotColumn(@NotNull ChunkData chunkData, int x, int z) {
+        for (PlotLayer layer : layers) {
+            for (int y = layer.minY(); y <= layer.maxY() && y <= plotHeight; y++) {
+                chunkData.setBlock(x, y, z, layer.material());
             }
         }
     }

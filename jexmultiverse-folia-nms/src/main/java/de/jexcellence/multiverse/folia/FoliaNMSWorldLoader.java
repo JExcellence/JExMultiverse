@@ -143,13 +143,14 @@ public final class FoliaNMSWorldLoader implements RuntimeWorldLoader {
                     break;
                 }
             }
-            if (owner == null && plugins.length > 0) {
-                owner = plugins[0];
-            }
             if (owner == null) {
-                // No plugins loaded — run inline as last resort
-                task.run();
-                return;
+                if (plugins.length > 0) {
+                    owner = plugins[0];
+                } else {
+                    // No plugins loaded — run inline as last resort
+                    task.run();
+                    return;
+                }
             }
 
             final Method execute = scheduler.getClass()
@@ -159,7 +160,7 @@ public final class FoliaNMSWorldLoader implements RuntimeWorldLoader {
             // Not Folia — fall back to inline execution
             task.run();
         } catch (final Throwable ex) {
-            throw new IllegalStateException("Failed to schedule world load on global region", ex);
+            throw new NmsWorldLoadException("Failed to schedule world load on global region", ex);
         }
     }
 
@@ -212,7 +213,7 @@ public final class FoliaNMSWorldLoader implements RuntimeWorldLoader {
                 }
                 final World w = Bukkit.createWorld(creator);
                 if (w == null) {
-                    throw new IllegalStateException("Bukkit.createWorld returned null for '" + worldName + "'");
+                    throw new NmsWorldLoadException("Bukkit.createWorld returned null for '" + worldName + "'");
                 }
                 return w;
             }
@@ -247,40 +248,47 @@ public final class FoliaNMSWorldLoader implements RuntimeWorldLoader {
             try {
                 getServerMethod = server.getClass().getMethod("getServer");
             } catch (final NoSuchMethodException ex) {
-                throw new UnsupportedOperationException(
+                throw new NmsWorldLoadException(
                         "CraftServer.getServer() not found — incompatible server build", ex);
             }
             final Object minecraftServer = getServerMethod.invoke(server);
 
             // For NORMAL environment, attempt companion world creation via parent ServerLevel
             if (environment == World.Environment.NORMAL) {
-                try {
-                    final World companionWorld = createCompanionWorld(minecraftServer, worldName, generator);
-                    if (companionWorld != null) {
-                        return companionWorld;
-                    }
-                } catch (final Exception ex) {
-                    // Companion creation failed, fall through to standard loading
-                    // This is expected if the method doesn't exist or if there's an issue
+                final World companionWorld = tryCompanionWorldCreation(minecraftServer, worldName, generator);
+                if (companionWorld != null) {
+                    return companionWorld;
                 }
             }
 
             // Fall back to Folia's standard world loading methods
+            return loadViaFallbackMethods(minecraftServer, worldName);
+        }
+
+        private static @Nullable World tryCompanionWorldCreation(@NotNull Object minecraftServer,
+                                                                   @NotNull String worldName,
+                                                                   @Nullable ChunkGenerator generator) {
+            try {
+                return createCompanionWorld(minecraftServer, worldName, generator);
+            } catch (final Exception ex) {
+                // Companion creation failed — fall through to standard loading
+                return null;
+            }
+        }
+
+        private static @NotNull World loadViaFallbackMethods(@NotNull Object minecraftServer,
+                                                               @NotNull String worldName) throws Exception {
             final String[] candidateMethodNames = {"loadLevel", "prepareLevel", "createServerLevel"};
             for (final String name : candidateMethodNames) {
                 final Method m = findMethod(minecraftServer.getClass(), name, String.class);
-                if (m != null) {
-                    final Object nmsLevel = m.invoke(minecraftServer, worldName);
-                    final World bukkitWorld = nmsLevelToBukkit(nmsLevel);
-                    if (bukkitWorld != null) {
-                        // Note: Generator must be set via bukkit.yml for this path
-                        // The generator parameter is only used for companion creation above
-                        return bukkitWorld;
-                    }
+                if (m == null) continue;
+                final Object nmsLevel = m.invoke(minecraftServer, worldName);
+                final World bukkitWorld = nmsLevelToBukkit(nmsLevel);
+                if (bukkitWorld != null) {
+                    return bukkitWorld;
                 }
             }
-
-            throw new UnsupportedOperationException(
+            throw new NmsWorldLoadException(
                     "Folia build does not expose a runtime world-load entry point. "
                             + "Tried: companion creation, loadLevel, prepareLevel, createServerLevel on "
                             + minecraftServer.getClass().getName()
@@ -306,7 +314,7 @@ public final class FoliaNMSWorldLoader implements RuntimeWorldLoader {
             // Get the default world (parent for NORMAL companions)
             final World defaultWorld = Bukkit.getWorlds().isEmpty() ? null : Bukkit.getWorlds().get(0);
             if (defaultWorld == null) {
-                throw new IllegalStateException("No default world available for companion world creation");
+                throw new NmsWorldLoadException("No default world available for companion world creation");
             }
 
             // Get the parent ServerLevel via CraftWorld.getHandle()
@@ -316,7 +324,7 @@ public final class FoliaNMSWorldLoader implements RuntimeWorldLoader {
             }
             final Object parentLevel = getHandleMethod.invoke(defaultWorld);
             if (parentLevel == null) {
-                throw new IllegalStateException("Parent ServerLevel is null");
+                throw new NmsWorldLoadException("Parent ServerLevel is null");
             }
 
             // Try to find and invoke companion world creation method
@@ -394,7 +402,9 @@ public final class FoliaNMSWorldLoader implements RuntimeWorldLoader {
                         }
                     }
                     if (match) {
-                        m.setAccessible(true);
+                        if (!java.lang.reflect.Modifier.isPublic(m.getModifiers())) {
+                            m.setAccessible(true);
+                        }
                         return m;
                     }
                 }

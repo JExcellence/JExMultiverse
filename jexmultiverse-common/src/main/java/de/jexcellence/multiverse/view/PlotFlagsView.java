@@ -4,7 +4,6 @@ import de.jexcellence.jexplatform.view.BaseView;
 import de.jexcellence.jextranslate.R18nManager;
 import de.jexcellence.multiverse.api.MultiverseProvider;
 import de.jexcellence.multiverse.database.entity.Plot;
-import de.jexcellence.multiverse.service.MultiverseService;
 import de.jexcellence.multiverse.service.PlotFlag;
 import de.jexcellence.multiverse.service.PlotService;
 import me.devnatan.inventoryframework.context.OpenContext;
@@ -31,10 +30,11 @@ import java.util.Map;
  */
 public class PlotFlagsView extends BaseView {
 
+    private static final String KEY_VALUE = "value";
+
     private final State<JavaPlugin>        pluginState  = initialState(PlotMenuView.DATA_PLUGIN);
     private final State<Plot>              plotState    = initialState(PlotMenuView.DATA_PLOT);
     private final State<PlotService>       serviceState = initialState(PlotMenuView.DATA_SERVICE);
-    private final State<MultiverseService> mvState      = initialState(PlotMenuView.DATA_MULTIVERSE);
 
     public PlotFlagsView() {
         super(PlotMenuView.class);
@@ -119,11 +119,11 @@ public class PlotFlagsView extends BaseView {
         return createItem(
                 material,
                 i18n("flag." + flag.key() + ".name", player)
-                        .withPlaceholder("value", on ? "enabled" : "disabled")
+                        .withPlaceholder(KEY_VALUE, on ? "enabled" : "disabled")
                         .build().component(),
                 i18n("flag." + flag.key() + ".lore", player)
                         .withPlaceholders(Map.of(
-                                "value", on ? "enabled" : "disabled",
+                                KEY_VALUE, on ? "enabled" : "disabled",
                                 "source", override ? "override" : "default"
                         )).build().children()
         );

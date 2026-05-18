@@ -20,10 +20,9 @@ tasks.processResources {
 dependencies {
     implementation(project(":JExMultiverse:jexmultiverse-api"))
 
-    // Paper
+    // Paper / Bukkit
     compileOnly(libs.paper.api)
     compileOnly(libs.bundles.adventure)
-
     compileOnly(libs.folialib)
     compileOnly(libs.placeholderapi)
     compileOnly(libs.vault.api) { isTransitive = false }
@@ -34,12 +33,12 @@ dependencies {
     compileOnly(libs.slf4j.jdk14)
     compileOnly(libs.jboss.logging)
 
-    // DB & platform (compileOnly)
+    // DB & platform
     compileOnly(platform(libs.hibernate.platform))
     compileOnly(libs.bundles.hibernate)
     compileOnly(libs.jehibernate)
 
-    // Misc (compileOnly)
+    // Misc
     compileOnly(libs.caffeine)
     compileOnly(libs.jackson.core)
     compileOnly(libs.jackson.databind)
@@ -47,8 +46,7 @@ dependencies {
     compileOnly(libs.jackson.jsr310)
     compileOnly(libs.java.uuid)
     compileOnly(libs.xseries)
-    compileOnly(libs.worldedit.bukkit) // Soft-dep: enables .schem/.schematic loading
-                                        // when WorldEdit (or FAWE) is installed.
+    compileOnly(libs.worldedit.bukkit)
 
     compileOnly(libs.bundles.jexcellence) {
         exclude(group = "de.jexcellence.hibernate")
@@ -57,7 +55,7 @@ dependencies {
     compileOnly(libs.bundles.jeconfig) { isTransitive = false }
     compileOnly(libs.bundles.inventory)
 
-    // Test dependencies
+    // Test
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter.api)
     testRuntimeOnly(libs.junit.jupiter.engine)

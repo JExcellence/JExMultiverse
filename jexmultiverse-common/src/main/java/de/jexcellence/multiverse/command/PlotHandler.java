@@ -33,9 +33,20 @@ import java.util.Map;
  */
 public final class PlotHandler {
 
+    private static final String KEY_NOT_ON_PLOT  = "plot.error.not_on_plot";
+    private static final String KEY_NOT_OWNER    = "plot.error.not_owner";
+    private static final String KEY_BYPASS       = "jexplots.bypass.protect";
+    private static final String KEY_OWNER_NAME   = "owner_name";
+    private static final String KEY_GRID_X       = "grid_x";
+    private static final String KEY_GRID_Z       = "grid_z";
+    private static final String KEY_WORLD_NAME   = "world_name";
+    private static final String KEY_TARGET_NAME  = "target_name";
+    private static final String KEY_COUNT        = "count";
+    private static final String KEY_VALUE        = "value";
+    private static final String KEY_ALIAS        = "alias";
+
     private final PlotService plots;
     private final MultiverseService mv;
-    private final WorldFactory worldFactory;
     private final ViewFrame viewFrame;
     private final JavaPlugin plugin;
 
@@ -46,7 +57,6 @@ public final class PlotHandler {
                        @NotNull JavaPlugin plugin) {
         this.plots = plots;
         this.mv = mv;
-        this.worldFactory = worldFactory;
         this.viewFrame = viewFrame;
         this.plugin = plugin;
     }
@@ -89,14 +99,14 @@ public final class PlotHandler {
 
         var coord = mv.plotAt(player.getLocation()).orElse(null);
         if (coord == null) {
-            r18n().msg("plot.error.not_on_plot").prefix().send(player);
+            r18n().msg(KEY_NOT_ON_PLOT).prefix().send(player);
             return;
         }
 
         var existing = plots.getPlot(coord.world(), coord.gridX(), coord.gridZ()).orElse(null);
         if (existing != null) {
             r18n().msg("plot.error.already_claimed").prefix()
-                    .with("owner_name", existing.getOwnerName())
+                    .with(KEY_OWNER_NAME, existing.getOwnerName())
                     .send(player);
             return;
         }
@@ -114,9 +124,9 @@ public final class PlotHandler {
         plots.claim(player, player.getLocation()).thenAccept(opt -> PlatformScheduler.of(plugin).runSync(() -> {
             if (opt.isPresent()) {
                 r18n().msg("plot.claimed").prefix()
-                        .with("grid_x", String.valueOf(coord.gridX()))
-                        .with("grid_z", String.valueOf(coord.gridZ()))
-                        .with("world_name", coord.world())
+                        .with(KEY_GRID_X, String.valueOf(coord.gridX()))
+                        .with(KEY_GRID_Z, String.valueOf(coord.gridZ()))
+                        .with(KEY_WORLD_NAME, coord.world())
                         .send(player);
             } else {
                 r18n().msg("plot.error.claim_failed").prefix().send(player);
@@ -132,20 +142,20 @@ public final class PlotHandler {
 
         var plot = plots.getPlotAt(player.getLocation()).orElse(null);
         if (plot == null) {
-            r18n().msg("plot.error.not_on_plot").prefix().send(player);
+            r18n().msg(KEY_NOT_ON_PLOT).prefix().send(player);
             return;
         }
-        if (!plot.isOwner(player.getUniqueId()) && !player.hasPermission("jexplots.bypass.protect")) {
-            r18n().msg("plot.error.not_owner").prefix()
-                    .with("owner_name", plot.getOwnerName()).send(player);
+        if (!plot.isOwner(player.getUniqueId()) && !player.hasPermission(KEY_BYPASS)) {
+            r18n().msg(KEY_NOT_OWNER).prefix()
+                    .with(KEY_OWNER_NAME, plot.getOwnerName()).send(player);
             return;
         }
 
         plots.unclaim(plot).thenAccept(success -> PlatformScheduler.of(plugin).runSync(() -> {
             if (success) {
                 r18n().msg("plot.unclaimed").prefix()
-                        .with("grid_x", String.valueOf(plot.getGridX()))
-                        .with("grid_z", String.valueOf(plot.getGridZ()))
+                        .with(KEY_GRID_X, String.valueOf(plot.getGridX()))
+                        .with(KEY_GRID_Z, String.valueOf(plot.getGridZ()))
                         .send(player);
             } else {
                 r18n().msg("plot.error.unclaim_failed").prefix().send(player);
@@ -161,7 +171,7 @@ public final class PlotHandler {
 
         var plot = plots.getPlotAt(player.getLocation()).orElse(null);
         if (plot == null) {
-            r18n().msg("plot.error.not_on_plot").prefix().send(player);
+            r18n().msg(KEY_NOT_ON_PLOT).prefix().send(player);
             return;
         }
 
@@ -170,12 +180,12 @@ public final class PlotHandler {
         var deniedCount = members.values().stream().filter(r -> r == MemberRole.DENIED).count();
 
         r18n().msg("plot.info_header").prefix()
-                .with("grid_x", String.valueOf(plot.getGridX()))
-                .with("grid_z", String.valueOf(plot.getGridZ()))
-                .with("world_name", plot.getWorldName())
+                .with(KEY_GRID_X, String.valueOf(plot.getGridX()))
+                .with(KEY_GRID_Z, String.valueOf(plot.getGridZ()))
+                .with(KEY_WORLD_NAME, plot.getWorldName())
                 .send(player);
         r18n().msg("plot.info_owner")
-                .with("owner_name", plot.getOwnerName())
+                .with(KEY_OWNER_NAME, plot.getOwnerName())
                 .send(player);
         r18n().msg("plot.info_members")
                 .with("trusted", String.valueOf(trustedCount))
@@ -195,11 +205,11 @@ public final class PlotHandler {
         if (player == null) return;
         var plot = plots.getPlotAt(player.getLocation()).orElse(null);
         if (plot == null) {
-            r18n().msg("plot.error.not_on_plot").prefix().send(player);
+            r18n().msg(KEY_NOT_ON_PLOT).prefix().send(player);
             return;
         }
-        if (!plot.isOwner(player.getUniqueId()) && !player.hasPermission("jexplots.bypass.protect")) {
-            r18n().msg("plot.error.not_owner").prefix().with("owner_name", plot.getOwnerName()).send(player);
+        if (!plot.isOwner(player.getUniqueId()) && !player.hasPermission(KEY_BYPASS)) {
+            r18n().msg(KEY_NOT_OWNER).prefix().with(KEY_OWNER_NAME, plot.getOwnerName()).send(player);
             return;
         }
 
@@ -212,7 +222,7 @@ public final class PlotHandler {
         plots.setMember(plot, target, role).thenAccept(ok -> PlatformScheduler.of(plugin).runSync(() -> {
             var key = role == MemberRole.TRUSTED ? "plot.trusted" : "plot.denied";
             r18n().msg(ok ? key : "plot.error.member_failed").prefix()
-                    .with("target_name", String.valueOf(target.getName()))
+                    .with(KEY_TARGET_NAME, String.valueOf(target.getName()))
                     .send(player);
         }));
     }
@@ -222,11 +232,11 @@ public final class PlotHandler {
         if (player == null) return;
         var plot = plots.getPlotAt(player.getLocation()).orElse(null);
         if (plot == null) {
-            r18n().msg("plot.error.not_on_plot").prefix().send(player);
+            r18n().msg(KEY_NOT_ON_PLOT).prefix().send(player);
             return;
         }
-        if (!plot.isOwner(player.getUniqueId()) && !player.hasPermission("jexplots.bypass.protect")) {
-            r18n().msg("plot.error.not_owner").prefix().with("owner_name", plot.getOwnerName()).send(player);
+        if (!plot.isOwner(player.getUniqueId()) && !player.hasPermission(KEY_BYPASS)) {
+            r18n().msg(KEY_NOT_OWNER).prefix().with(KEY_OWNER_NAME, plot.getOwnerName()).send(player);
             return;
         }
 
@@ -234,14 +244,14 @@ public final class PlotHandler {
         var current = plots.roleOf(plot, target.getUniqueId()).orElse(null);
         if (current != role) {
             r18n().msg("plot.error.member_not_set").prefix()
-                    .with("target_name", String.valueOf(target.getName())).send(player);
+                    .with(KEY_TARGET_NAME, String.valueOf(target.getName())).send(player);
             return;
         }
 
         plots.removeMember(plot, target.getUniqueId()).thenAccept(ok -> PlatformScheduler.of(plugin).runSync(() -> {
             var key = role == MemberRole.TRUSTED ? "plot.untrusted" : "plot.undenied";
             r18n().msg(ok ? key : "plot.error.member_failed").prefix()
-                    .with("target_name", String.valueOf(target.getName()))
+                    .with(KEY_TARGET_NAME, String.valueOf(target.getName()))
                     .send(player);
         }));
     }
@@ -262,7 +272,7 @@ public final class PlotHandler {
         if (idx < 0 || idx >= owned.size()) {
             r18n().msg("plot.error.no_such_home").prefix()
                     .with("n", String.valueOf(idx + 1))
-                    .with("count", String.valueOf(owned.size()))
+                    .with(KEY_COUNT, String.valueOf(owned.size()))
                     .send(player);
             return;
         }
@@ -271,7 +281,7 @@ public final class PlotHandler {
         var bukkit = Bukkit.getWorld(plot.getWorldName());
         if (bukkit == null) {
             r18n().msg("multiverse.world_not_loaded").prefix()
-                    .with("world_name", plot.getWorldName()).send(player);
+                    .with(KEY_WORLD_NAME, plot.getWorldName()).send(player);
             return;
         }
         var bounds = mv.plotBounds(plot.getWorldName(), plot.getGridX(), plot.getGridZ()).orElse(null);
@@ -281,9 +291,9 @@ public final class PlotHandler {
         PlatformScheduler.of(plugin).runSync(() -> {
             player.teleportAsync(loc);
             r18n().msg("plot.teleported").prefix()
-                    .with("grid_x", String.valueOf(plot.getGridX()))
-                    .with("grid_z", String.valueOf(plot.getGridZ()))
-                    .with("world_name", plot.getWorldName())
+                    .with(KEY_GRID_X, String.valueOf(plot.getGridX()))
+                    .with(KEY_GRID_Z, String.valueOf(plot.getGridZ()))
+                    .with(KEY_WORLD_NAME, plot.getWorldName())
                     .send(player);
         });
     }
@@ -307,16 +317,16 @@ public final class PlotHandler {
 
         var limit = plots.getClaimLimit(player);
         r18n().msg("plot.list_header").prefix()
-                .with("count", String.valueOf(owned.size()))
+                .with(KEY_COUNT, String.valueOf(owned.size()))
                 .with("max", limit == Integer.MAX_VALUE ? "unlimited" : String.valueOf(limit))
                 .send(sender);
         for (int i = 0; i < owned.size(); i++) {
             var p = owned.get(i);
             r18n().msg("plot.list_entry")
                     .with("n", String.valueOf(i + 1))
-                    .with("world_name", p.getWorldName())
-                    .with("grid_x", String.valueOf(p.getGridX()))
-                    .with("grid_z", String.valueOf(p.getGridZ()))
+                    .with(KEY_WORLD_NAME, p.getWorldName())
+                    .with(KEY_GRID_X, String.valueOf(p.getGridX()))
+                    .with(KEY_GRID_Z, String.valueOf(p.getGridZ()))
                     .send(sender);
         }
     }
@@ -329,11 +339,11 @@ public final class PlotHandler {
 
         var plot = plots.getPlotAt(player.getLocation()).orElse(null);
         if (plot == null) {
-            r18n().msg("plot.error.not_on_plot").prefix().send(player);
+            r18n().msg(KEY_NOT_ON_PLOT).prefix().send(player);
             return;
         }
-        if (!plot.isOwner(player.getUniqueId()) && !player.hasPermission("jexplots.bypass.protect")) {
-            r18n().msg("plot.error.not_owner").prefix().with("owner_name", plot.getOwnerName()).send(player);
+        if (!plot.isOwner(player.getUniqueId()) && !player.hasPermission(KEY_BYPASS)) {
+            r18n().msg(KEY_NOT_OWNER).prefix().with(KEY_OWNER_NAME, plot.getOwnerName()).send(player);
             return;
         }
 
@@ -341,15 +351,15 @@ public final class PlotHandler {
         switch (action) {
             case LIST -> {
                 r18n().msg("plot.flag_list_header").prefix()
-                        .with("grid_x", String.valueOf(plot.getGridX()))
-                        .with("grid_z", String.valueOf(plot.getGridZ()))
+                        .with(KEY_GRID_X, String.valueOf(plot.getGridX()))
+                        .with(KEY_GRID_Z, String.valueOf(plot.getGridZ()))
                         .send(player);
                 for (var f : PlotFlag.values()) {
                     var effective = plots.getFlag(plot, f);
                     var override = plots.hasFlagOverride(plot, f);
                     r18n().msg("plot.flag_list_entry")
                             .with("flag", f.key())
-                            .with("value", String.valueOf(effective))
+                            .with(KEY_VALUE, String.valueOf(effective))
                             .with("source", override ? "override" : "default")
                             .send(player);
                 }
@@ -360,7 +370,7 @@ public final class PlotHandler {
                     r18n().msg("plot.error.flag_set_usage").prefix().send(player);
                     return;
                 }
-                var raw = ctx.get("value", String.class).orElse(null);
+                var raw = ctx.get(KEY_VALUE, String.class).orElse(null);
                 Boolean value = parseBoolean(raw);
                 if (value == null) {
                     r18n().msg("plot.error.flag_set_usage").prefix().send(player);
@@ -369,7 +379,7 @@ public final class PlotHandler {
                 plots.setFlag(plot, flag, value).thenAccept(ok -> PlatformScheduler.of(plugin).runSync(() ->
                         r18n().msg(ok ? "plot.flag_set" : "plot.error.flag_failed").prefix()
                                 .with("flag", flag.key())
-                                .with("value", String.valueOf(value))
+                                .with(KEY_VALUE, String.valueOf(value))
                                 .send(player)));
             }
             case REMOVE -> {
@@ -383,6 +393,7 @@ public final class PlotHandler {
                                 .with("flag", flag.key())
                                 .send(player)));
             }
+            default -> r18n().msg("plot.error.flag_set_usage").prefix().send(player);
         }
     }
 
@@ -403,11 +414,11 @@ public final class PlotHandler {
         if (player == null) return;
         var plot = plots.getPlotAt(player.getLocation()).orElse(null);
         if (plot == null) {
-            r18n().msg("plot.error.not_on_plot").prefix().send(player);
+            r18n().msg(KEY_NOT_ON_PLOT).prefix().send(player);
             return;
         }
-        if (!plot.isOwner(player.getUniqueId()) && !player.hasPermission("jexplots.bypass.protect")) {
-            r18n().msg("plot.error.not_owner").prefix().with("owner_name", plot.getOwnerName()).send(player);
+        if (!plot.isOwner(player.getUniqueId()) && !player.hasPermission(KEY_BYPASS)) {
+            r18n().msg(KEY_NOT_OWNER).prefix().with(KEY_OWNER_NAME, plot.getOwnerName()).send(player);
             return;
         }
 
@@ -433,7 +444,7 @@ public final class PlotHandler {
         if (player == null) return;
         var plot = plots.getPlotAt(player.getLocation()).orElse(null);
         if (plot == null) {
-            r18n().msg("plot.error.not_on_plot").prefix().send(player);
+            r18n().msg(KEY_NOT_ON_PLOT).prefix().send(player);
             return;
         }
         viewFrame.open(PlotMenuView.class, player,
@@ -448,15 +459,15 @@ public final class PlotHandler {
 
         var plot = plots.getPlotAt(player.getLocation()).orElse(null);
         if (plot == null) {
-            r18n().msg("plot.error.not_on_plot").prefix().send(player);
+            r18n().msg(KEY_NOT_ON_PLOT).prefix().send(player);
             return;
         }
-        if (!plot.isOwner(player.getUniqueId()) && !player.hasPermission("jexplots.bypass.protect")) {
-            r18n().msg("plot.error.not_owner").prefix().with("owner_name", plot.getOwnerName()).send(player);
+        if (!plot.isOwner(player.getUniqueId()) && !player.hasPermission(KEY_BYPASS)) {
+            r18n().msg(KEY_NOT_OWNER).prefix().with(KEY_OWNER_NAME, plot.getOwnerName()).send(player);
             return;
         }
 
-        var facing = player.getFacing(); // already horizontal-flattened
+        var facing = player.getFacing();
         plots.merge(player, plot, facing).thenAccept(result -> PlatformScheduler.of(plugin).runSync(() -> {
             switch (result) {
                 case OK -> r18n().msg("plot.merged").prefix()
@@ -478,11 +489,11 @@ public final class PlotHandler {
 
         var plot = plots.getPlotAt(player.getLocation()).orElse(null);
         if (plot == null) {
-            r18n().msg("plot.error.not_on_plot").prefix().send(player);
+            r18n().msg(KEY_NOT_ON_PLOT).prefix().send(player);
             return;
         }
-        if (!plot.isOwner(player.getUniqueId()) && !player.hasPermission("jexplots.bypass.protect")) {
-            r18n().msg("plot.error.not_owner").prefix().with("owner_name", plot.getOwnerName()).send(player);
+        if (!plot.isOwner(player.getUniqueId()) && !player.hasPermission(KEY_BYPASS)) {
+            r18n().msg(KEY_NOT_OWNER).prefix().with(KEY_OWNER_NAME, plot.getOwnerName()).send(player);
             return;
         }
         if (plot.getMergedGroupIdString() == null) {
@@ -501,19 +512,19 @@ public final class PlotHandler {
         var sender = ctx.sender();
         var alias = ctx.alias();
         r18n().msg("plot.help_header").send(sender);
-        if (hasPerm(sender, "jexplots.command.claim"))   r18n().msg("plot.help_claim").with("alias", alias).send(sender);
-        if (hasPerm(sender, "jexplots.command.unclaim")) r18n().msg("plot.help_unclaim").with("alias", alias).send(sender);
-        if (hasPerm(sender, "jexplots.command.info"))    r18n().msg("plot.help_info").with("alias", alias).send(sender);
-        if (hasPerm(sender, "jexplots.command.trust"))   r18n().msg("plot.help_trust").with("alias", alias).send(sender);
-        if (hasPerm(sender, "jexplots.command.untrust")) r18n().msg("plot.help_untrust").with("alias", alias).send(sender);
-        if (hasPerm(sender, "jexplots.command.deny"))    r18n().msg("plot.help_deny").with("alias", alias).send(sender);
-        if (hasPerm(sender, "jexplots.command.home"))    r18n().msg("plot.help_home").with("alias", alias).send(sender);
-        if (hasPerm(sender, "jexplots.command.list"))    r18n().msg("plot.help_list").with("alias", alias).send(sender);
-        if (hasPerm(sender, "jexplots.command.flag"))    r18n().msg("plot.help_flag").with("alias", alias).send(sender);
-        if (hasPerm(sender, "jexplots.command.merge"))   r18n().msg("plot.help_merge").with("alias", alias).send(sender);
-        if (hasPerm(sender, "jexplots.command.unmerge")) r18n().msg("plot.help_unmerge").with("alias", alias).send(sender);
-        if (hasPerm(sender, "jexplots.command.menu"))    r18n().msg("plot.help_menu").with("alias", alias).send(sender);
-        if (hasPerm(sender, "jexplots.command.border"))  r18n().msg("plot.help_border").with("alias", alias).send(sender);
+        if (hasPerm(sender, "jexplots.command.claim"))   r18n().msg("plot.help_claim").with(KEY_ALIAS, alias).send(sender);
+        if (hasPerm(sender, "jexplots.command.unclaim")) r18n().msg("plot.help_unclaim").with(KEY_ALIAS, alias).send(sender);
+        if (hasPerm(sender, "jexplots.command.info"))    r18n().msg("plot.help_info").with(KEY_ALIAS, alias).send(sender);
+        if (hasPerm(sender, "jexplots.command.trust"))   r18n().msg("plot.help_trust").with(KEY_ALIAS, alias).send(sender);
+        if (hasPerm(sender, "jexplots.command.untrust")) r18n().msg("plot.help_untrust").with(KEY_ALIAS, alias).send(sender);
+        if (hasPerm(sender, "jexplots.command.deny"))    r18n().msg("plot.help_deny").with(KEY_ALIAS, alias).send(sender);
+        if (hasPerm(sender, "jexplots.command.home"))    r18n().msg("plot.help_home").with(KEY_ALIAS, alias).send(sender);
+        if (hasPerm(sender, "jexplots.command.list"))    r18n().msg("plot.help_list").with(KEY_ALIAS, alias).send(sender);
+        if (hasPerm(sender, "jexplots.command.flag"))    r18n().msg("plot.help_flag").with(KEY_ALIAS, alias).send(sender);
+        if (hasPerm(sender, "jexplots.command.merge"))   r18n().msg("plot.help_merge").with(KEY_ALIAS, alias).send(sender);
+        if (hasPerm(sender, "jexplots.command.unmerge")) r18n().msg("plot.help_unmerge").with(KEY_ALIAS, alias).send(sender);
+        if (hasPerm(sender, "jexplots.command.menu"))    r18n().msg("plot.help_menu").with(KEY_ALIAS, alias).send(sender);
+        if (hasPerm(sender, "jexplots.command.border"))  r18n().msg("plot.help_border").with(KEY_ALIAS, alias).send(sender);
         r18n().msg("plot.help_footer").send(sender);
     }
 

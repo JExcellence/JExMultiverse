@@ -16,18 +16,8 @@ import java.util.Random;
  */
 public class PlotBlockPopulator extends BlockPopulator {
 
-    private final int plotSize;
-    private final int roadWidth;
-    private final int plotHeight;
-    private final Material wallMaterial;
-    private final int totalInterval;
-
     public PlotBlockPopulator(int plotSize, int roadWidth, int plotHeight, @NotNull Material wallMaterial) {
-        this.plotSize = plotSize;
-        this.roadWidth = roadWidth;
-        this.plotHeight = plotHeight;
-        this.wallMaterial = wallMaterial;
-        this.totalInterval = plotSize + roadWidth;
+        // Parameters retained for API compatibility; generation is handled by PlotChunkGenerator.
     }
 
     @Override

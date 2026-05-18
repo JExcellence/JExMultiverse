@@ -6,7 +6,9 @@ import de.jexcellence.jextranslate.R18nManager;
 import de.jexcellence.multiverse.api.MVWorldType;
 import de.jexcellence.multiverse.database.entity.MVWorld;
 import de.jexcellence.multiverse.factory.WorldFactory;
+import de.jexcellence.multiverse.generator.plot.PlotSchematicPopulator;
 import de.jexcellence.multiverse.service.MultiverseService;
+import de.jexcellence.multiverse.service.SchematicService;
 import de.jexcellence.multiverse.view.MultiverseEditorView;
 import de.jexcellence.multiverse.view.MultiverseListView;
 import me.devnatan.inventoryframework.ViewFrame;
@@ -18,6 +20,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Map;
+import java.util.Random;
 
 /**
  * JExCommand 2.0 handler collection for {@code /multiverse}.
@@ -38,6 +41,15 @@ import java.util.Map;
  * @since 3.0.0
  */
 public final class MultiverseHandler {
+
+    private static final String KEY_WORLD_NAME  = "world_name";
+    private static final String KEY_ENVIRONMENT = "environment";
+    private static final String KEY_SCHEMATIC   = "schematic";
+    private static final String KEY_WORLD       = "world";
+    private static final String KEY_COUNT       = "count";
+    private static final String KEY_ALIAS       = "alias";
+
+    private static final Random RANDOM = new Random();
 
     private final MultiverseService service;
     private final WorldFactory worldFactory;
@@ -103,33 +115,33 @@ public final class MultiverseHandler {
         if (worldFactory.getCachedWorld(name).isPresent()
                 || Bukkit.getWorld(name) != null) {
             r18n().msg("multiverse.world_already_exists").prefix()
-                    .with("world_name", name)
+                    .with(KEY_WORLD_NAME, name)
                     .send(sender);
             return;
         }
 
         r18n().msg("multiverse.creating_world").prefix()
-                .with("world_name", name)
+                .with(KEY_WORLD_NAME, name)
                 .send(sender);
 
         service.createWorld(name, environment, worldType, plotSize, roadWidth, schematic).thenAccept(opt -> {
             PlatformScheduler.of(plugin).runSync(() -> {
                 if (opt.isPresent()) {
                     r18n().msg("multiverse.create_success").prefix()
-                            .with("world_name", name)
-                            .with("environment", environment.name())
+                            .with(KEY_WORLD_NAME, name)
+                            .with(KEY_ENVIRONMENT, environment.name())
                             .with("type", worldType.name())
                             .send(sender);
                 } else {
                     r18n().msg("multiverse.create_failed").prefix()
-                            .with("world_name", name)
+                            .with(KEY_WORLD_NAME, name)
                             .send(sender);
                 }
             });
         }).exceptionally(ex -> {
             PlatformScheduler.of(plugin).runSync(() ->
                     r18n().msg("multiverse.create_failed").prefix()
-                            .with("world_name", name)
+                            .with(KEY_WORLD_NAME, name)
                             .send(sender));
             return null;
         });
@@ -142,25 +154,25 @@ public final class MultiverseHandler {
         var world = ctx.require("world", MVWorld.class);
 
         r18n().msg("multiverse.deleting_world").prefix()
-                .with("world_name", world.getIdentifier())
+                .with(KEY_WORLD_NAME, world.getIdentifier())
                 .send(sender);
 
         service.deleteWorld(world.getIdentifier()).thenAccept(success -> {
             PlatformScheduler.of(plugin).runSync(() -> {
                 if (success) {
                     r18n().msg("multiverse.delete_success").prefix()
-                            .with("world_name", world.getIdentifier())
+                            .with(KEY_WORLD_NAME, world.getIdentifier())
                             .send(sender);
                 } else {
                     r18n().msg("multiverse.delete_failed").prefix()
-                            .with("world_name", world.getIdentifier())
+                            .with(KEY_WORLD_NAME, world.getIdentifier())
                             .send(sender);
                 }
             });
         }).exceptionally(ex -> {
             PlatformScheduler.of(plugin).runSync(() ->
                     r18n().msg("multiverse.delete_failed").prefix()
-                            .with("world_name", world.getIdentifier())
+                            .with(KEY_WORLD_NAME, world.getIdentifier())
                             .send(sender));
             return null;
         });
@@ -192,7 +204,7 @@ public final class MultiverseHandler {
 
         if (bukkitWorld.isEmpty()) {
             r18n().msg("multiverse.world_not_loaded").prefix()
-                    .with("world_name", world.getIdentifier())
+                    .with(KEY_WORLD_NAME, world.getIdentifier())
                     .send(player);
             return;
         }
@@ -201,13 +213,13 @@ public final class MultiverseHandler {
         var target = spawnLocation != null ? spawnLocation : bukkitWorld.get().getSpawnLocation();
 
         r18n().msg("multiverse.teleporting").prefix()
-                .with("world_name", world.getIdentifier())
+                .with(KEY_WORLD_NAME, world.getIdentifier())
                 .send(player);
 
         PlatformScheduler.of(plugin).runSync(() -> {
             player.teleportAsync(target);
             r18n().msg("multiverse.teleported").prefix()
-                    .with("world_name", world.getIdentifier())
+                    .with(KEY_WORLD_NAME, world.getIdentifier())
                     .send(player);
         });
     }
@@ -220,24 +232,24 @@ public final class MultiverseHandler {
 
         if (worldFactory.isWorldLoaded(world.getIdentifier())) {
             r18n().msg("multiverse.already_loaded").prefix()
-                    .with("world_name", world.getIdentifier())
+                    .with(KEY_WORLD_NAME, world.getIdentifier())
                     .send(sender);
             return;
         }
 
         r18n().msg("multiverse.loading_world").prefix()
-                .with("world_name", world.getIdentifier())
+                .with(KEY_WORLD_NAME, world.getIdentifier())
                 .send(sender);
 
         PlatformScheduler.of(plugin).runSync(() -> {
             var loaded = worldFactory.loadWorld(world);
             if (loaded != null) {
                 r18n().msg("multiverse.load_success").prefix()
-                        .with("world_name", world.getIdentifier())
+                        .with(KEY_WORLD_NAME, world.getIdentifier())
                         .send(sender);
             } else {
                 r18n().msg("multiverse.load_failed").prefix()
-                        .with("world_name", world.getIdentifier())
+                        .with(KEY_WORLD_NAME, world.getIdentifier())
                         .send(sender);
             }
         });
@@ -264,7 +276,7 @@ public final class MultiverseHandler {
                 plugin.getLogger().log(java.util.logging.Level.SEVERE,
                         "Failed to open multiverse list view", t);
                 r18n().msg("multiverse.list_header").prefix()
-                        .with("count", String.valueOf(worlds.size()))
+                        .with(KEY_COUNT, String.valueOf(worlds.size()))
                         .send(sender);
                 if (worlds.isEmpty()) {
                     r18n().msg("multiverse.list_empty").prefix().send(sender);
@@ -279,22 +291,22 @@ public final class MultiverseHandler {
         }
 
         r18n().msg("multiverse.list_header").prefix()
-                .with("count", String.valueOf(worlds.size()))
+                .with(KEY_COUNT, String.valueOf(worlds.size()))
                 .send(sender);
 
         for (var world : worlds) {
             var loaded = worldFactory.isWorldLoaded(world.getIdentifier());
             r18n().msg("multiverse.list_entry")
-                    .with("world_name", world.getIdentifier())
+                    .with(KEY_WORLD_NAME, world.getIdentifier())
                     .with("type", world.getType().name())
-                    .with("environment", world.getEnvironment().name())
+                    .with(KEY_ENVIRONMENT, world.getEnvironment().name())
                     .with("status", loaded ? "loaded" : "unloaded")
                     .with("global_spawn", world.isGlobalizedSpawn() ? "yes" : "no")
                     .send(sender);
         }
 
         r18n().msg("multiverse.list_footer")
-                .with("count", String.valueOf(worlds.size()))
+                .with(KEY_COUNT, String.valueOf(worlds.size()))
                 .with("max", service.getMaxWorlds() < 0 ? "unlimited" : String.valueOf(service.getMaxWorlds()))
                 .send(sender);
     }
@@ -306,15 +318,15 @@ public final class MultiverseHandler {
         var world = ctx.require("world", MVWorld.class);
         if (world.getType() != MVWorldType.PLOT) {
             r18n().msg("multiverse.applyschematic_not_plot").prefix()
-                    .with("world_name", world.getIdentifier())
+                    .with(KEY_WORLD_NAME, world.getIdentifier())
                     .send(sender);
             return;
         }
 
-        var name = ctx.get("schematic", String.class).orElse(world.getSchematicName());
+        var name = ctx.get(KEY_SCHEMATIC, String.class).orElse(world.getSchematicName());
         if (name == null || name.isBlank()) {
             r18n().msg("multiverse.applyschematic_missing_name").prefix()
-                    .with("world_name", world.getIdentifier())
+                    .with(KEY_WORLD_NAME, world.getIdentifier())
                     .send(sender);
             return;
         }
@@ -322,7 +334,7 @@ public final class MultiverseHandler {
         var bukkit = Bukkit.getWorld(world.getIdentifier());
         if (bukkit == null) {
             r18n().msg("multiverse.world_not_loaded").prefix()
-                    .with("world_name", world.getIdentifier())
+                    .with(KEY_WORLD_NAME, world.getIdentifier())
                     .send(sender);
             return;
         }
@@ -330,7 +342,7 @@ public final class MultiverseHandler {
         var schematicService = worldFactory.schematics();
         if (schematicService.load(name).isEmpty()) {
             r18n().msg("multiverse.applyschematic_not_found").prefix()
-                    .with("schematic", name)
+                    .with(KEY_SCHEMATIC, name)
                     .send(sender);
             return;
         }
@@ -339,11 +351,24 @@ public final class MultiverseHandler {
         int roadWidth = worldFactory.effectiveRoadWidth(world);
         int plotHeight = worldFactory.plotConfig().plotHeight();
         int interval = plotSize + roadWidth;
-        var random = new java.util.Random();
 
-        // Iterate currently-loaded chunks and paste at the anchor of any plot
-        // whose NW corner lives in that chunk. Same coverage as the populator.
         var chunks = bukkit.getLoadedChunks();
+        int placed = placeSchematicsInChunks(chunks, schematicService, name, bukkit,
+                plotSize, roadWidth, plotHeight, interval);
+
+        r18n().msg("multiverse.applyschematic_done").prefix()
+                .with(KEY_WORLD_NAME, world.getIdentifier())
+                .with(KEY_SCHEMATIC, name)
+                .with(KEY_COUNT, String.valueOf(placed))
+                .with("chunks", String.valueOf(chunks.length))
+                .send(sender);
+    }
+
+    private int placeSchematicsInChunks(org.bukkit.Chunk @NotNull [] chunks,
+                                        @NotNull SchematicService schematicService,
+                                        @NotNull String name, @NotNull World bukkit,
+                                        int plotSize, int roadWidth, int plotHeight,
+                                        int interval) {
         int placed = 0;
         for (var chunk : chunks) {
             int chunkMinX = chunk.getX() << 4;
@@ -356,22 +381,17 @@ public final class MultiverseHandler {
                      gridZ <= Math.floorDiv(chunkMaxZ, interval); gridZ++) {
                     int anchorX = gridX * interval;
                     int anchorZ = gridZ * interval;
-                    if (anchorX < chunkMinX || anchorX > chunkMaxX) continue;
-                    if (anchorZ < chunkMinZ || anchorZ > chunkMaxZ) continue;
-                    de.jexcellence.multiverse.generator.plot.PlotSchematicPopulator.placeManually(
-                            schematicService, name, bukkit, gridX, gridZ,
-                            plotSize, roadWidth, plotHeight, random);
-                    placed++;
+                    if (anchorX >= chunkMinX && anchorX <= chunkMaxX
+                            && anchorZ >= chunkMinZ && anchorZ <= chunkMaxZ) {
+                        PlotSchematicPopulator.placeManually(
+                                schematicService, name, bukkit, gridX, gridZ,
+                                plotSize, roadWidth, plotHeight, RANDOM);
+                        placed++;
+                    }
                 }
             }
         }
-
-        r18n().msg("multiverse.applyschematic_done").prefix()
-                .with("world_name", world.getIdentifier())
-                .with("schematic", name)
-                .with("count", String.valueOf(placed))
-                .with("chunks", String.valueOf(chunks.length))
-                .send(sender);
+        return placed;
     }
 
     // ── Help ────────────────────────────────────────────────────────────────────
@@ -383,22 +403,22 @@ public final class MultiverseHandler {
         r18n().msg("multiverse.help_header").send(sender);
 
         if (hasPerm(sender, "jexmultiverse.command.create")) {
-            r18n().msg("multiverse.help_create").with("alias", alias).send(sender);
+            r18n().msg("multiverse.help_create").with(KEY_ALIAS, alias).send(sender);
         }
         if (hasPerm(sender, "jexmultiverse.command.delete")) {
-            r18n().msg("multiverse.help_delete").with("alias", alias).send(sender);
+            r18n().msg("multiverse.help_delete").with(KEY_ALIAS, alias).send(sender);
         }
         if (hasPerm(sender, "jexmultiverse.command.edit")) {
-            r18n().msg("multiverse.help_edit").with("alias", alias).send(sender);
+            r18n().msg("multiverse.help_edit").with(KEY_ALIAS, alias).send(sender);
         }
         if (hasPerm(sender, "jexmultiverse.command.teleport")) {
-            r18n().msg("multiverse.help_teleport").with("alias", alias).send(sender);
+            r18n().msg("multiverse.help_teleport").with(KEY_ALIAS, alias).send(sender);
         }
         if (hasPerm(sender, "jexmultiverse.command.load")) {
-            r18n().msg("multiverse.help_load").with("alias", alias).send(sender);
+            r18n().msg("multiverse.help_load").with(KEY_ALIAS, alias).send(sender);
         }
         if (hasPerm(sender, "jexmultiverse.command.list")) {
-            r18n().msg("multiverse.help_list").with("alias", alias).send(sender);
+            r18n().msg("multiverse.help_list").with(KEY_ALIAS, alias).send(sender);
         }
 
         r18n().msg("multiverse.help_footer").send(sender);

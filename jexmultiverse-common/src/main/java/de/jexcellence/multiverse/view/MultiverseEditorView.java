@@ -53,6 +53,10 @@ public class MultiverseEditorView extends BaseView {
     private static final String DATA_PLUGIN  = "plugin";
     private static final String DATA_WORLD   = "world";
     private static final String DATA_SERVICE = "service";
+    private static final String KEY_WORLD_NAME = "world_name";
+    private static final String KEY_VALUE      = "value";
+    private static final String VAL_ENABLED    = "enabled";
+    private static final String VAL_DISABLED   = "disabled";
 
     private final State<JavaPlugin>        pluginState  = initialState(DATA_PLUGIN);
     private final State<MVWorld>           worldState   = initialState(DATA_WORLD);
@@ -78,7 +82,7 @@ public class MultiverseEditorView extends BaseView {
 
     @Override
     protected Map<String, Object> titlePlaceholders(@NotNull me.devnatan.inventoryframework.context.OpenContext open) {
-        return Map.of("world_name", worldState.get(open).getIdentifier());
+        return Map.of(KEY_WORLD_NAME, worldState.get(open).getIdentifier());
     }
 
     @Override
@@ -101,26 +105,28 @@ public class MultiverseEditorView extends BaseView {
         var spawn = world.getFormattedSpawnLocation();
         return createItem(
                 Material.COMPASS,
-                i18n("spawn.name", player).withPlaceholder("value", spawn).build().component(),
-                i18n("spawn.lore", player).withPlaceholder("value", spawn).build().children()
+                i18n("spawn.name", player).withPlaceholder(KEY_VALUE, spawn).build().component(),
+                i18n("spawn.lore", player).withPlaceholder(KEY_VALUE, spawn).build().children()
         );
     }
 
     private ItemStack globalItem(Player player, MVWorld world) {
         var on = world.isGlobalizedSpawn();
+        var stateStr = on ? VAL_ENABLED : VAL_DISABLED;
         return createItem(
                 on ? Material.NETHER_STAR : Material.ENDER_PEARL,
-                i18n("global_spawn.name", player).withPlaceholder("value", on ? "enabled" : "disabled").build().component(),
-                i18n("global_spawn.lore", player).withPlaceholder("value", on ? "enabled" : "disabled").build().children()
+                i18n("global_spawn.name", player).withPlaceholder(KEY_VALUE, stateStr).build().component(),
+                i18n("global_spawn.lore", player).withPlaceholder(KEY_VALUE, stateStr).build().children()
         );
     }
 
     private ItemStack pvpItem(Player player, MVWorld world) {
         var on = world.isPvpEnabled();
+        var stateStr = on ? VAL_ENABLED : VAL_DISABLED;
         return createItem(
                 on ? Material.DIAMOND_SWORD : Material.WOODEN_SWORD,
-                i18n("pvp.name", player).withPlaceholder("value", on ? "enabled" : "disabled").build().component(),
-                i18n("pvp.lore", player).withPlaceholder("value", on ? "enabled" : "disabled").build().children()
+                i18n("pvp.name", player).withPlaceholder(KEY_VALUE, stateStr).build().component(),
+                i18n("pvp.lore", player).withPlaceholder(KEY_VALUE, stateStr).build().children()
         );
     }
 
@@ -129,21 +135,21 @@ public class MultiverseEditorView extends BaseView {
         var phase = bukkit == null ? "—" : timePhase(bukkit.getTime());
         return createItem(
                 Material.CLOCK,
-                i18n("time.name", player).withPlaceholder("value", phase).build().component(),
-                i18n("time.lore", player).withPlaceholder("value", phase).build().children()
+                i18n("time.name", player).withPlaceholder(KEY_VALUE, phase).build().component(),
+                i18n("time.lore", player).withPlaceholder(KEY_VALUE, phase).build().children()
         );
     }
 
     private ItemStack weatherItem(Player player, MVWorld world) {
         var bukkit = Bukkit.getWorld(world.getIdentifier());
         var phase = bukkit == null ? "—" : weatherPhase(bukkit);
-        var icon = bukkit != null && bukkit.hasStorm()
-                ? (bukkit.isThundering() ? Material.LIGHTNING_ROD : Material.WATER_BUCKET)
-                : Material.SUNFLOWER;
+        Material stormIcon = bukkit != null && bukkit.isThundering()
+                ? Material.LIGHTNING_ROD : Material.WATER_BUCKET;
+        var icon = bukkit != null && bukkit.hasStorm() ? stormIcon : Material.SUNFLOWER;
         return createItem(
                 icon,
-                i18n("weather.name", player).withPlaceholder("value", phase).build().component(),
-                i18n("weather.lore", player).withPlaceholder("value", phase).build().children()
+                i18n("weather.name", player).withPlaceholder(KEY_VALUE, phase).build().component(),
+                i18n("weather.lore", player).withPlaceholder(KEY_VALUE, phase).build().children()
         );
     }
 
@@ -152,8 +158,8 @@ public class MultiverseEditorView extends BaseView {
         var diff = bukkit == null ? "—" : bukkit.getDifficulty().name().toLowerCase();
         return createItem(
                 Material.CREEPER_HEAD,
-                i18n("difficulty.name", player).withPlaceholder("value", diff).build().component(),
-                i18n("difficulty.lore", player).withPlaceholder("value", diff).build().children()
+                i18n("difficulty.name", player).withPlaceholder(KEY_VALUE, diff).build().component(),
+                i18n("difficulty.lore", player).withPlaceholder(KEY_VALUE, diff).build().children()
         );
     }
 
@@ -161,7 +167,7 @@ public class MultiverseEditorView extends BaseView {
         return createItem(
                 Material.EMERALD,
                 i18n("save.name", player).build().component(),
-                i18n("save.lore", player).withPlaceholder("world_name", world.getIdentifier()).build().children()
+                i18n("save.lore", player).withPlaceholder(KEY_WORLD_NAME, world.getIdentifier()).build().children()
         );
     }
 
@@ -173,14 +179,14 @@ public class MultiverseEditorView extends BaseView {
         if (!p.getWorld().getName().equals(world.getIdentifier())) {
             R18nManager.getInstance()
                     .msg("multiverse_editor_ui.spawn.wrong_world").prefix()
-                    .with("world_name", world.getIdentifier())
+                    .with(KEY_WORLD_NAME, world.getIdentifier())
                     .send(p);
             return;
         }
         world.setSpawnLocation(p.getLocation());
         R18nManager.getInstance()
                 .msg("multiverse_editor_ui.spawn.updated").prefix()
-                .with("world_name", world.getIdentifier())
+                .with(KEY_WORLD_NAME, world.getIdentifier())
                 .send(p);
         refreshSlot(click, spawnItem(p, world));
     }
@@ -194,8 +200,8 @@ public class MultiverseEditorView extends BaseView {
             service.updateWorld(world);
             R18nManager.getInstance()
                     .msg("multiverse_editor_ui.global_spawn.toggled").prefix()
-                    .with("world_name", world.getIdentifier())
-                    .with("value", "disabled")
+                    .with(KEY_WORLD_NAME, world.getIdentifier())
+                    .with(KEY_VALUE, VAL_DISABLED)
                     .send(p);
             refreshSlot(click, globalItem(p, world));
             return;
@@ -211,12 +217,12 @@ public class MultiverseEditorView extends BaseView {
                 var r18n = R18nManager.getInstance();
                 previous.ifPresentOrElse(
                         prev -> r18n.msg("multiverse_editor_ui.global_spawn.replaced").prefix()
-                                .with("world_name", world.getIdentifier())
+                                .with(KEY_WORLD_NAME, world.getIdentifier())
                                 .with("previous", prev.getIdentifier())
                                 .send(p),
                         () -> r18n.msg("multiverse_editor_ui.global_spawn.toggled").prefix()
-                                .with("world_name", world.getIdentifier())
-                                .with("value", "enabled")
+                                .with(KEY_WORLD_NAME, world.getIdentifier())
+                                .with(KEY_VALUE, VAL_ENABLED)
                                 .send(p)
                 );
             }
@@ -230,10 +236,11 @@ public class MultiverseEditorView extends BaseView {
         world.setPvpEnabled(!world.isPvpEnabled());
         var bukkit = Bukkit.getWorld(world.getIdentifier());
         if (bukkit != null) bukkit.setPVP(world.isPvpEnabled());
+        var stateStr = world.isPvpEnabled() ? VAL_ENABLED : VAL_DISABLED;
         R18nManager.getInstance()
                 .msg("multiverse_editor_ui.pvp.toggled").prefix()
-                .with("world_name", world.getIdentifier())
-                .with("value", world.isPvpEnabled() ? "enabled" : "disabled")
+                .with(KEY_WORLD_NAME, world.getIdentifier())
+                .with(KEY_VALUE, stateStr)
                 .send(p);
         refreshSlot(click, pvpItem(p, world));
     }
@@ -253,8 +260,8 @@ public class MultiverseEditorView extends BaseView {
         bukkit.setTime(next);
         R18nManager.getInstance()
                 .msg("multiverse_editor_ui.time.updated").prefix()
-                .with("world_name", world.getIdentifier())
-                .with("value", timePhase(next))
+                .with(KEY_WORLD_NAME, world.getIdentifier())
+                .with(KEY_VALUE, timePhase(next))
                 .send(p);
         refreshSlot(click, timeItem(viewer, world));
     }
@@ -276,8 +283,8 @@ public class MultiverseEditorView extends BaseView {
         }
         R18nManager.getInstance()
                 .msg("multiverse_editor_ui.weather.updated").prefix()
-                .with("world_name", world.getIdentifier())
-                .with("value", weatherPhase(bukkit))
+                .with(KEY_WORLD_NAME, world.getIdentifier())
+                .with(KEY_VALUE, weatherPhase(bukkit))
                 .send(p);
         refreshSlot(click, weatherItem(viewer, world));
     }
@@ -297,8 +304,8 @@ public class MultiverseEditorView extends BaseView {
         bukkit.setDifficulty(next);
         R18nManager.getInstance()
                 .msg("multiverse_editor_ui.difficulty.updated").prefix()
-                .with("world_name", world.getIdentifier())
-                .with("value", next.name().toLowerCase())
+                .with(KEY_WORLD_NAME, world.getIdentifier())
+                .with(KEY_VALUE, next.name().toLowerCase())
                 .send(p);
         refreshSlot(click, difficultyItem(viewer, world));
     }
@@ -311,7 +318,7 @@ public class MultiverseEditorView extends BaseView {
                 PlatformScheduler.of(plugin).runSync(() ->
                         R18nManager.getInstance()
                                 .msg("multiverse_editor_ui.save.success").prefix()
-                                .with("world_name", saved.getIdentifier())
+                                .with(KEY_WORLD_NAME, saved.getIdentifier())
                                 .send(p))
         ).exceptionally(ex -> {
             plugin.getLogger().log(java.util.logging.Level.SEVERE,
@@ -322,7 +329,7 @@ public class MultiverseEditorView extends BaseView {
             PlatformScheduler.of(plugin).runSync(() ->
                     R18nManager.getInstance()
                             .msg("multiverse_editor_ui.save.failed").prefix()
-                            .with("world_name", world.getIdentifier())
+                            .with(KEY_WORLD_NAME, world.getIdentifier())
                             .with("error", msg)
                             .send(p));
             return null;

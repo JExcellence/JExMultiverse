@@ -28,6 +28,9 @@ public final class PlotWallOps {
      * The four edges of the plot are walked at {@code y = plotHeight + 1 ..
      * plotHeight + wallHeight}. Edge cells whose adjacent grid cell belongs
      * to {@code mergeNeighbours} are skipped.
+     *
+     * <p>This overload accepts individual parameters for callers that already
+     * have them unpacked. Delegates to the config-based overload.
      */
     public static void applyWalls(@NotNull World world,
                                    @NotNull Plot plot,

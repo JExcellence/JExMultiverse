@@ -49,6 +49,8 @@ import java.util.concurrent.ConcurrentMap;
  */
 public class PlotService {
 
+    private static final String BYPASS_PERM = "jexplots.bypass.protect";
+
     private final MultiverseService multiverseService;
     private final WorldFactory worldFactory;
     private final PlotRepository plots;
@@ -109,7 +111,7 @@ public class PlotService {
                     flagsByPlot.clear();
                     for (var f : allFlags) {
                         flagsByPlot.computeIfAbsent(f.getPlotId(), k -> new ConcurrentHashMap<>())
-                                .put(f.getFlagKey(), Boolean.parseBoolean(f.getFlagValue()));
+                                .put(f.getFlagKey(), "true".equalsIgnoreCase(f.getFlagValue()));
                     }
                     logger.info("Plot cache loaded — {} plots, {} member entries, {} flag overrides",
                             allPlots.size(), allMembers.size(), allFlags.size());
@@ -230,14 +232,14 @@ public class PlotService {
      * holds the {@code jexplots.bypass.protect} permission.
      */
     public boolean canBuild(@NotNull Player player, @NotNull Plot plot) {
-        if (player.hasPermission("jexplots.bypass.protect")) return true;
+        if (player.hasPermission(BYPASS_PERM)) return true;
         if (plot.isOwner(player.getUniqueId())) return true;
         return roleOf(plot, player.getUniqueId()).orElse(null) == MemberRole.TRUSTED;
     }
 
     /** Returns whether a player is denied from a plot. */
     public boolean isDenied(@NotNull Player player, @NotNull Plot plot) {
-        if (player.hasPermission("jexplots.bypass.protect")) return false;
+        if (player.hasPermission(BYPASS_PERM)) return false;
         if (plot.isOwner(player.getUniqueId())) return false;
         return roleOf(plot, player.getUniqueId()).orElse(null) == MemberRole.DENIED;
     }
@@ -272,13 +274,14 @@ public class PlotService {
         int max = 1;
         for (var info : player.getEffectivePermissions()) {
             var perm = info.getPermission();
-            if (!info.getValue()) continue;
-            if (!perm.startsWith("jexplots.claim.")) continue;
-            var tail = perm.substring("jexplots.claim.".length());
-            try {
-                int n = Integer.parseInt(tail);
-                if (n > max) max = n;
-            } catch (NumberFormatException ignored) {}
+            if (info.getValue() && perm.startsWith("jexplots.claim.")) {
+                try {
+                    int n = Integer.parseInt(perm.substring("jexplots.claim.".length()));
+                    if (n > max) max = n;
+                } catch (NumberFormatException ignored) {
+                    // Not a numeric permission suffix — skip
+                }
+            }
         }
         return max;
     }
@@ -518,13 +521,15 @@ public class PlotService {
         if (player.hasPermission("jexplots.merge.unlimited")) return Integer.MAX_VALUE;
         int max = 1;
         for (var info : player.getEffectivePermissions()) {
-            if (!info.getValue()) continue;
             var perm = info.getPermission();
-            if (!perm.startsWith("jexplots.merge.")) continue;
-            try {
-                int n = Integer.parseInt(perm.substring("jexplots.merge.".length()));
-                if (n > max) max = n;
-            } catch (NumberFormatException ignored) {}
+            if (info.getValue() && perm.startsWith("jexplots.merge.")) {
+                try {
+                    int n = Integer.parseInt(perm.substring("jexplots.merge.".length()));
+                    if (n > max) max = n;
+                } catch (NumberFormatException ignored) {
+                    // Not a numeric permission suffix — skip
+                }
+            }
         }
         return max;
     }
@@ -545,15 +550,13 @@ public class PlotService {
      * or empty if no plot is claimed in that cell.
      */
     public @NotNull Optional<Plot> getNeighbor(@NotNull Plot plot, @NotNull org.bukkit.block.BlockFace facing) {
-        int dx = 0, dz = 0;
-        switch (facing) {
-            case NORTH -> dz = -1;
-            case SOUTH -> dz = 1;
-            case EAST  -> dx = 1;
-            case WEST  -> dx = -1;
-            default -> { return Optional.empty(); }
-        }
-        return getPlot(plot.getWorldName(), plot.getGridX() + dx, plot.getGridZ() + dz);
+        return switch (facing) {
+            case NORTH -> getPlot(plot.getWorldName(), plot.getGridX(), plot.getGridZ() - 1);
+            case SOUTH -> getPlot(plot.getWorldName(), plot.getGridX(), plot.getGridZ() + 1);
+            case EAST  -> getPlot(plot.getWorldName(), plot.getGridX() + 1, plot.getGridZ());
+            case WEST  -> getPlot(plot.getWorldName(), plot.getGridX() - 1, plot.getGridZ());
+            default -> Optional.empty();
+        };
     }
 
     /**
@@ -575,7 +578,7 @@ public class PlotService {
         if (!PlotMergeOps.areAdjacent(plot, neighbor)) {
             return CompletableFuture.completedFuture(MergeResult.NOT_ADJACENT);
         }
-        var bypass = actor.hasPermission("jexplots.bypass.protect");
+        var bypass = actor.hasPermission(BYPASS_PERM);
         if (!bypass && (!plot.isOwner(actor.getUniqueId()) || !neighbor.isOwner(actor.getUniqueId()))) {
             return CompletableFuture.completedFuture(MergeResult.DIFFERENT_OWNER);
         }
@@ -588,33 +591,11 @@ public class PlotService {
             return CompletableFuture.completedFuture(MergeResult.LIMIT_REACHED);
         }
 
-        // Determine the final group id — reuse if either side already has one.
-        var groupId = plot.getMergedGroupIdString() != null ? plot.getMergedGroupId()
-                : neighbor.getMergedGroupIdString() != null ? neighbor.getMergedGroupId()
-                : UUID.randomUUID();
-
-        // Update DB: every plot in both groups gets the unified group id.
-        var toUpdate = new ArrayList<Plot>();
-        for (var p : groupA) if (!groupId.toString().equals(p.getMergedGroupIdString())) toUpdate.add(p);
-        for (var p : groupB) if (!groupId.toString().equals(p.getMergedGroupIdString())) toUpdate.add(p);
-
-        CompletableFuture<Void> chain = CompletableFuture.completedFuture(null);
-        for (var p : toUpdate) {
-            p.setMergedGroupId(groupId);
-            chain = chain.thenCompose(v -> plots.updateAsync(p).thenApply(x -> null));
-        }
+        var groupId = resolveMergeGroupId(plot, neighbor);
+        var chain = buildMergeUpdateChain(groupA, groupB, groupId);
 
         return chain.thenApply(v -> {
-            // Visual merge runs on main thread.
-            var bukkitWorld = Bukkit.getWorld(plot.getWorldName());
-            var mvWorld = worldFactory.getCachedWorld(plot.getWorldName()).orElse(null);
-            if (bukkitWorld != null && mvWorld != null) {
-                int plotSize = worldFactory.effectivePlotSize(mvWorld);
-                int roadWidth = worldFactory.effectiveRoadWidth(mvWorld);
-                PlatformScheduler.of(plugin).runSync(() ->
-                        PlotMergeOps.applyMerge(bukkitWorld, plot, neighbor, plotSize, roadWidth,
-                                worldFactory.plotConfig()));
-            }
+            applyMergeVisuals(plot, neighbor);
             logger.info("Player {} merged plots {} ↔ {}", actor.getName(),
                     coordOf(plot), coordOf(neighbor));
             return MergeResult.OK;
@@ -622,6 +603,40 @@ public class PlotService {
             logger.error("Merge failed for {}", actor.getName(), ex);
             return MergeResult.FAILED;
         });
+    }
+
+    private @NotNull UUID resolveMergeGroupId(@NotNull Plot plot, @NotNull Plot neighbor) {
+        if (plot.getMergedGroupIdString() != null) return plot.getMergedGroupId();
+        if (neighbor.getMergedGroupIdString() != null) return neighbor.getMergedGroupId();
+        return UUID.randomUUID();
+    }
+
+    private @NotNull CompletableFuture<Void> buildMergeUpdateChain(
+            @NotNull List<Plot> groupA, @NotNull List<Plot> groupB, @NotNull UUID groupId) {
+        var toUpdate = new ArrayList<Plot>();
+        for (var p : groupA) {
+            if (!groupId.toString().equals(p.getMergedGroupIdString())) toUpdate.add(p);
+        }
+        for (var p : groupB) {
+            if (!groupId.toString().equals(p.getMergedGroupIdString())) toUpdate.add(p);
+        }
+        CompletableFuture<Void> chain = CompletableFuture.completedFuture(null);
+        for (var p : toUpdate) {
+            p.setMergedGroupId(groupId);
+            chain = chain.thenCompose(v -> plots.updateAsync(p).thenApply(x -> null));
+        }
+        return chain;
+    }
+
+    private void applyMergeVisuals(@NotNull Plot plot, @NotNull Plot neighbor) {
+        var bukkitWorld = Bukkit.getWorld(plot.getWorldName());
+        var mvWorld = worldFactory.getCachedWorld(plot.getWorldName()).orElse(null);
+        if (bukkitWorld == null || mvWorld == null) return;
+        int plotSize = worldFactory.effectivePlotSize(mvWorld);
+        int roadWidth = worldFactory.effectiveRoadWidth(mvWorld);
+        PlatformScheduler.of(plugin).runSync(() ->
+                PlotMergeOps.applyMerge(bukkitWorld, plot, neighbor, plotSize, roadWidth,
+                        worldFactory.plotConfig()));
     }
 
     /**
@@ -633,50 +648,54 @@ public class PlotService {
         var groupId = plot.getMergedGroupIdString();
         if (groupId == null) return CompletableFuture.completedFuture(true);
 
-        // Every plot in the group that's adjacent to `plot` needs its road
-        // slice + walls restored.
-        var others = new ArrayList<Plot>();
-        for (var p : byId.values()) {
-            if (p == plot) continue;
-            if (!groupId.equals(p.getMergedGroupIdString())) continue;
-            if (PlotMergeOps.areAdjacent(plot, p)) others.add(p);
-        }
+        var others = collectAdjacentGroupMembers(plot, groupId);
 
         plot.setMergedGroupId(null);
         return plots.updateAsync(plot).thenApply(v -> {
-            // Did removing this plot leave only one plot in the group? If so,
-            // also clear that lone plot's group id (a group of one is just a
-            // standalone plot).
-            var remaining = new ArrayList<Plot>();
-            for (var p : byId.values()) {
-                if (groupId.equals(p.getMergedGroupIdString())) remaining.add(p);
-            }
-            if (remaining.size() == 1) {
-                var solo = remaining.get(0);
-                solo.setMergedGroupId(null);
-                plots.updateAsync(solo);
-            }
-
-            var bukkitWorld = Bukkit.getWorld(plot.getWorldName());
-            var mvWorld = worldFactory.getCachedWorld(plot.getWorldName()).orElse(null);
-            if (bukkitWorld != null && mvWorld != null) {
-                int plotSize = worldFactory.effectivePlotSize(mvWorld);
-                int roadWidth = worldFactory.effectiveRoadWidth(mvWorld);
-                PlatformScheduler.of(plugin).runSync(() -> {
-                    for (var other : others) {
-                        // Use the claimed material — both plots in this unmerge
-                        // are still claimed, so the restored wall stripe should
-                        // wear the claimed colour, not the unclaimed default.
-                        PlotMergeOps.applyUnmerge(bukkitWorld, plot, other,
-                                plotSize, roadWidth, worldFactory.plotConfig(),
-                                effectiveClaimedWall(other));
-                    }
-                });
-            }
+            clearSoloGroupIfNeeded(groupId);
+            applyUnmergeVisuals(plot, others);
             return true;
         }).exceptionally(ex -> {
             logger.error("Unmerge failed for plot {}", plot.getId(), ex);
             return false;
+        });
+    }
+
+    private @NotNull List<Plot> collectAdjacentGroupMembers(@NotNull Plot plot, @NotNull String groupId) {
+        var others = new ArrayList<Plot>();
+        for (var p : byId.values()) {
+            if (p != plot && groupId.equals(p.getMergedGroupIdString())
+                    && PlotMergeOps.areAdjacent(plot, p)) {
+                others.add(p);
+            }
+        }
+        return others;
+    }
+
+    private void clearSoloGroupIfNeeded(@NotNull String groupId) {
+        var remaining = new ArrayList<Plot>();
+        for (var p : byId.values()) {
+            if (groupId.equals(p.getMergedGroupIdString())) remaining.add(p);
+        }
+        if (remaining.size() == 1) {
+            var solo = remaining.get(0);
+            solo.setMergedGroupId(null);
+            plots.updateAsync(solo);
+        }
+    }
+
+    private void applyUnmergeVisuals(@NotNull Plot plot, @NotNull List<Plot> others) {
+        var bukkitWorld = Bukkit.getWorld(plot.getWorldName());
+        var mvWorld = worldFactory.getCachedWorld(plot.getWorldName()).orElse(null);
+        if (bukkitWorld == null || mvWorld == null) return;
+        int plotSize = worldFactory.effectivePlotSize(mvWorld);
+        int roadWidth = worldFactory.effectiveRoadWidth(mvWorld);
+        PlatformScheduler.of(plugin).runSync(() -> {
+            for (var other : others) {
+                PlotMergeOps.applyUnmerge(bukkitWorld, plot, other,
+                        plotSize, roadWidth, worldFactory.plotConfig(),
+                        effectiveClaimedWall(other));
+            }
         });
     }
 

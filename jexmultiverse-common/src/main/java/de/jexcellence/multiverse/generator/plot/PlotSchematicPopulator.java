@@ -26,8 +26,6 @@ public class PlotSchematicPopulator extends BlockPopulator {
 
     private final SchematicService schematics;
     private final String schematicName;
-    private final int plotSize;
-    private final int roadWidth;
     private final int plotHeight;
     private final int totalInterval;
 
@@ -36,8 +34,6 @@ public class PlotSchematicPopulator extends BlockPopulator {
                                   int plotSize, int roadWidth, int plotHeight) {
         this.schematics = schematics;
         this.schematicName = schematicName;
-        this.plotSize = plotSize;
-        this.roadWidth = roadWidth;
         this.plotHeight = plotHeight;
         this.totalInterval = plotSize + roadWidth;
     }
@@ -59,15 +55,22 @@ public class PlotSchematicPopulator extends BlockPopulator {
                  gridZ <= Math.floorDiv(chunkMaxZ, totalInterval); gridZ++) {
                 int anchorX = gridX * totalInterval;
                 int anchorZ = gridZ * totalInterval;
-                if (anchorX < chunkMinX || anchorX > chunkMaxX) continue;
-                if (anchorZ < chunkMinZ || anchorZ > chunkMaxZ) continue;
-                schematic.tryPlace(region,
-                        anchorX + schematics.offsetX(),
-                        plotHeight + schematics.offsetY(),
-                        anchorZ + schematics.offsetZ());
+                if (anchorX >= chunkMinX && anchorX <= chunkMaxX
+                        && anchorZ >= chunkMinZ && anchorZ <= chunkMaxZ) {
+                    schematic.tryPlace(region,
+                            anchorX + schematics.offsetX(),
+                            plotHeight + schematics.offsetY(),
+                            anchorZ + schematics.offsetZ());
+                }
             }
         }
     }
+
+    /**
+     * Parameters for a manual schematic placement, used by
+     * {@link #placeManually(SchematicService, String, World, PlacementParams, Random)}.
+     */
+    public record PlacementParams(int gridX, int gridZ, int plotSize, int roadWidth, int plotHeight) {}
 
     /**
      * Manually pastes the structure for a single grid cell at runtime. Used by
@@ -77,15 +80,27 @@ public class PlotSchematicPopulator extends BlockPopulator {
     public static void placeManually(@NotNull SchematicService schematics,
                                      @NotNull String schematicName,
                                      @NotNull World world,
+                                     @NotNull PlacementParams params,
+                                     @NotNull Random random) {
+        schematics.load(schematicName).ifPresent(schematic -> {
+            int totalInterval = params.plotSize() + params.roadWidth();
+            schematic.place(world,
+                    params.gridX() * totalInterval + schematics.offsetX(),
+                    params.plotHeight() + schematics.offsetY(),
+                    params.gridZ() * totalInterval + schematics.offsetZ());
+        });
+    }
+
+    /**
+     * Convenience overload kept for callers that pass individual parameters.
+     */
+    public static void placeManually(@NotNull SchematicService schematics,
+                                     @NotNull String schematicName,
+                                     @NotNull World world,
                                      int gridX, int gridZ,
                                      int plotSize, int roadWidth, int plotHeight,
                                      @NotNull Random random) {
-        schematics.load(schematicName).ifPresent(schematic -> {
-            int totalInterval = plotSize + roadWidth;
-            schematic.place(world,
-                    gridX * totalInterval + schematics.offsetX(),
-                    plotHeight + schematics.offsetY(),
-                    gridZ * totalInterval + schematics.offsetZ());
-        });
+        placeManually(schematics, schematicName, world,
+                new PlacementParams(gridX, gridZ, plotSize, roadWidth, plotHeight), random);
     }
 }

@@ -62,9 +62,6 @@ public abstract class JExMultiverse {
     private WorldFactory worldFactory;
     private MVWorldRepository worldRepository;
     private PlotService plotService;
-    private PlotRepository plotRepository;
-    private PlotMemberRepository plotMemberRepository;
-    private PlotFlagRepository plotFlagRepository;
     private ViewFrame viewFrame;
     private JExLogger logger;
 
@@ -198,24 +195,12 @@ public abstract class JExMultiverse {
             final var worldsSection = config.getConfigurationSection("worlds");
             if (worldsSection == null) return;
 
-            final File container;
-            File container1;
-            try {
-                container1 = Bukkit.getWorldContainer();
-            } catch (final Throwable ignored) {
-                container1 = new File(".");
-            }
-
-            container = container1;
+            final File container = resolveWorldContainer();
             boolean configDirty = false;
             for (final String worldName : new java.util.ArrayList<>(worldsSection.getKeys(false))) {
                 final String generator = worldsSection.getString(worldName + ".generator");
                 if (generator == null || !generator.startsWith("JExMultiverse:")) continue;
 
-                // Remove NETHER and THE_END worlds from bukkit.yml — on Folia these
-                // are auto-created as companion worlds of the overworld. Declaring
-                // them separately causes UUID collisions with the auto-generated
-                // companions (e.g. oneblock_nether collides with oneblock_overworld_nether).
                 if (worldName.endsWith("_nether") || worldName.endsWith("_the_end")) {
                     config.set("worlds." + worldName, null);
                     configDirty = true;
@@ -223,14 +208,7 @@ public abstract class JExMultiverse {
                     continue;
                 }
 
-                // Delete stale uid.dat for overworld entries
-                final File worldDir = new File(container, worldName);
-                final File uidDat = new File(worldDir, "uid.dat");
-                if (uidDat.exists()) {
-                    if (uidDat.delete()) {
-                        logger.debug("[startup] Deleted stale uid.dat for world '{}'", worldName);
-                    }
-                }
+                deleteStaleUidDat(container, worldName);
             }
 
             if (configDirty) {
@@ -239,6 +217,27 @@ public abstract class JExMultiverse {
             }
         } catch (final Exception ex) {
             logger.warn("[startup] Failed to clean up stale uid.dat files: {}", ex.getMessage());
+        }
+    }
+
+    private File resolveWorldContainer() {
+        try {
+            return Bukkit.getWorldContainer();
+        } catch (final Throwable ignored) {
+            return new File(".");
+        }
+    }
+
+    private void deleteStaleUidDat(@org.jetbrains.annotations.NotNull File container,
+                                    @org.jetbrains.annotations.NotNull String worldName) {
+        final File uidDat = new File(new File(container, worldName), "uid.dat");
+        if (uidDat.exists()) {
+            try {
+                java.nio.file.Files.delete(uidDat.toPath());
+                logger.debug("[startup] Deleted stale uid.dat for world '{}'", worldName);
+            } catch (java.io.IOException ex) {
+                logger.warn("[startup] Could not delete uid.dat for world '{}': {}", worldName, ex.getMessage());
+            }
         }
     }
 
@@ -284,9 +283,9 @@ public abstract class JExMultiverse {
     private void initializeServices() {
         var repos = jeHibernate.repositories();
         worldRepository = repos.get(MVWorldRepository.class);
-        plotRepository = repos.get(PlotRepository.class);
-        plotMemberRepository = repos.get(PlotMemberRepository.class);
-        plotFlagRepository = repos.get(PlotFlagRepository.class);
+        var plotRepository = repos.get(PlotRepository.class);
+        var plotMemberRepository = repos.get(PlotMemberRepository.class);
+        var plotFlagRepository = repos.get(PlotFlagRepository.class);
 
         worldFactory = new WorldFactory(plugin, worldRepository, logger, platform.scheduler());
         multiverseService = new MultiverseService(

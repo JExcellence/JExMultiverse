@@ -8,6 +8,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Argument type accepting any Bukkit {@link Material} that's a real block
@@ -61,7 +62,7 @@ public final class WallMaterialArgumentType {
      * once at first access; ~600 entries. Filtered by partial string at tab
      * time — sub-millisecond on modern hardware.
      */
-    private static volatile List<String> ALL_BLOCKS;
+    private static final AtomicReference<List<String>> allBlocksRef = new AtomicReference<>();
 
     private WallMaterialArgumentType() {}
 
@@ -93,7 +94,7 @@ public final class WallMaterialArgumentType {
     }
 
     private static @NotNull List<String> allBlocks() {
-        var cached = ALL_BLOCKS;
+        var cached = allBlocksRef.get();
         if (cached != null) return cached;
         cached = Arrays.stream(Material.values())
                 .filter(m -> m.isBlock() && !m.isAir() && m != Material.STRUCTURE_VOID)
@@ -101,7 +102,7 @@ public final class WallMaterialArgumentType {
                 .map(m -> m.name().toLowerCase(Locale.ROOT))
                 .sorted()
                 .toList();
-        ALL_BLOCKS = cached;
-        return cached;
+        allBlocksRef.compareAndSet(null, cached);
+        return allBlocksRef.get();
     }
 }

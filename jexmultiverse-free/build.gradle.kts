@@ -15,30 +15,28 @@ dependenciesYml {
 }
 
 dependencies {
+    // Implementation
     implementation(project(":JExMultiverse:jexmultiverse-common"))
-    // Folia-NMS runtime loader. Shipped in both Free and Premium JARs;
-    // the class is dormant on Paper/Spigot (FoliaRuntimeWorldLoader.isFolia
-    // returns false → resolver finds no usable backend → no behavior change).
     implementation(project(":JExMultiverse:jexmultiverse-folia-nms"))
-
-    compileOnly(libs.paper.api)
-    compileOnly(libs.slf4j.api)
-    compileOnly(libs.slf4j.jdk14)
-    compileOnly(libs.jboss.logging)
-
-    compileOnly(platform(libs.hibernate.platform))
-    compileOnly(libs.bundles.hibernate)
-    compileOnly(libs.adventure.platform.bukkit)
-    compileOnly(libs.jexplatform)
-
     implementation(libs.jehibernate) { isTransitive = false }
     implementation(libs.bundles.jexcellence) {
         isTransitive = false
         exclude(group = "de.jexcellence.hibernate")
     }
     implementation(libs.bundles.jeconfig) { isTransitive = false }
+
+    // CompileOnly
+    compileOnly(libs.paper.api)
+    compileOnly(libs.slf4j.api)
+    compileOnly(libs.slf4j.jdk14)
+    compileOnly(libs.jboss.logging)
+    compileOnly(platform(libs.hibernate.platform))
+    compileOnly(libs.bundles.hibernate)
+    compileOnly(libs.adventure.platform.bukkit)
+    compileOnly(libs.jexplatform)
     compileOnly(libs.bundles.inventory)
 
+    // Test
     testImplementation(libs.junit.jupiter.api)
     testRuntimeOnly(libs.junit.jupiter.engine)
     testImplementation(libs.mockito.core)

@@ -43,6 +43,8 @@ import java.util.concurrent.CompletableFuture;
  */
 public class MultiverseListView extends PaginatedView<MVWorld> {
 
+    private static final String KEY_WORLD_NAME = "world_name";
+
     private final State<JavaPlugin>        pluginState  = initialState("plugin");
     private final State<MultiverseService> serviceState = initialState("service");
     private final State<WorldFactory>      factoryState = initialState("factory");
@@ -75,13 +77,15 @@ public class MultiverseListView extends PaginatedView<MVWorld> {
         var icon = switch (entry.getType()) {
             case VOID    -> Material.BARRIER;
             case PLOT    -> Material.GRASS_BLOCK;
-            case DEFAULT -> entry.getEnvironment() == org.bukkit.World.Environment.NETHER ? Material.NETHERRACK
-                          : entry.getEnvironment() == org.bukkit.World.Environment.THE_END ? Material.END_STONE
-                          : Material.GRASS_BLOCK;
+            case DEFAULT -> {
+                if (entry.getEnvironment() == org.bukkit.World.Environment.NETHER) yield Material.NETHERRACK;
+                if (entry.getEnvironment() == org.bukkit.World.Environment.THE_END) yield Material.END_STONE;
+                yield Material.GRASS_BLOCK;
+            }
         };
 
         var placeholders = Map.<String, Object>of(
-                "world_name",   entry.getIdentifier(),
+                KEY_WORLD_NAME,   entry.getIdentifier(),
                 "type",         entry.getType().name(),
                 "environment",  entry.getEnvironment().name(),
                 "status",       loaded ? "loaded" : "unloaded",
@@ -115,7 +119,7 @@ public class MultiverseListView extends PaginatedView<MVWorld> {
                 R18nManager.getInstance()
                         .msg("multiverse.world_not_loaded")
                         .prefix()
-                        .with("world_name", entry.getIdentifier())
+                        .with(KEY_WORLD_NAME, entry.getIdentifier())
                         .send(p);
                 return;
             }
@@ -129,7 +133,7 @@ public class MultiverseListView extends PaginatedView<MVWorld> {
                         R18nManager.getInstance()
                                 .msg("multiverse.teleported")
                                 .prefix()
-                                .with("world_name", entry.getIdentifier())
+                                .with(KEY_WORLD_NAME, entry.getIdentifier())
                                 .send(p);
                     }
                 });

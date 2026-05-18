@@ -119,7 +119,7 @@ public record PlotWorldConfig(
 
     private static int asInt(Object o, int fallback) {
         if (o instanceof Number n) return n.intValue();
-        if (o instanceof String s) try { return Integer.parseInt(s.trim()); } catch (NumberFormatException ignored) {}
+        if (o instanceof String s) try { return Integer.parseInt(s.trim()); } catch (NumberFormatException ignored) { /* use fallback */ }
         return fallback;
     }
 }

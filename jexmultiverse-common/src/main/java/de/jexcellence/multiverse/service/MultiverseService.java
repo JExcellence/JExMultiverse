@@ -615,37 +615,26 @@ public class MultiverseService implements MultiverseProvider {
         for (var world : Bukkit.getWorlds()) {
             var worldName = world.getName();
 
-            // Skip if already cached
-            if (worldFactory.getCachedWorld(worldName).isPresent()) {
-                continue;
+            if (worldFactory.getCachedWorld(worldName).isEmpty()
+                    && !worldName.endsWith("_nether") && !worldName.endsWith("_the_end")
+                    && !worldName.endsWith("_end")) {
+                logger.info("[startup] Adopting unmanaged loaded world '{}' into JExMultiverse", worldName);
+                var adoptionFuture = adoptLoadedWorld(world, de.jexcellence.multiverse.api.MVWorldType.DEFAULT)
+                        .thenAccept(snapshot -> {
+                            if (snapshot.isPresent()) {
+                                logger.info("[startup] Successfully adopted companion world '{}'", worldName);
+                            } else {
+                                logger.warn("[startup] Failed to adopt companion world '{}'", worldName);
+                            }
+                        })
+                        .exceptionally(ex -> {
+                            logger.error("[startup] Error adopting companion world '{}': {}",
+                                    worldName, rootMessage(ex));
+                            return null;
+                        })
+                        .thenApply(v -> (Void) null);
+                adoptionFutures.add(adoptionFuture);
             }
-
-            // Skip Bukkit's auto-pair dimensional siblings — those belong to
-            // their overworld parent, not standalone management.
-            if (worldName.endsWith("_nether") || worldName.endsWith("_the_end") || worldName.endsWith("_end")) {
-                continue;
-            }
-
-            logger.info("[startup] Adopting unmanaged loaded world '{}' into JExMultiverse", worldName);
-            
-            // Adopt with DEFAULT type as the default - the actual type will be
-            // loaded from the database if a row already exists
-            var adoptionFuture = adoptLoadedWorld(world, de.jexcellence.multiverse.api.MVWorldType.DEFAULT)
-                    .thenAccept(snapshot -> {
-                        if (snapshot.isPresent()) {
-                            logger.info("[startup] Successfully adopted companion world '{}'", worldName);
-                        } else {
-                            logger.warn("[startup] Failed to adopt companion world '{}'", worldName);
-                        }
-                    })
-                    .exceptionally(ex -> {
-                        logger.error("[startup] Error adopting companion world '{}': {}",
-                                worldName, rootMessage(ex));
-                        return null;
-                    })
-                    .thenApply(v -> (Void) null); // Convert to CompletableFuture<Void>
-
-            adoptionFutures.add(adoptionFuture);
         }
         
         if (adoptionFutures.isEmpty()) {
@@ -776,7 +765,13 @@ public class MultiverseService implements MultiverseProvider {
                 // Clean up stale uid.dat so the NMS layer doesn't trip on a
                 // UUID collision with a previously-attempted load.
                 final java.io.File uidDat = new java.io.File(worldDir, "uid.dat");
-                if (uidDat.exists()) uidDat.delete();
+                if (uidDat.exists()) {
+                    try {
+                        java.nio.file.Files.delete(uidDat.toPath());
+                    } catch (java.io.IOException ignored) {
+                        // Non-fatal: server may log a UUID collision warning but will still load
+                    }
+                }
             }
         } catch (final java.io.IOException ex) {
             logger.error("[worlds] failed to write skeleton for '{}': {}", name, ex.getMessage());

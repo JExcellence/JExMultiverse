@@ -68,11 +68,10 @@ public final class TranslationKeyMerger {
         for (var key : jarYaml.getKeys(true)) {
             // Skip section nodes — only merge leaves so we don't clobber
             // partial customisations under a section the admin has edited.
-            if (jarYaml.get(key) instanceof ConfigurationSection) continue;
-            if (diskYaml.contains(key)) continue;
-
-            diskYaml.set(key, jarYaml.get(key));
-            added++;
+            if (!(jarYaml.get(key) instanceof ConfigurationSection) && !diskYaml.contains(key)) {
+                diskYaml.set(key, jarYaml.get(key));
+                added++;
+            }
         }
 
         if (added > 0) {

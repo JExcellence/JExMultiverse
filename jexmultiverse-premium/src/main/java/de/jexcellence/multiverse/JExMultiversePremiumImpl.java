@@ -41,7 +41,7 @@ public final class JExMultiversePremiumImpl extends AbstractPluginDelegate<JExMu
             this.multiverse.onLoad();
         } catch (Exception ex) {
             LOGGER.log(Level.SEVERE, "Failed to load JExMultiverse " + EDITION, ex);
-            throw new RuntimeException(ex);
+            throw new JExMultiverseLoadException("Failed to load JExMultiverse " + EDITION, ex);
         }
     }
 

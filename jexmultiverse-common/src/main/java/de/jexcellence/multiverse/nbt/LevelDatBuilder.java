@@ -66,6 +66,10 @@ public final class LevelDatBuilder {
     /** Anvil region-file format version. Stable since 1.13. */
     private static final int ANVIL_VERSION = 19133;
 
+    private static final String DIM_OVERWORLD = "minecraft:overworld";
+    private static final String DIM_NETHER    = "minecraft:the_nether";
+    private static final String DIM_END       = "minecraft:the_end";
+
     private LevelDatBuilder() {
     }
 
@@ -116,7 +120,12 @@ public final class LevelDatBuilder {
         // from the world's level.dat seed, so we never lose data.
         final File uidDat = new File(worldDir, "uid.dat");
         if (uidDat.exists()) {
-            uidDat.delete(); // best-effort; failure is non-fatal
+            try {
+                java.nio.file.Files.delete(uidDat.toPath());
+            } catch (IOException ex) {
+                // Non-fatal: if deletion fails the server may log a UUID collision
+                // warning, but world loading will still proceed.
+            }
         }
 
         final File levelDat = new File(worldDir, "level.dat");
@@ -131,9 +140,9 @@ public final class LevelDatBuilder {
      */
     public static @NotNull String dimensionTypeFor(@NotNull World.Environment env) {
         return switch (env) {
-            case NETHER -> "minecraft:the_nether";
-            case THE_END -> "minecraft:the_end";
-            case CUSTOM, NORMAL -> "minecraft:overworld";
+            case NETHER -> DIM_NETHER;
+            case THE_END -> DIM_END;
+            case CUSTOM, NORMAL -> DIM_OVERWORLD;
         };
     }
 
@@ -151,12 +160,9 @@ public final class LevelDatBuilder {
         // generator is universally accepted; our plugin's override
         // takes over once the world is loaded into Bukkit.
         final Map<String, Object> dimensions = NbtWriter.compound();
-        dimensions.put("minecraft:overworld",
-                buildDimensionStem("minecraft:overworld"));
-        dimensions.put("minecraft:the_nether",
-                buildDimensionStem("minecraft:the_nether"));
-        dimensions.put("minecraft:the_end",
-                buildDimensionStem("minecraft:the_end"));
+        dimensions.put(DIM_OVERWORLD, buildDimensionStem(DIM_OVERWORLD));
+        dimensions.put(DIM_NETHER,    buildDimensionStem(DIM_NETHER));
+        dimensions.put(DIM_END,       buildDimensionStem(DIM_END));
 
         final Map<String, Object> worldGenSettings = NbtWriter.compound();
         worldGenSettings.put("seed", 0L);

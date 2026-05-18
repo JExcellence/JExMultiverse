@@ -40,6 +40,10 @@ public class PlotMenuView extends BaseView {
     static final String DATA_SERVICE    = "service";
     static final String DATA_MULTIVERSE = "multiverse";
 
+    private static final String KEY_WORLD_NAME = "world_name";
+    private static final String KEY_GRID_X     = "grid_x";
+    private static final String KEY_GRID_Z     = "grid_z";
+
     private final State<JavaPlugin>        pluginState  = initialState(DATA_PLUGIN);
     private final State<Plot>              plotState    = initialState(DATA_PLOT);
     private final State<PlotService>       serviceState = initialState(DATA_SERVICE);
@@ -67,9 +71,9 @@ public class PlotMenuView extends BaseView {
     protected Map<String, Object> titlePlaceholders(@NotNull OpenContext open) {
         var plot = plotState.get(open);
         return Map.of(
-                "world_name", plot.getWorldName(),
-                "grid_x", plot.getGridX(),
-                "grid_z", plot.getGridZ());
+                KEY_WORLD_NAME, plot.getWorldName(),
+                KEY_GRID_X, plot.getGridX(),
+                KEY_GRID_Z, plot.getGridZ());
     }
 
     @Override
@@ -103,9 +107,9 @@ public class PlotMenuView extends BaseView {
                 i18n("info.lore", player)
                         .withPlaceholders(Map.of(
                                 "owner_name", plot.getOwnerName(),
-                                "world_name", plot.getWorldName(),
-                                "grid_x", plot.getGridX(),
-                                "grid_z", plot.getGridZ(),
+                                KEY_WORLD_NAME, plot.getWorldName(),
+                                KEY_GRID_X, plot.getGridX(),
+                                KEY_GRID_Z, plot.getGridZ(),
                                 "trusted", trusted,
                                 "denied", denied,
                                 "merged", plot.getMergedGroupIdString() != null ? "yes" : "no"
@@ -173,9 +177,9 @@ public class PlotMenuView extends BaseView {
             PlatformScheduler.of(plugin).runSync(() -> {
                 p.teleportAsync(loc);
                 R18nManager.getInstance().msg("plot.teleported").prefix()
-                        .with("grid_x", String.valueOf(plot.getGridX()))
-                        .with("grid_z", String.valueOf(plot.getGridZ()))
-                        .with("world_name", plot.getWorldName())
+                        .with(KEY_GRID_X, String.valueOf(plot.getGridX()))
+                        .with(KEY_GRID_Z, String.valueOf(plot.getGridZ()))
+                        .with(KEY_WORLD_NAME, plot.getWorldName())
                         .send(p);
             });
         });
@@ -199,8 +203,8 @@ public class PlotMenuView extends BaseView {
                 R18nManager.getInstance()
                         .msg(ok ? "plot.unclaimed" : "plot.error.unclaim_failed")
                         .prefix()
-                        .with("grid_x", String.valueOf(plot.getGridX()))
-                        .with("grid_z", String.valueOf(plot.getGridZ()))
+                        .with(KEY_GRID_X, String.valueOf(plot.getGridX()))
+                        .with(KEY_GRID_Z, String.valueOf(plot.getGridZ()))
                         .send(p);
             }));
         });

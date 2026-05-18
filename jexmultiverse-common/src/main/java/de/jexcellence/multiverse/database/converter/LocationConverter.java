@@ -26,19 +26,21 @@ import java.util.logging.Logger;
 public class LocationConverter implements AttributeConverter<Location, String> {
     private static final Logger LOGGER = Logger.getLogger(LocationConverter.class.getName());
     private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final String FIELD_WORLD_UUID = "worldUuid";
+    private static final String FIELD_WORLD_NAME = "worldName";
 
     @Override
     public String convertToDatabaseColumn(@Nullable final Location location) {
         if (location == null) return null;
         final World world = location.getWorld();
         if (world == null) {
-            LOGGER.log(Level.WARNING, "Cannot serialize location without world reference");
+            LOGGER.warning("Cannot serialize location without world reference");
             return null;
         }
         try {
             final ObjectNode node = MAPPER.createObjectNode();
-            node.put("worldUuid", world.getUID().toString());
-            node.put("worldName", world.getName());
+            node.put(FIELD_WORLD_UUID, world.getUID().toString());
+            node.put(FIELD_WORLD_NAME, world.getName());
             node.put("x", location.getX());
             node.put("y", location.getY());
             node.put("z", location.getZ());
@@ -56,22 +58,17 @@ public class LocationConverter implements AttributeConverter<Location, String> {
         if (json == null || json.isBlank()) return null;
         try {
             final JsonNode node = MAPPER.readTree(json);
-            final String worldUuidStr = node.has("worldUuid") ? node.get("worldUuid").asText() : null;
-            final String worldName = node.has("worldName") ? node.get("worldName").asText() : null;
-            World world = null;
-            if (worldUuidStr != null && !worldUuidStr.isBlank()) {
-                try {
-                    world = Bukkit.getWorld(UUID.fromString(worldUuidStr));
-                } catch (IllegalArgumentException ignored) {}
-            }
-            if (world == null && worldName != null && !worldName.isBlank()) {
-                world = Bukkit.getWorld(worldName);
-            }
+            final String worldUuidStr = node.has(FIELD_WORLD_UUID) ? node.get(FIELD_WORLD_UUID).asText() : null;
+            final String worldName = node.has(FIELD_WORLD_NAME) ? node.get(FIELD_WORLD_NAME).asText() : null;
+            final World world = resolveWorld(worldUuidStr, worldName);
             if (world == null) {
-                LOGGER.log(Level.WARNING, "World not found for location: UUID={0}, Name={1}", new Object[]{worldUuidStr, worldName});
+                LOGGER.log(Level.WARNING, () ->
+                        "World not found for location: UUID=" + worldUuidStr + ", Name=" + worldName);
                 return null;
             }
-            return new Location(world, node.get("x").asDouble(), node.get("y").asDouble(), node.get("z").asDouble(), (float) node.get("yaw").asDouble(), (float) node.get("pitch").asDouble());
+            return new Location(world, node.get("x").asDouble(), node.get("y").asDouble(),
+                    node.get("z").asDouble(), (float) node.get("yaw").asDouble(),
+                    (float) node.get("pitch").asDouble());
         } catch (JsonProcessingException e) {
             LOGGER.log(Level.SEVERE, "Failed to deserialize location from JSON: " + json, e);
             return null;
@@ -79,5 +76,20 @@ public class LocationConverter implements AttributeConverter<Location, String> {
             LOGGER.log(Level.SEVERE, "Unexpected error deserializing location: " + json, e);
             return null;
         }
+    }
+
+    private static @Nullable World resolveWorld(@Nullable String worldUuidStr, @Nullable String worldName) {
+        World world = null;
+        if (worldUuidStr != null && !worldUuidStr.isBlank()) {
+            try {
+                world = Bukkit.getWorld(UUID.fromString(worldUuidStr));
+            } catch (IllegalArgumentException ignored) {
+                // UUID string was malformed — fall through to name-based lookup
+            }
+        }
+        if (world == null && worldName != null && !worldName.isBlank()) {
+            world = Bukkit.getWorld(worldName);
+        }
+        return world;
     }
 }

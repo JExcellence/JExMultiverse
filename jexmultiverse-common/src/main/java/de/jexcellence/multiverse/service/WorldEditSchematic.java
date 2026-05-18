@@ -71,7 +71,7 @@ public final class WorldEditSchematic implements PlacedSchematic {
                     .build();
             Operations.complete(operation);
         } catch (com.sk89q.worldedit.WorldEditException e) {
-            throw new RuntimeException("WorldEdit paste failed at " + x + "," + y + "," + z, e);
+            throw new SchematicPasteException("WorldEdit paste failed at " + x + "," + y + "," + z, e);
         }
     }
 
