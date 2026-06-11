@@ -182,6 +182,9 @@ public class MultiverseService implements MultiverseProvider {
         var effectivePlotSize = type == MVWorldType.PLOT ? plotSizeOverride : null;
         var effectiveRoadWidth = type == MVWorldType.PLOT ? roadWidthOverride : null;
         var effectiveSchematic = type == MVWorldType.PLOT ? schematicName : null;
+        // Non-PLOT worlds (hub/spawn builds) paste the schematic once at spawn
+        // after creation, instead of per-plot via the generator.
+        final var pasteSchematic = type == MVWorldType.PLOT ? null : schematicName;
 
         // On Folia, Bukkit.createWorld throws UOE — route through the NMS-based
         // ensureViaNms path (same code path used by ensureWorld). The PLOT
@@ -217,6 +220,9 @@ public class MultiverseService implements MultiverseProvider {
             }
 
             var spawn = worldFactory.getDefaultSpawnForType(bukkitWorld, type);
+            if (pasteSchematic != null && !pasteSchematic.isBlank()) {
+                pasteSchematicAtSpawn(bukkitWorld, spawn, pasteSchematic);
+            }
             var mvWorld = MVWorld.builder()
                     .identifier(name)
                     .type(type)
@@ -226,7 +232,7 @@ public class MultiverseService implements MultiverseProvider {
                     .pvpEnabled(true)
                     .plotSizeOverride(effectivePlotSize)
                     .roadWidthOverride(effectiveRoadWidth)
-                    .schematicName(effectiveSchematic)
+                    .schematicName(type == MVWorldType.PLOT ? effectiveSchematic : pasteSchematic)
                     .build();
 
             repository.saveWorld(mvWorld).thenAccept(saved -> {
@@ -241,6 +247,33 @@ public class MultiverseService implements MultiverseProvider {
         });
 
         return future;
+    }
+
+    /**
+     * Pastes a one-shot schematic at the spawn of a freshly created non-PLOT
+     * world (hub/spawn builds). Must run on the main thread — it is called from
+     * inside the world-creation scheduler task. A missing schematic is logged
+     * and skipped; the world is still created, just empty.
+     *
+     * <p>Note: {@code .schem}/{@code .schematic} files require WorldEdit or FAWE
+     * to load. Without them only Bukkit-native {@code .nbt} structures resolve.
+     */
+    private void pasteSchematicAtSpawn(@NotNull World world,
+                                       @NotNull Location spawn,
+                                       @NotNull String schematicName) {
+        var schematics = worldFactory.schematics();
+        var loaded = schematics.load(schematicName);
+        if (loaded.isEmpty()) {
+            logger.warn("[worlds] schematic '{}' not found in {} — created '{}' without a build (.schem needs WorldEdit/FAWE; only .nbt loads otherwise)",
+                    schematicName, schematics.directory().getAbsolutePath(), world.getName());
+            return;
+        }
+        int x = spawn.getBlockX();
+        int y = spawn.getBlockY();
+        int z = spawn.getBlockZ();
+        loaded.get().place(world, x, y, z);
+        logger.info("[worlds] pasted schematic '{}' at {}/{}/{} in '{}'",
+                schematicName, x, y, z, world.getName());
     }
 
     /**
