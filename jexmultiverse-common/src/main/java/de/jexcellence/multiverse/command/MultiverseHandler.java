@@ -77,7 +77,8 @@ public final class MultiverseHandler {
                 "multiverse.load",           this::onLoad,
                 "multiverse.list",           this::onList,
                 "multiverse.help",           this::onHelp,
-                "multiverse.applyschematic", this::onApplySchematic
+                "multiverse.applyschematic", this::onApplySchematic,
+                "multiverse.paste",          this::onPaste
         );
     }
 
@@ -316,12 +317,6 @@ public final class MultiverseHandler {
     private void onApplySchematic(@NotNull CommandContext ctx) {
         var sender = ctx.sender();
         var world = ctx.require("world", MVWorld.class);
-        if (world.getType() != MVWorldType.PLOT) {
-            r18n().msg("multiverse.applyschematic_not_plot").prefix()
-                    .with(KEY_WORLD_NAME, world.getIdentifier())
-                    .send(sender);
-            return;
-        }
 
         var name = ctx.get(KEY_SCHEMATIC, String.class).orElse(world.getSchematicName());
         if (name == null || name.isBlank()) {
@@ -340,28 +335,44 @@ public final class MultiverseHandler {
         }
 
         var schematicService = worldFactory.schematics();
-        if (schematicService.load(name).isEmpty()) {
+        var loaded = schematicService.load(name).orElse(null);
+        if (loaded == null) {
             r18n().msg("multiverse.applyschematic_not_found").prefix()
                     .with(KEY_SCHEMATIC, name)
                     .send(sender);
             return;
         }
 
-        int plotSize = worldFactory.effectivePlotSize(world);
-        int roadWidth = worldFactory.effectiveRoadWidth(world);
-        int plotHeight = worldFactory.plotConfig().plotHeight();
-        int interval = plotSize + roadWidth;
+        if (world.getType() == MVWorldType.PLOT) {
+            // PLOT worlds: tile the schematic across the plot grid in loaded chunks.
+            int plotSize = worldFactory.effectivePlotSize(world);
+            int roadWidth = worldFactory.effectiveRoadWidth(world);
+            int plotHeight = worldFactory.plotConfig().plotHeight();
+            int interval = plotSize + roadWidth;
 
-        var chunks = bukkit.getLoadedChunks();
-        int placed = placeSchematicsInChunks(chunks, schematicService, name, bukkit,
-                plotSize, roadWidth, plotHeight, interval);
+            var chunks = bukkit.getLoadedChunks();
+            int placed = placeSchematicsInChunks(chunks, schematicService, name, bukkit,
+                    plotSize, roadWidth, plotHeight, interval);
 
-        r18n().msg("multiverse.applyschematic_done").prefix()
-                .with(KEY_WORLD_NAME, world.getIdentifier())
-                .with(KEY_SCHEMATIC, name)
-                .with(KEY_COUNT, String.valueOf(placed))
-                .with("chunks", String.valueOf(chunks.length))
-                .send(sender);
+            r18n().msg("multiverse.applyschematic_done").prefix()
+                    .with(KEY_WORLD_NAME, world.getIdentifier())
+                    .with(KEY_SCHEMATIC, name)
+                    .with(KEY_COUNT, String.valueOf(placed))
+                    .with("chunks", String.valueOf(chunks.length))
+                    .send(sender);
+        } else {
+            // Non-PLOT worlds (VOID / NORMAL hub builds): single paste at the
+            // world spawn, mirroring the create-time non-plot behaviour.
+            var spawn = bukkit.getSpawnLocation();
+            loaded.place(bukkit, spawn.getBlockX(), spawn.getBlockY(), spawn.getBlockZ());
+            r18n().msg("multiverse.applyschematic_done_single").prefix()
+                    .with(KEY_WORLD_NAME, world.getIdentifier())
+                    .with(KEY_SCHEMATIC, name)
+                    .with("x", String.valueOf(spawn.getBlockX()))
+                    .with("y", String.valueOf(spawn.getBlockY()))
+                    .with("z", String.valueOf(spawn.getBlockZ()))
+                    .send(sender);
+        }
     }
 
     private int placeSchematicsInChunks(org.bukkit.Chunk @NotNull [] chunks,
@@ -392,6 +403,53 @@ public final class MultiverseHandler {
             }
         }
         return placed;
+    }
+
+    // ── Paste schematic (anywhere) ───────────────────────────────────────────────
+
+    private void onPaste(@NotNull CommandContext ctx) {
+        var sender = ctx.sender();
+        if (!(sender instanceof Player player)) {
+            r18n().msg("multiverse.paste_player_only").prefix().send(sender);
+            return;
+        }
+        var name = ctx.require(KEY_SCHEMATIC, String.class);
+        var placed = worldFactory.schematics().load(name).orElse(null);
+        if (placed == null) {
+            r18n().msg("multiverse.applyschematic_not_found").prefix()
+                    .with(KEY_SCHEMATIC, name)
+                    .send(player);
+            return;
+        }
+        // Paste directly where the player stands: centered horizontally on them,
+        // bottom layer at their feet. Works in any world (no plot-world needed).
+        var world = player.getWorld();
+        var loc = player.getLocation().getBlock().getLocation();
+        var size = placed.size();
+        int originX = loc.getBlockX() - size.getBlockX() / 2;
+        int originY = loc.getBlockY();
+        int originZ = loc.getBlockZ() - size.getBlockZ() / 2;
+        placed.place(world, originX, originY, originZ);
+
+        r18n().msg("multiverse.paste_done").prefix()
+                .with(KEY_SCHEMATIC, name)
+                .with(KEY_WORLD_NAME, world.getName())
+                .with("x", String.valueOf(loc.getBlockX()))
+                .with("y", String.valueOf(loc.getBlockY()))
+                .with("z", String.valueOf(loc.getBlockZ()))
+                .with("width", String.valueOf(size.getBlockX()))
+                .with("height", String.valueOf(size.getBlockY()))
+                .with("length", String.valueOf(size.getBlockZ()))
+                .send(player);
+
+        boolean setSpawn = ctx.get("setspawn", String.class)
+                .map(s -> s.equalsIgnoreCase("setspawn")).orElse(false);
+        if (setSpawn) {
+            service.setSpawn(world.getName(), loc);
+            r18n().msg("multiverse.paste_spawn_set").prefix()
+                    .with(KEY_WORLD_NAME, world.getName())
+                    .send(player);
+        }
     }
 
     // ── Help ────────────────────────────────────────────────────────────────────

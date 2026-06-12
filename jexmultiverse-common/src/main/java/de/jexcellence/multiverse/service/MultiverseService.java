@@ -223,24 +223,40 @@ public class MultiverseService implements MultiverseProvider {
             if (pasteSchematic != null && !pasteSchematic.isBlank()) {
                 pasteSchematicAtSpawn(bukkitWorld, spawn, pasteSchematic);
             }
-            var mvWorld = MVWorld.builder()
-                    .identifier(name)
-                    .type(type)
-                    .environment(environment)
-                    .spawnLocation(spawn)
-                    .globalizedSpawn(false)
-                    .pvpEnabled(true)
-                    .plotSizeOverride(effectivePlotSize)
-                    .roadWidthOverride(effectiveRoadWidth)
-                    .schematicName(type == MVWorldType.PLOT ? effectiveSchematic : pasteSchematic)
-                    .build();
-
-            repository.saveWorld(mvWorld).thenAccept(saved -> {
-                worldFactory.cacheWorld(saved);
-                logger.info("Created and persisted world '{}'", name);
-                future.complete(Optional.of(saved));
+            // The row may already exist (e.g. the server's main world persisted
+            // on a prior run, not yet in the in-memory cache). Adopt it instead
+            // of inserting a duplicate, which would violate the world_name unique
+            // constraint.
+            repository.findByIdentifierAsync(name).thenAccept(existing -> {
+                if (existing.isPresent()) {
+                    var adopted = existing.get();
+                    worldFactory.cacheWorld(adopted);
+                    logger.info("World '{}' already persisted — adopted existing row", name);
+                    future.complete(Optional.of(adopted));
+                    return;
+                }
+                var mvWorld = MVWorld.builder()
+                        .identifier(name)
+                        .type(type)
+                        .environment(environment)
+                        .spawnLocation(spawn)
+                        .globalizedSpawn(false)
+                        .pvpEnabled(true)
+                        .plotSizeOverride(effectivePlotSize)
+                        .roadWidthOverride(effectiveRoadWidth)
+                        .schematicName(type == MVWorldType.PLOT ? effectiveSchematic : pasteSchematic)
+                        .build();
+                repository.saveWorld(mvWorld).thenAccept(saved -> {
+                    worldFactory.cacheWorld(saved);
+                    logger.info("Created and persisted world '{}'", name);
+                    future.complete(Optional.of(saved));
+                }).exceptionally(ex -> {
+                    logger.error("Failed to persist world '{}'", name, ex);
+                    future.complete(Optional.empty());
+                    return null;
+                });
             }).exceptionally(ex -> {
-                logger.error("Failed to persist world '{}'", name, ex);
+                logger.error("Failed to look up world '{}' before persist", name, ex);
                 future.complete(Optional.empty());
                 return null;
             });

@@ -62,6 +62,14 @@ subcommands:
       - { name: world,     type: world,  required: true,  description: "Target plot world" }
       - { name: schematic, type: string, required: false, description: "Schematic name (defaults to world's stored schematic)" }
 
+  - name: paste
+    description: "Paste a schematic at your location in the current world"
+    permission: "jexmultiverse.command.paste"
+    senders: [player]
+    argumentSchema:
+      - { name: schematic, type: string, required: true,  description: "Schematic file name (without extension) from the schematics/ folder" }
+      - { name: setspawn,  type: string, required: false, description: "Pass 'setspawn' to also set this world's spawn to the paste point" }
+
   - name: help
     description: "Show help"
     senders: [player]

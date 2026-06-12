@@ -24,6 +24,8 @@ dependencies {
         exclude(group = "de.jexcellence.hibernate")
     }
     implementation(libs.bundles.jeconfig) { isTransitive = false }
+    // Shaded: adventure-nbt (WorldEdit-free Sponge reader; Paper does not expose it)
+    implementation(libs.adventure.nbt)
 
     // CompileOnly
     compileOnly(libs.paper.api)
