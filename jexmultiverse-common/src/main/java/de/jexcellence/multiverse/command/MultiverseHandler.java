@@ -2,6 +2,9 @@ package de.jexcellence.multiverse.command;
 
 import com.raindropcentral.commands.v2.CommandContext;
 import com.raindropcentral.commands.v2.CommandHandler;
+import de.jexcellence.jexplatform.schematic.edit.SchematicEditor;
+import de.jexcellence.jexplatform.schematic.edit.Selection;
+import de.jexcellence.jexplatform.schematic.edit.SelectionService;
 import de.jexcellence.jextranslate.R18nManager;
 import de.jexcellence.multiverse.api.MVWorldType;
 import de.jexcellence.multiverse.database.entity.MVWorld;
@@ -14,10 +17,12 @@ import de.jexcellence.multiverse.view.MultiverseListView;
 import me.devnatan.inventoryframework.ViewFrame;
 import de.jexcellence.jexplatform.scheduler.PlatformScheduler;
 import org.bukkit.Bukkit;
+import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Map;
 import java.util.Random;
@@ -55,30 +60,45 @@ public final class MultiverseHandler {
     private final WorldFactory worldFactory;
     private final ViewFrame viewFrame;
     private final JavaPlugin plugin;
+    private final SelectionService selections;
+    private final SchematicEditor editor;
 
     public MultiverseHandler(@NotNull MultiverseService service,
                              @NotNull WorldFactory worldFactory,
                              @NotNull ViewFrame viewFrame,
-                             @NotNull JavaPlugin plugin) {
+                             @NotNull JavaPlugin plugin,
+                             @NotNull SelectionService selections,
+                             @NotNull SchematicEditor editor) {
         this.service = service;
         this.worldFactory = worldFactory;
         this.viewFrame = viewFrame;
         this.plugin = plugin;
+        this.selections = selections;
+        this.editor = editor;
     }
 
     /** Returns the path to handler map for registration. */
     public @NotNull Map<String, CommandHandler> handlerMap() {
-        return Map.of(
-                "multiverse",                this::onRoot,
-                "multiverse.create",         this::onCreate,
-                "multiverse.delete",         this::onDelete,
-                "multiverse.edit",           this::onEdit,
-                "multiverse.teleport",       this::onTeleport,
-                "multiverse.load",           this::onLoad,
-                "multiverse.list",           this::onList,
-                "multiverse.help",           this::onHelp,
-                "multiverse.applyschematic", this::onApplySchematic,
-                "multiverse.paste",          this::onPaste
+        return Map.ofEntries(
+                Map.entry("multiverse",                this::onRoot),
+                Map.entry("multiverse.create",         this::onCreate),
+                Map.entry("multiverse.delete",         this::onDelete),
+                Map.entry("multiverse.edit",           this::onEdit),
+                Map.entry("multiverse.teleport",       this::onTeleport),
+                Map.entry("multiverse.load",           this::onLoad),
+                Map.entry("multiverse.list",           this::onList),
+                Map.entry("multiverse.help",           this::onHelp),
+                Map.entry("multiverse.applyschematic", this::onApplySchematic),
+                Map.entry("multiverse.paste",          this::onPaste),
+                Map.entry("multiverse.wand",           this::onWand),
+                Map.entry("multiverse.pos1",           this::onPos1),
+                Map.entry("multiverse.pos2",           this::onPos2),
+                Map.entry("multiverse.copy",           this::onCopy),
+                Map.entry("multiverse.cut",            this::onCut),
+                Map.entry("multiverse.save",           this::onSave),
+                Map.entry("multiverse.rotate",         this::onRotate),
+                Map.entry("multiverse.flip",           this::onFlip),
+                Map.entry("multiverse.undo",           this::onUndo)
         );
     }
 
@@ -413,7 +433,11 @@ public final class MultiverseHandler {
             r18n().msg("multiverse.paste_player_only").prefix().send(sender);
             return;
         }
-        var name = ctx.require(KEY_SCHEMATIC, String.class);
+        var name = ctx.get(KEY_SCHEMATIC, String.class).orElse(null);
+        if (name == null) {
+            onPasteClipboard(player);
+            return;
+        }
         var placed = worldFactory.schematics().load(name).orElse(null);
         if (placed == null) {
             r18n().msg("multiverse.applyschematic_not_found").prefix()
@@ -450,6 +474,171 @@ public final class MultiverseHandler {
                     .with(KEY_WORLD_NAME, world.getName())
                     .send(player);
         }
+    }
+
+    // ── WorldEdit-free region toolkit ────────────────────────────────────────────
+
+    private void onWand(@NotNull CommandContext ctx) {
+        if (!(ctx.sender() instanceof Player player)) {
+            return;
+        }
+        player.getInventory().addItem(selections.wandItem());
+        r18n().msg("multiverse.edit.wand_given").prefix().send(player);
+    }
+
+    private void onPos1(@NotNull CommandContext ctx) {
+        if (!(ctx.sender() instanceof Player player)) {
+            return;
+        }
+        var set = selections.setPos1(player, player.getLocation());
+        sendCorner(player, "multiverse.edit.pos1_set", set);
+    }
+
+    private void onPos2(@NotNull CommandContext ctx) {
+        if (!(ctx.sender() instanceof Player player)) {
+            return;
+        }
+        var set = selections.setPos2(player, player.getLocation());
+        sendCorner(player, "multiverse.edit.pos2_set", set);
+    }
+
+    private void onCopy(@NotNull CommandContext ctx) {
+        if (!(ctx.sender() instanceof Player player)) {
+            return;
+        }
+        var selection = selectionOrWarn(player);
+        if (selection == null) {
+            return;
+        }
+        r18n().msg("multiverse.edit.working").prefix()
+                .with(KEY_COUNT, String.valueOf(selection.blockCount())).send(player);
+        editor.copy(player.getUniqueId(), selection).thenAccept(count ->
+                r18n().msg("multiverse.edit.copy_done").prefix()
+                        .with(KEY_COUNT, String.valueOf(count)).send(player));
+    }
+
+    private void onCut(@NotNull CommandContext ctx) {
+        if (!(ctx.sender() instanceof Player player)) {
+            return;
+        }
+        var selection = selectionOrWarn(player);
+        if (selection == null) {
+            return;
+        }
+        r18n().msg("multiverse.edit.working").prefix()
+                .with(KEY_COUNT, String.valueOf(selection.blockCount())).send(player);
+        editor.cut(player.getUniqueId(), selection).thenAccept(count ->
+                r18n().msg("multiverse.edit.cut_done").prefix()
+                        .with(KEY_COUNT, String.valueOf(count)).send(player));
+    }
+
+    private void onPasteClipboard(@NotNull Player player) {
+        if (editor.clipboard(player.getUniqueId()).isEmpty()) {
+            r18n().msg("multiverse.edit.no_clipboard").prefix().send(player);
+            return;
+        }
+        editor.paste(player, true, false).thenAccept(result -> result.ifPresent(r ->
+                r18n().msg("multiverse.edit.paste_done").prefix()
+                        .with("x", String.valueOf(r.x()))
+                        .with("y", String.valueOf(r.y()))
+                        .with("z", String.valueOf(r.z()))
+                        .with("width", String.valueOf(r.width()))
+                        .with("height", String.valueOf(r.height()))
+                        .with("length", String.valueOf(r.length()))
+                        .send(player)));
+    }
+
+    private void onSave(@NotNull CommandContext ctx) {
+        if (!(ctx.sender() instanceof Player player)) {
+            return;
+        }
+        var selection = selectionOrWarn(player);
+        if (selection == null) {
+            return;
+        }
+        var name = ctx.require("name", String.class);
+        try {
+            long count = editor.save(selection, name);
+            worldFactory.schematics().invalidate(name);
+            r18n().msg("multiverse.edit.save_done").prefix()
+                    .with(KEY_SCHEMATIC, name)
+                    .with(KEY_COUNT, String.valueOf(count)).send(player);
+        } catch (IllegalStateException e) {
+            r18n().msg("multiverse.edit.save_failed").prefix()
+                    .with(KEY_SCHEMATIC, name).send(player);
+        }
+    }
+
+    private void onRotate(@NotNull CommandContext ctx) {
+        if (!(ctx.sender() instanceof Player player)) {
+            return;
+        }
+        int turns = switch (ctx.require("degrees", String.class).trim()) {
+            case "90" -> 1;
+            case "180" -> 2;
+            case "270" -> 3;
+            default -> -1;
+        };
+        if (turns < 0) {
+            r18n().msg("multiverse.edit.rotate_bad_arg").prefix().send(player);
+            return;
+        }
+        if (!editor.rotate(player.getUniqueId(), turns)) {
+            r18n().msg("multiverse.edit.no_clipboard").prefix().send(player);
+            return;
+        }
+        r18n().msg("multiverse.edit.rotate_done").prefix()
+                .with("degrees", String.valueOf(turns * 90)).send(player);
+    }
+
+    private void onFlip(@NotNull CommandContext ctx) {
+        if (!(ctx.sender() instanceof Player player)) {
+            return;
+        }
+        String axis = ctx.get("axis", String.class).orElse("x").trim().toLowerCase(java.util.Locale.ROOT);
+        boolean flipX = !axis.startsWith("z") && !axis.startsWith("n");
+        if (!editor.flip(player.getUniqueId(), flipX)) {
+            r18n().msg("multiverse.edit.no_clipboard").prefix().send(player);
+            return;
+        }
+        r18n().msg("multiverse.edit.flip_done").prefix()
+                .with("axis", flipX ? "X" : "Z").send(player);
+    }
+
+    private void onUndo(@NotNull CommandContext ctx) {
+        if (!(ctx.sender() instanceof Player player)) {
+            return;
+        }
+        editor.undo(player.getUniqueId()).thenAccept(restored -> {
+            if (Boolean.TRUE.equals(restored)) {
+                r18n().msg("multiverse.edit.undo_done").prefix().send(player);
+            } else {
+                r18n().msg("multiverse.edit.undo_empty").prefix().send(player);
+            }
+        });
+    }
+
+    private @Nullable Selection selectionOrWarn(@NotNull Player player) {
+        var selection = selections.selection(player.getUniqueId()).orElse(null);
+        if (selection == null) {
+            r18n().msg("multiverse.edit.no_selection").prefix().send(player);
+            return null;
+        }
+        if (!selection.world().equals(player.getWorld())) {
+            r18n().msg("multiverse.edit.wrong_world").prefix().send(player);
+            return null;
+        }
+        return selection;
+    }
+
+    private void sendCorner(@NotNull Player player, @NotNull String key, @NotNull Location at) {
+        r18n().msg(key).prefix()
+                .with("x", String.valueOf(at.getBlockX()))
+                .with("y", String.valueOf(at.getBlockY()))
+                .with("z", String.valueOf(at.getBlockZ()))
+                .with(KEY_COUNT, selections.selection(player.getUniqueId())
+                        .map(s -> String.valueOf(s.blockCount())).orElse("—"))
+                .send(player);
     }
 
     // ── Help ────────────────────────────────────────────────────────────────────

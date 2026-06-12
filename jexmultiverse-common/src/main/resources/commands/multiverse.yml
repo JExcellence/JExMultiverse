@@ -63,12 +63,64 @@ subcommands:
       - { name: schematic, type: string, required: false, description: "Schematic name (defaults to world's stored schematic)" }
 
   - name: paste
-    description: "Paste a schematic at your location in the current world"
+    description: "Paste a schematic file, or your clipboard when no name is given"
     permission: "jexmultiverse.command.paste"
     senders: [player]
     argumentSchema:
-      - { name: schematic, type: string, required: true,  description: "Schematic file name (without extension) from the schematics/ folder" }
+      - { name: schematic, type: string, required: false, description: "Schematic file name (without extension); omit to paste your /mv copy clipboard" }
       - { name: setspawn,  type: string, required: false, description: "Pass 'setspawn' to also set this world's spawn to the paste point" }
+
+  # ── WorldEdit-free region toolkit ───────────────────────────────────────────
+  - name: wand
+    description: "Receive the selection wand (golden axe): left-click = pos1, right-click = pos2"
+    permission: "jexmultiverse.command.schematic"
+    senders: [player]
+
+  - name: pos1
+    description: "Set selection corner 1 to the block you stand on"
+    permission: "jexmultiverse.command.schematic"
+    senders: [player]
+
+  - name: pos2
+    description: "Set selection corner 2 to the block you stand on"
+    permission: "jexmultiverse.command.schematic"
+    senders: [player]
+
+  - name: copy
+    description: "Copy the current selection (blocks + entities) to your clipboard"
+    permission: "jexmultiverse.command.schematic"
+    senders: [player]
+
+  - name: cut
+    description: "Copy the selection to your clipboard, then clear it"
+    permission: "jexmultiverse.command.schematic"
+    senders: [player]
+
+  - name: save
+    description: "Save the current selection to a .nbt schematic (entities included)"
+    permission: "jexmultiverse.command.schematic"
+    senders: [player]
+    argumentSchema:
+      - { name: name, type: string, required: true, description: "Output schematic name (without extension)" }
+
+  - name: rotate
+    description: "Rotate your clipboard clockwise (90, 180 or 270 degrees)"
+    permission: "jexmultiverse.command.schematic"
+    senders: [player]
+    argumentSchema:
+      - { name: degrees, type: string, required: true, description: "90, 180 or 270" }
+
+  - name: flip
+    description: "Mirror your clipboard across an axis (x or z)"
+    permission: "jexmultiverse.command.schematic"
+    senders: [player]
+    argumentSchema:
+      - { name: axis, type: string, required: false, description: "x (east/west) or z (north/south); defaults to x" }
+
+  - name: undo
+    description: "Restore the region overwritten by your last paste"
+    permission: "jexmultiverse.command.schematic"
+    senders: [player]
 
   - name: help
     description: "Show help"

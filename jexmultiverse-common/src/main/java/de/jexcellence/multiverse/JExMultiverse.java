@@ -6,6 +6,9 @@ import de.jexcellence.jehibernate.core.JEHibernate;
 import de.jexcellence.jexplatform.JExPlatform;
 import de.jexcellence.jexplatform.logging.JExLogger;
 import de.jexcellence.jexplatform.logging.LogLevel;
+import de.jexcellence.jexplatform.schematic.edit.SchematicEditor;
+import de.jexcellence.jexplatform.schematic.edit.SelectionService;
+import de.jexcellence.jexplatform.utility.workload.WorkloadExecutor;
 import de.jexcellence.multiverse.api.MultiverseProvider;
 import de.jexcellence.multiverse.command.EnvironmentArgumentType;
 import de.jexcellence.multiverse.command.PlotArgumentType;
@@ -20,6 +23,7 @@ import de.jexcellence.multiverse.database.repository.PlotMemberRepository;
 import de.jexcellence.multiverse.database.repository.PlotRepository;
 import de.jexcellence.multiverse.listener.PlotFlagListener;
 import de.jexcellence.multiverse.listener.PlotProtectionListener;
+import de.jexcellence.multiverse.listener.SelectionWandListener;
 import de.jexcellence.multiverse.service.PlotService;
 import de.jexcellence.multiverse.database.repository.MVWorldRepository;
 import de.jexcellence.multiverse.factory.WorldFactory;
@@ -64,6 +68,8 @@ public abstract class JExMultiverse {
     private PlotService plotService;
     private ViewFrame viewFrame;
     private JExLogger logger;
+    private SelectionService selectionService;
+    private SchematicEditor schematicEditor;
 
     protected JExMultiverse(@NotNull JavaPlugin plugin, @NotNull String edition) {
         this.plugin = plugin;
@@ -329,6 +335,14 @@ public abstract class JExMultiverse {
     }
 
     private void registerCommands() {
+        // WorldEdit-free region toolkit: per-player selections + a lag-free,
+        // tick-budgeted editor sharing JExPlatform's WorkloadExecutor (2.5 ms/tick).
+        selectionService = new SelectionService(plugin);
+        var workloadExecutor = new WorkloadExecutor();
+        platform.scheduler().runRepeating(workloadExecutor, 1L, 1L);
+        schematicEditor = new SchematicEditor(logger, workloadExecutor,
+                worldFactory.schematics().platform());
+
         var factory = new CommandFactory(plugin, this);
 
         // Shared argument type registry — defaults + the plugin-specific types.
@@ -345,7 +359,8 @@ public abstract class JExMultiverse {
         // Register each YAML tree against its handler map.
         factory.registerTree("commands/multiverse.yml",
                 new de.jexcellence.multiverse.command.MultiverseHandler(
-                        multiverseService, worldFactory, viewFrame, plugin).handlerMap(),
+                        multiverseService, worldFactory, viewFrame, plugin,
+                        selectionService, schematicEditor).handlerMap(),
                 messages, registry);
         factory.registerTree("commands/spawn.yml",
                 new de.jexcellence.multiverse.command.SpawnHandler(
@@ -364,6 +379,7 @@ public abstract class JExMultiverse {
         pm.registerEvents(new SpawnListener(multiverseService, worldFactory, logger), plugin);
         pm.registerEvents(new PlotProtectionListener(plotService, multiverseService, plugin), plugin);
         pm.registerEvents(new PlotFlagListener(plotService), plugin);
+        pm.registerEvents(new SelectionWandListener(selectionService), plugin);
     }
 
     // ── Accessors ────────────────────────────────────────────────────────────────
