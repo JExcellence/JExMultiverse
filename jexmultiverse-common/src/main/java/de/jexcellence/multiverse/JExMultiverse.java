@@ -342,6 +342,10 @@ public abstract class JExMultiverse {
         platform.scheduler().runRepeating(workloadExecutor, 1L, 1L);
         schematicEditor = new SchematicEditor(logger, workloadExecutor,
                 worldFactory.schematics().platform());
+        // Live particle wireframe of the pos1↔pos2 selection (toggle: /mv selection).
+        var selectionBorder = new de.jexcellence.jexplatform.schematic.edit.SelectionBorderService(
+                selectionService, platform.scheduler());
+        Bukkit.getPluginManager().registerEvents(selectionBorder, plugin);
 
         var factory = new CommandFactory(plugin, this);
 
@@ -360,7 +364,7 @@ public abstract class JExMultiverse {
         factory.registerTree("commands/multiverse.yml",
                 new de.jexcellence.multiverse.command.MultiverseHandler(
                         multiverseService, worldFactory, viewFrame, plugin,
-                        selectionService, schematicEditor).handlerMap(),
+                        selectionService, schematicEditor, selectionBorder).handlerMap(),
                 messages, registry);
         factory.registerTree("commands/spawn.yml",
                 new de.jexcellence.multiverse.command.SpawnHandler(

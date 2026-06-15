@@ -18,6 +18,8 @@ import me.devnatan.inventoryframework.ViewFrame;
 import de.jexcellence.jexplatform.scheduler.PlatformScheduler;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.Material;
+import org.bukkit.util.BlockVector;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -62,19 +64,22 @@ public final class MultiverseHandler {
     private final JavaPlugin plugin;
     private final SelectionService selections;
     private final SchematicEditor editor;
+    private final de.jexcellence.jexplatform.schematic.edit.SelectionBorderService selectionBorder;
 
     public MultiverseHandler(@NotNull MultiverseService service,
                              @NotNull WorldFactory worldFactory,
                              @NotNull ViewFrame viewFrame,
                              @NotNull JavaPlugin plugin,
                              @NotNull SelectionService selections,
-                             @NotNull SchematicEditor editor) {
+                             @NotNull SchematicEditor editor,
+                             @NotNull de.jexcellence.jexplatform.schematic.edit.SelectionBorderService selectionBorder) {
         this.service = service;
         this.worldFactory = worldFactory;
         this.viewFrame = viewFrame;
         this.plugin = plugin;
         this.selections = selections;
         this.editor = editor;
+        this.selectionBorder = selectionBorder;
     }
 
     /** Returns the path to handler map for registration. */
@@ -93,6 +98,8 @@ public final class MultiverseHandler {
                 Map.entry("multiverse.wand",           this::onWand),
                 Map.entry("multiverse.pos1",           this::onPos1),
                 Map.entry("multiverse.pos2",           this::onPos2),
+                Map.entry("multiverse.selection",      this::onSelectionToggle),
+                Map.entry("multiverse.set",            this::onSet),
                 Map.entry("multiverse.copy",           this::onCopy),
                 Map.entry("multiverse.cut",            this::onCut),
                 Map.entry("multiverse.save",           this::onSave),
@@ -502,6 +509,47 @@ public final class MultiverseHandler {
         sendCorner(player, "multiverse.edit.pos2_set", set);
     }
 
+    /** Fills the current selection with a single block ({@code /mv set <block>}). */
+    private void onSet(@NotNull CommandContext ctx) {
+        if (!(ctx.sender() instanceof Player player)) {
+            return;
+        }
+        var selection = selectionOrWarn(player);
+        if (selection == null) {
+            return;
+        }
+        String raw = ctx.require("block", String.class);
+        Material material = Material.matchMaterial(raw);
+        if (material == null || !material.isBlock()) {
+            r18n().msg("multiverse.edit.bad_material").prefix().with("material", raw).send(player);
+            return;
+        }
+        long count = selection.blockCount();
+        r18n().msg("multiverse.edit.working").prefix()
+                .with(KEY_COUNT, String.valueOf(count)).send(player);
+        editor.fill(player.getUniqueId(), selection, material.createBlockData()).thenRun(() ->
+                r18n().msg("multiverse.edit.set_done").prefix()
+                        .with(KEY_COUNT, String.valueOf(count))
+                        .with("material", material.name()).send(player));
+    }
+
+    /** Toggles the live particle outline of the player's pos1↔pos2 selection. */
+    private void onSelectionToggle(@NotNull CommandContext ctx) {
+        if (!(ctx.sender() instanceof Player player)) {
+            return;
+        }
+        if (selectionBorder.isShowing(player.getUniqueId())) {
+            selectionBorder.toggle(player);
+            r18n().msg("multiverse.edit.selection_hidden").prefix().send(player);
+            return;
+        }
+        if (selectionOrWarn(player) == null) {
+            return;
+        }
+        selectionBorder.toggle(player);
+        r18n().msg("multiverse.edit.selection_shown").prefix().send(player);
+    }
+
     private void onCopy(@NotNull CommandContext ctx) {
         if (!(ctx.sender() instanceof Player player)) {
             return;
@@ -512,7 +560,7 @@ public final class MultiverseHandler {
         }
         r18n().msg("multiverse.edit.working").prefix()
                 .with(KEY_COUNT, String.valueOf(selection.blockCount())).send(player);
-        editor.copy(player.getUniqueId(), selection).thenAccept(count ->
+        editor.copy(player.getUniqueId(), selection, feetAnchor(player)).thenAccept(count ->
                 r18n().msg("multiverse.edit.copy_done").prefix()
                         .with(KEY_COUNT, String.valueOf(count)).send(player));
     }
@@ -527,9 +575,15 @@ public final class MultiverseHandler {
         }
         r18n().msg("multiverse.edit.working").prefix()
                 .with(KEY_COUNT, String.valueOf(selection.blockCount())).send(player);
-        editor.cut(player.getUniqueId(), selection).thenAccept(count ->
+        editor.cut(player.getUniqueId(), selection, feetAnchor(player)).thenAccept(count ->
                 r18n().msg("multiverse.edit.cut_done").prefix()
                         .with(KEY_COUNT, String.valueOf(count)).send(player));
+    }
+
+    /** The player's feet block as the copy/cut anchor for relative paste. */
+    private static @NotNull BlockVector feetAnchor(@NotNull Player player) {
+        Location loc = player.getLocation();
+        return new BlockVector(loc.getBlockX(), loc.getBlockY(), loc.getBlockZ());
     }
 
     private void onPasteClipboard(@NotNull Player player) {

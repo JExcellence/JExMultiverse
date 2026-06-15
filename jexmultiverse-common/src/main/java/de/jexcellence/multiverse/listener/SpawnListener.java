@@ -59,21 +59,22 @@ public class SpawnListener implements Listener {
     public void onPlayerSpawnLocation(@NotNull PlayerSpawnLocationEvent event) {
         var player = event.getPlayer();
 
-        // First-time join: always send to global spawn if available
-        if (!player.hasPlayedBefore()) {
-            var globalSpawn = resolveGlobalSpawn();
-            if (globalSpawn != null) {
-                event.setSpawnLocation(globalSpawn);
-                logger.debug("Set first-join spawn for '{}' to global spawn", player.getName());
-                return;
-            }
+        // A personal (bed / respawn-anchor) spawn always wins — never yank a
+        // player off it on join.
+        if (hasBedSpawn(player)) {
+            return;
         }
 
-        // Returning player: resolve through the chain
-        var resolved = resolveWorldSpawn(player.getWorld().getName());
+        // No personal spawn → prefer the global spawn, then the current world's
+        // multiverse spawn, then leave the vanilla default untouched.
+        var resolved = resolveGlobalSpawn();
+        if (resolved == null) {
+            resolved = resolveWorldSpawn(player.getWorld().getName());
+        }
         if (resolved != null) {
             event.setSpawnLocation(resolved);
-            logger.debug("Set join spawn for '{}' to multiverse spawn", player.getName());
+            logger.debug("Set join spawn for '{}' to {} spawn", player.getName(),
+                    resolved.getWorld() != null ? resolved.getWorld().getName() : "unknown");
         }
     }
 
