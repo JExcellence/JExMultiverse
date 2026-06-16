@@ -128,7 +128,7 @@ public class SpawnListener implements Listener {
      */
     private @Nullable Location resolveWorldSpawn(@NotNull String worldName) {
         return factory.getCachedWorld(worldName)
-                .map(MVWorld::getSpawnLocation)
+                .map(this::liveSpawnLocation)
                 .orElse(null);
     }
 
@@ -141,8 +141,29 @@ public class SpawnListener implements Listener {
         return factory.getAllCachedWorlds().stream()
                 .filter(MVWorld::isGlobalizedSpawn)
                 .findFirst()
-                .map(MVWorld::getSpawnLocation)
+                .map(this::liveSpawnLocation)
                 .orElse(null);
+    }
+
+    /**
+     * Resolves an {@link MVWorld}'s stored spawn into a usable {@link Location},
+     * re-attaching the world handle: a Location loaded from the DB often has a
+     * {@code null} world (the world wasn't loaded at deserialization), and
+     * {@code setSpawnLocation} silently ignores a world-less location — which is
+     * why the global spawn wasn't applied on join. Mirrors the service resolver.
+     */
+    private @Nullable Location liveSpawnLocation(@NotNull MVWorld mv) {
+        var stored = mv.getSpawnLocation();
+        if (stored == null) {
+            return null;
+        }
+        var world = stored.getWorld() != null ? stored.getWorld() : Bukkit.getWorld(mv.getIdentifier());
+        if (world == null) {
+            return null;
+        }
+        var loc = stored.clone();
+        loc.setWorld(world);
+        return loc;
     }
 
     // ── Bed & anchor detection ──────────────────────────────────────────────────
