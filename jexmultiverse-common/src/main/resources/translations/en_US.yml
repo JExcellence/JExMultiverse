@@ -411,6 +411,8 @@ jexcommand:
     no-permission: "<gradient:#dc143c:#b22222>No permission.</gradient> <dark_gray>(<gray>{permission}</gray>)</dark_gray>"
     not-a-player: "<gradient:#dc143c:#b22222>Players only.</gradient>"
     not-a-console: "<gradient:#dc143c:#b22222>Console only.</gradient>"
+    player-only: "<gradient:#dc143c:#b22222>Players only.</gradient>"
+    console-only: "<gradient:#dc143c:#b22222>Console only.</gradient>"
     unknown-type: "<gradient:#dc143c:#b22222>Unknown argument type:</gradient> <gold>{type}</gold>"
     internal: "<gradient:#dc143c:#b22222>Internal error:</gradient> <white>{message}</white>"
     invalid-long: "<gradient:#dc143c:#b22222>Invalid integer:</gradient> <white>{value}</white>"
