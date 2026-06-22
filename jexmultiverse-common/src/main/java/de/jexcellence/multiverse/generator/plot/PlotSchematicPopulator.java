@@ -90,17 +90,4 @@ public class PlotSchematicPopulator extends BlockPopulator {
                     params.gridZ() * totalInterval + schematics.offsetZ());
         });
     }
-
-    /**
-     * Convenience overload kept for callers that pass individual parameters.
-     */
-    public static void placeManually(@NotNull SchematicService schematics,
-                                     @NotNull String schematicName,
-                                     @NotNull World world,
-                                     int gridX, int gridZ,
-                                     int plotSize, int roadWidth, int plotHeight,
-                                     @NotNull Random random) {
-        placeManually(schematics, schematicName, world,
-                new PlacementParams(gridX, gridZ, plotSize, roadWidth, plotHeight), random);
-    }
 }

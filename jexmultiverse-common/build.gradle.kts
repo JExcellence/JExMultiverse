@@ -58,8 +58,6 @@ dependencies {
     // Test
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter.api)
-    testRuntimeOnly(libs.junit.jupiter.engine)
-    testRuntimeOnly(libs.junit.platform.launcher)
     testImplementation(libs.mockito.core)
     testImplementation(libs.mockito.junit.jupiter)
     testImplementation(libs.mockbukkit)
@@ -69,6 +67,8 @@ dependencies {
     testImplementation(libs.caffeine)
     testImplementation(platform(libs.hibernate.platform))
     testImplementation(libs.bundles.hibernate)
+    testRuntimeOnly(libs.junit.jupiter.engine)
+    testRuntimeOnly(libs.junit.platform.launcher)
 }
 
 tasks.withType<Test>().configureEach {

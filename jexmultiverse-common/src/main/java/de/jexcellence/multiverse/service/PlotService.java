@@ -359,8 +359,9 @@ public class PlotService {
         }
         PlatformScheduler.of(plugin).runSync(() ->
                 PlotWallOps.applyWalls(bukkit, plot, plotSize, roadWidth, config, material,
-                        mergedIds,
-                        coords -> getPlot(plot.getWorldName(), coords[0], coords[1]).orElse(null)));
+                        new PlotWallOps.MergeNeighbours(
+                                mergedIds,
+                                coords -> getPlot(plot.getWorldName(), coords[0], coords[1]).orElse(null))));
     }
 
     /**
@@ -396,7 +397,7 @@ public class PlotService {
      */
     public @NotNull CompletableFuture<Boolean> unclaim(@NotNull Plot plot) {
         return purgePlotRows(plot).thenApply(ok -> {
-            if (ok) {
+            if (Boolean.TRUE.equals(ok)) {
                 // Snapshot the geometry before uncaching so wall ops still
                 // know which cells to touch.
                 applyUnclaimedWalls(plot);

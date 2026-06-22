@@ -178,32 +178,20 @@ public class MultiverseService implements MultiverseProvider {
         }
 
         // Overrides only apply to PLOT worlds; clear them otherwise so the
-        // entity faithfully represents how the world was generated.
-        var effectivePlotSize = type == MVWorldType.PLOT ? plotSizeOverride : null;
-        var effectiveRoadWidth = type == MVWorldType.PLOT ? roadWidthOverride : null;
-        var effectiveSchematic = type == MVWorldType.PLOT ? schematicName : null;
-        // Non-PLOT worlds (hub/spawn builds) paste the schematic once at spawn
-        // after creation, instead of per-plot via the generator.
-        final var pasteSchematic = type == MVWorldType.PLOT ? null : schematicName;
+        // entity faithfully represents how the world was generated. Non-PLOT
+        // worlds (hub/spawn builds) paste the schematic once at spawn after
+        // creation, instead of per-plot via the generator.
+        final boolean isPlot = type == MVWorldType.PLOT;
+        final CreationSpec spec = new CreationSpec(name, environment, type,
+                isPlot ? plotSizeOverride : null,
+                isPlot ? roadWidthOverride : null,
+                isPlot ? schematicName : null,
+                isPlot ? null : schematicName);
 
         // On Folia, Bukkit.createWorld throws UOE — route through the NMS-based
-        // ensureViaNms path (same code path used by ensureWorld). The PLOT
-        // overrides (plotSize/roadWidth/schematic) aren't yet plumbed through
-        // the NMS factory; for now they're silently dropped on Folia and the
-        // world is created with the type's default generator. Warn so the
-        // operator knows.
+        // ensureViaNms path (same code path used by ensureWorld).
         if (ServerDetector.detect() instanceof ServerType.Folia) {
-            if (effectivePlotSize != null || effectiveRoadWidth != null || effectiveSchematic != null) {
-                logger.warn("[worlds] PLOT overrides (size/road/schematic) not yet supported on Folia — creating '{}' with defaults",
-                        name);
-            }
-            return ensureViaNms(name, environment, type).thenCompose(snapOpt -> {
-                if (snapOpt.isEmpty()) {
-                    return CompletableFuture.completedFuture(Optional.empty());
-                }
-                // Re-hydrate from cache (ensureViaNms persists via adoptLoadedWorld)
-                return CompletableFuture.completedFuture(worldFactory.getCachedWorld(name));
-            });
+            return createViaFolia(spec);
         }
 
         var future = new CompletableFuture<Optional<MVWorld>>();
@@ -211,58 +199,109 @@ public class MultiverseService implements MultiverseProvider {
         // (where Bukkit.createWorld requires the global region) and the
         // main thread on Paper. Bukkit.getScheduler() throws UOE on
         // Folia outright.
-        scheduler.runSync(() -> {
-            var bukkitWorld = worldFactory.createBukkitWorld(name, environment, type,
-                    effectivePlotSize, effectiveRoadWidth, effectiveSchematic);
-            if (bukkitWorld == null) {
-                future.complete(Optional.empty());
-                return;
-            }
+        scheduler.runSync(() -> createPaperWorld(spec, future));
+        return future;
+    }
 
-            var spawn = worldFactory.getDefaultSpawnForType(bukkitWorld, type);
-            if (pasteSchematic != null && !pasteSchematic.isBlank()) {
-                pasteSchematicAtSpawn(bukkitWorld, spawn, pasteSchematic);
+    /**
+     * Parameters for a single world-creation request, with PLOT overrides
+     * already resolved against {@code type} ({@code null} for non-PLOT worlds).
+     */
+    private record CreationSpec(@NotNull String name,
+                                World.@NotNull Environment environment,
+                                @NotNull MVWorldType type,
+                                @Nullable Integer effectivePlotSize,
+                                @Nullable Integer effectiveRoadWidth,
+                                @Nullable String effectiveSchematic,
+                                @Nullable String pasteSchematic) {}
+
+    /**
+     * Folia world creation via the NMS factory. PLOT overrides aren't yet
+     * plumbed through the NMS factory; they're dropped here with a warning and
+     * the world is created with the type's default generator.
+     */
+    private @NotNull CompletableFuture<Optional<MVWorld>> createViaFolia(@NotNull CreationSpec spec) {
+        if (spec.effectivePlotSize() != null || spec.effectiveRoadWidth() != null
+                || spec.effectiveSchematic() != null) {
+            logger.warn("[worlds] PLOT overrides (size/road/schematic) not yet supported on Folia — creating '{}' with defaults",
+                    spec.name());
+        }
+        return ensureViaNms(spec.name(), spec.environment(), spec.type()).thenCompose(snapOpt -> {
+            if (snapOpt.isEmpty()) {
+                return CompletableFuture.completedFuture(Optional.empty());
             }
-            // The row may already exist (e.g. the server's main world persisted
-            // on a prior run, not yet in the in-memory cache). Adopt it instead
-            // of inserting a duplicate, which would violate the world_name unique
-            // constraint.
-            repository.findByIdentifierAsync(name).thenAccept(existing -> {
-                if (existing.isPresent()) {
-                    var adopted = existing.get();
-                    worldFactory.cacheWorld(adopted);
-                    logger.info("World '{}' already persisted — adopted existing row", name);
-                    future.complete(Optional.of(adopted));
-                    return;
-                }
-                var mvWorld = MVWorld.builder()
-                        .identifier(name)
-                        .type(type)
-                        .environment(environment)
-                        .spawnLocation(spawn)
-                        .globalizedSpawn(false)
-                        .pvpEnabled(true)
-                        .plotSizeOverride(effectivePlotSize)
-                        .roadWidthOverride(effectiveRoadWidth)
-                        .schematicName(type == MVWorldType.PLOT ? effectiveSchematic : pasteSchematic)
-                        .build();
-                repository.saveWorld(mvWorld).thenAccept(saved -> {
-                    worldFactory.cacheWorld(saved);
-                    logger.info("Created and persisted world '{}'", name);
-                    future.complete(Optional.of(saved));
-                }).exceptionally(ex -> {
-                    logger.error("Failed to persist world '{}'", name, ex);
+            // Re-hydrate from cache (ensureViaNms persists via adoptLoadedWorld)
+            return CompletableFuture.completedFuture(worldFactory.getCachedWorld(spec.name()));
+        });
+    }
+
+    /**
+     * Paper world creation: builds the Bukkit world on the scheduler thread,
+     * pastes the optional spawn schematic, then adopts or persists the row.
+     * Must run on the main/global-region thread.
+     */
+    private void createPaperWorld(@NotNull CreationSpec spec,
+                                  @NotNull CompletableFuture<Optional<MVWorld>> future) {
+        var bukkitWorld = worldFactory.createBukkitWorld(spec.name(), spec.environment(), spec.type(),
+                spec.effectivePlotSize(), spec.effectiveRoadWidth(), spec.effectiveSchematic());
+        if (bukkitWorld == null) {
+            future.complete(Optional.empty());
+            return;
+        }
+
+        var spawn = worldFactory.getDefaultSpawnForType(bukkitWorld, spec.type());
+        final String pasteSchematic = spec.pasteSchematic();
+        if (pasteSchematic != null && !pasteSchematic.isBlank()) {
+            pasteSchematicAtSpawn(bukkitWorld, spawn, pasteSchematic);
+        }
+        // The row may already exist (e.g. the server's main world persisted on a
+        // prior run, not yet in the in-memory cache). Adopt it instead of
+        // inserting a duplicate, which would violate the world_name unique
+        // constraint.
+        repository.findByIdentifierAsync(spec.name())
+                .thenAccept(existing -> adoptOrPersistWorld(spec, spawn, existing, future))
+                .exceptionally(ex -> {
+                    logger.error("Failed to look up world '{}' before persist", spec.name(), ex);
                     future.complete(Optional.empty());
                     return null;
                 });
-            }).exceptionally(ex -> {
-                logger.error("Failed to look up world '{}' before persist", name, ex);
-                future.complete(Optional.empty());
-                return null;
-            });
-        });
+    }
 
-        return future;
+    /**
+     * Adopts an already-persisted row when present, otherwise builds and saves
+     * a new {@link MVWorld}. Completes {@code future} with the resulting world.
+     */
+    private void adoptOrPersistWorld(@NotNull CreationSpec spec,
+                                     @NotNull Location spawn,
+                                     @NotNull Optional<MVWorld> existing,
+                                     @NotNull CompletableFuture<Optional<MVWorld>> future) {
+        if (existing.isPresent()) {
+            var adopted = existing.get();
+            worldFactory.cacheWorld(adopted);
+            logger.info("World '{}' already persisted — adopted existing row", spec.name());
+            future.complete(Optional.of(adopted));
+            return;
+        }
+        var mvWorld = MVWorld.builder()
+                .identifier(spec.name())
+                .type(spec.type())
+                .environment(spec.environment())
+                .spawnLocation(spawn)
+                .globalizedSpawn(false)
+                .pvpEnabled(true)
+                .plotSizeOverride(spec.effectivePlotSize())
+                .roadWidthOverride(spec.effectiveRoadWidth())
+                .schematicName(spec.type() == MVWorldType.PLOT ? spec.effectiveSchematic() : spec.pasteSchematic())
+                .build();
+        repository.saveWorld(mvWorld).thenAccept(saved -> {
+            worldFactory.cacheWorld(saved);
+            logger.info("Created and persisted world '{}'", spec.name());
+            future.complete(Optional.of(saved));
+        }).exceptionally(ex -> {
+            logger.error("Failed to persist world '{}'", spec.name(), ex);
+            future.complete(Optional.empty());
+            return null;
+        });
     }
 
     /**
@@ -680,8 +719,7 @@ public class MultiverseService implements MultiverseProvider {
                             logger.error("[startup] Error adopting companion world '{}': {}",
                                     worldName, rootMessage(ex));
                             return null;
-                        })
-                        .thenApply(v -> (Void) null);
+                        });
                 adoptionFutures.add(adoptionFuture);
             }
         }
@@ -811,16 +849,7 @@ public class MultiverseService implements MultiverseProvider {
             if (!worldDir.exists() || !new java.io.File(worldDir, "level.dat").exists()) {
                 LevelDatBuilder.writeSkeleton(name, environment);
             } else {
-                // Clean up stale uid.dat so the NMS layer doesn't trip on a
-                // UUID collision with a previously-attempted load.
-                final java.io.File uidDat = new java.io.File(worldDir, "uid.dat");
-                if (uidDat.exists()) {
-                    try {
-                        java.nio.file.Files.delete(uidDat.toPath());
-                    } catch (java.io.IOException ignored) {
-                        // Non-fatal: server may log a UUID collision warning but will still load
-                    }
-                }
+                deleteStaleUidDat(worldDir);
             }
         } catch (final java.io.IOException ex) {
             logger.error("[worlds] failed to write skeleton for '{}': {}", name, ex.getMessage());
@@ -865,6 +894,22 @@ public class MultiverseService implements MultiverseProvider {
                 });
     }
 
+    /**
+     * Removes a stale {@code uid.dat} from an existing world directory so the
+     * NMS layer doesn't trip on a UUID collision with a previously-attempted
+     * load. Non-fatal: the server may log a UUID warning but still loads.
+     */
+    private void deleteStaleUidDat(@NotNull java.io.File worldDir) {
+        final java.io.File uidDat = new java.io.File(worldDir, "uid.dat");
+        if (!uidDat.exists()) {
+            return;
+        }
+        try {
+            java.nio.file.Files.delete(uidDat.toPath());
+        } catch (final java.io.IOException ignored) {
+            // Non-fatal: server may log a UUID collision warning but will still load
+        }
+    }
 
     private @NotNull CompletableFuture<Optional<MVWorldSnapshot>> adoptLoadedWorld(
             @NotNull World bukkitWorld,

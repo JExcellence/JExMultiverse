@@ -24,21 +24,25 @@ public final class PlotWallOps {
     private PlotWallOps() {}
 
     /**
+     * Resolves whether an adjacent grid cell belongs to the same merged group:
+     * {@code ids} holds the merged-group plot ids and {@code lookup} maps a
+     * {@code {gridX, gridZ}} pair to the {@link Plot} occupying that cell.
+     */
+    public record MergeNeighbours(@NotNull Set<Long> ids,
+                                  @NotNull java.util.function.Function<int[], Plot> lookup) {}
+
+    /**
      * Repaints the entire perimeter wall of {@code plot} with {@code material}.
      * The four edges of the plot are walked at {@code y = plotHeight + 1 ..
      * plotHeight + wallHeight}. Edge cells whose adjacent grid cell belongs
-     * to {@code mergeNeighbours} are skipped.
-     *
-     * <p>This overload accepts individual parameters for callers that already
-     * have them unpacked. Delegates to the config-based overload.
+     * to {@code merge} are skipped.
      */
     public static void applyWalls(@NotNull World world,
                                    @NotNull Plot plot,
                                    int plotSize, int roadWidth,
                                    @NotNull PlotWorldConfig config,
                                    @NotNull Material material,
-                                   @NotNull Set<Long> mergedNeighbourIds,
-                                   @NotNull java.util.function.Function<int[], Plot> neighbourLookup) {
+                                   @NotNull MergeNeighbours merge) {
         int wallHeight = config.wallHeight();
         if (wallHeight <= 0) return;
         int plotHeight = config.plotHeight();
@@ -56,25 +60,23 @@ public final class PlotWallOps {
         // Stripe length runs the full plot edge so corner road cells get
         // walls from both axes.
 
-        if (!neighbourMerged(neighbourLookup, plot.getGridX(), plot.getGridZ() - 1, mergedNeighbourIds)) {
+        if (!neighbourMerged(merge, plot.getGridX(), plot.getGridZ() - 1)) {
             stripeX(world, x0, x0 + plotSize - 1, z0 - 1, plotHeight, wallHeight, material);
         }
-        if (!neighbourMerged(neighbourLookup, plot.getGridX(), plot.getGridZ() + 1, mergedNeighbourIds)) {
+        if (!neighbourMerged(merge, plot.getGridX(), plot.getGridZ() + 1)) {
             stripeX(world, x0, x0 + plotSize - 1, z0 + plotSize, plotHeight, wallHeight, material);
         }
-        if (!neighbourMerged(neighbourLookup, plot.getGridX() - 1, plot.getGridZ(), mergedNeighbourIds)) {
+        if (!neighbourMerged(merge, plot.getGridX() - 1, plot.getGridZ())) {
             stripeZ(world, x0 - 1, z0, z0 + plotSize - 1, plotHeight, wallHeight, material);
         }
-        if (!neighbourMerged(neighbourLookup, plot.getGridX() + 1, plot.getGridZ(), mergedNeighbourIds)) {
+        if (!neighbourMerged(merge, plot.getGridX() + 1, plot.getGridZ())) {
             stripeZ(world, x0 + plotSize, z0, z0 + plotSize - 1, plotHeight, wallHeight, material);
         }
     }
 
-    private static boolean neighbourMerged(@NotNull java.util.function.Function<int[], Plot> lookup,
-                                            int gridX, int gridZ,
-                                            @NotNull Set<Long> mergedIds) {
-        var neighbour = lookup.apply(new int[]{gridX, gridZ});
-        return neighbour != null && mergedIds.contains(neighbour.getId());
+    private static boolean neighbourMerged(@NotNull MergeNeighbours merge, int gridX, int gridZ) {
+        var neighbour = merge.lookup().apply(new int[]{gridX, gridZ});
+        return neighbour != null && merge.ids().contains(neighbour.getId());
     }
 
     private static void stripeX(@NotNull World world, int minX, int maxX, int z,

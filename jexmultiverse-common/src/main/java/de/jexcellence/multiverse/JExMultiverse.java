@@ -69,7 +69,6 @@ public abstract class JExMultiverse {
     private ViewFrame viewFrame;
     private JExLogger logger;
     private SelectionService selectionService;
-    private SchematicEditor schematicEditor;
 
     protected JExMultiverse(@NotNull JavaPlugin plugin, @NotNull String edition) {
         this.plugin = plugin;
@@ -211,10 +210,9 @@ public abstract class JExMultiverse {
                     config.set("worlds." + worldName, null);
                     configDirty = true;
                     logger.info("[startup] Removed stale bukkit.yml entry for Folia companion world '{}'", worldName);
-                    continue;
+                } else {
+                    deleteStaleUidDat(container, worldName);
                 }
-
-                deleteStaleUidDat(container, worldName);
             }
 
             if (configDirty) {
@@ -340,7 +338,7 @@ public abstract class JExMultiverse {
         selectionService = new SelectionService(plugin);
         var workloadExecutor = new WorkloadExecutor();
         platform.scheduler().runRepeating(workloadExecutor, 1L, 1L);
-        schematicEditor = new SchematicEditor(logger, workloadExecutor,
+        var schematicEditor = new SchematicEditor(logger, workloadExecutor,
                 worldFactory.schematics().platform());
         // Live particle wireframe of the pos1↔pos2 selection (toggle: /mv selection).
         var selectionBorder = new de.jexcellence.jexplatform.schematic.edit.SelectionBorderService(

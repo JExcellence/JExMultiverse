@@ -129,7 +129,7 @@ public class MultiverseListView extends PaginatedView<MVWorld> {
             click.closeForPlayer();
             PlatformScheduler.of(plugin).runSync(() -> {
                 p.teleportAsync(spawn).thenAccept(success -> {
-                    if (success) {
+                    if (Boolean.TRUE.equals(success)) {
                         R18nManager.getInstance()
                                 .msg("multiverse.teleported")
                                 .prefix()

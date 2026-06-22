@@ -10,6 +10,7 @@ import de.jexcellence.multiverse.api.MVWorldType;
 import de.jexcellence.multiverse.database.entity.MVWorld;
 import de.jexcellence.multiverse.factory.WorldFactory;
 import de.jexcellence.multiverse.generator.plot.PlotSchematicPopulator;
+import de.jexcellence.multiverse.generator.plot.PlotSchematicPopulator.PlacementParams;
 import de.jexcellence.multiverse.service.MultiverseService;
 import de.jexcellence.multiverse.service.SchematicService;
 import de.jexcellence.multiverse.view.MultiverseEditorView;
@@ -55,6 +56,9 @@ public final class MultiverseHandler {
     private static final String KEY_WORLD       = "world";
     private static final String KEY_COUNT       = "count";
     private static final String KEY_ALIAS       = "alias";
+
+    private static final String MSG_EDIT_WORKING      = "multiverse.edit.working";
+    private static final String MSG_EDIT_NO_CLIPBOARD = "multiverse.edit.no_clipboard";
 
     private static final Random RANDOM = new Random();
 
@@ -120,11 +124,11 @@ public final class MultiverseHandler {
     private void onCreate(@NotNull CommandContext ctx) {
         var sender = ctx.sender();
         var name = ctx.require("name", String.class);
-        var environment = ctx.get("environment", World.Environment.class).orElse(World.Environment.NORMAL);
+        var environment = ctx.get(KEY_ENVIRONMENT, World.Environment.class).orElse(World.Environment.NORMAL);
         var worldType = ctx.get("type", MVWorldType.class).orElse(MVWorldType.DEFAULT);
         var plotSize = ctx.get("plot_size", Long.class).map(Long::intValue).orElse(null);
         var roadWidth = ctx.get("road_width", Long.class).map(Long::intValue).orElse(null);
-        var schematic = ctx.get("schematic", String.class).orElse(null);
+        var schematic = ctx.get(KEY_SCHEMATIC, String.class).orElse(null);
 
         if (!service.isWorldTypeAvailable(worldType)) {
             r18n().msg("multiverse.type_not_available").prefix()
@@ -179,7 +183,7 @@ public final class MultiverseHandler {
 
     private void onDelete(@NotNull CommandContext ctx) {
         var sender = ctx.sender();
-        var world = ctx.require("world", MVWorld.class);
+        var world = ctx.require(KEY_WORLD, MVWorld.class);
 
         r18n().msg("multiverse.deleting_world").prefix()
                 .with(KEY_WORLD_NAME, world.getIdentifier())
@@ -187,7 +191,7 @@ public final class MultiverseHandler {
 
         service.deleteWorld(world.getIdentifier()).thenAccept(success -> {
             PlatformScheduler.of(plugin).runSync(() -> {
-                if (success) {
+                if (Boolean.TRUE.equals(success)) {
                     r18n().msg("multiverse.delete_success").prefix()
                             .with(KEY_WORLD_NAME, world.getIdentifier())
                             .send(sender);
@@ -212,11 +216,11 @@ public final class MultiverseHandler {
         var player = ctx.asPlayer().orElse(null);
         if (player == null) return;
 
-        var world = ctx.require("world", MVWorld.class);
+        var world = ctx.require(KEY_WORLD, MVWorld.class);
 
         viewFrame.open(MultiverseEditorView.class, player, Map.of(
                 "plugin", plugin,
-                "world", world,
+                KEY_WORLD, world,
                 "service", service
         ));
     }
@@ -227,7 +231,7 @@ public final class MultiverseHandler {
         var player = ctx.asPlayer().orElse(null);
         if (player == null) return;
 
-        var world = ctx.require("world", MVWorld.class);
+        var world = ctx.require(KEY_WORLD, MVWorld.class);
         var bukkitWorld = worldFactory.getBukkitWorld(world.getIdentifier());
 
         if (bukkitWorld.isEmpty()) {
@@ -256,7 +260,7 @@ public final class MultiverseHandler {
 
     private void onLoad(@NotNull CommandContext ctx) {
         var sender = ctx.sender();
-        var world = ctx.require("world", MVWorld.class);
+        var world = ctx.require(KEY_WORLD, MVWorld.class);
 
         if (worldFactory.isWorldLoaded(world.getIdentifier())) {
             r18n().msg("multiverse.already_loaded").prefix()
@@ -343,7 +347,7 @@ public final class MultiverseHandler {
 
     private void onApplySchematic(@NotNull CommandContext ctx) {
         var sender = ctx.sender();
-        var world = ctx.require("world", MVWorld.class);
+        var world = ctx.require(KEY_WORLD, MVWorld.class);
 
         var name = ctx.get(KEY_SCHEMATIC, String.class).orElse(world.getSchematicName());
         if (name == null || name.isBlank()) {
@@ -375,11 +379,10 @@ public final class MultiverseHandler {
             int plotSize = worldFactory.effectivePlotSize(world);
             int roadWidth = worldFactory.effectiveRoadWidth(world);
             int plotHeight = worldFactory.plotConfig().plotHeight();
-            int interval = plotSize + roadWidth;
 
             var chunks = bukkit.getLoadedChunks();
             int placed = placeSchematicsInChunks(chunks, schematicService, name, bukkit,
-                    plotSize, roadWidth, plotHeight, interval);
+                    plotSize, roadWidth, plotHeight);
 
             r18n().msg("multiverse.applyschematic_done").prefix()
                     .with(KEY_WORLD_NAME, world.getIdentifier())
@@ -405,8 +408,8 @@ public final class MultiverseHandler {
     private int placeSchematicsInChunks(org.bukkit.Chunk @NotNull [] chunks,
                                         @NotNull SchematicService schematicService,
                                         @NotNull String name, @NotNull World bukkit,
-                                        int plotSize, int roadWidth, int plotHeight,
-                                        int interval) {
+                                        int plotSize, int roadWidth, int plotHeight) {
+        int interval = plotSize + roadWidth;
         int placed = 0;
         for (var chunk : chunks) {
             int chunkMinX = chunk.getX() << 4;
@@ -422,8 +425,9 @@ public final class MultiverseHandler {
                     if (anchorX >= chunkMinX && anchorX <= chunkMaxX
                             && anchorZ >= chunkMinZ && anchorZ <= chunkMaxZ) {
                         PlotSchematicPopulator.placeManually(
-                                schematicService, name, bukkit, gridX, gridZ,
-                                plotSize, roadWidth, plotHeight, RANDOM);
+                                schematicService, name, bukkit,
+                                new PlacementParams(gridX, gridZ, plotSize, roadWidth, plotHeight),
+                                RANDOM);
                         placed++;
                     }
                 }
@@ -525,7 +529,7 @@ public final class MultiverseHandler {
             return;
         }
         long count = selection.blockCount();
-        r18n().msg("multiverse.edit.working").prefix()
+        r18n().msg(MSG_EDIT_WORKING).prefix()
                 .with(KEY_COUNT, String.valueOf(count)).send(player);
         editor.fill(player.getUniqueId(), selection, material.createBlockData()).thenRun(() ->
                 r18n().msg("multiverse.edit.set_done").prefix()
@@ -558,7 +562,7 @@ public final class MultiverseHandler {
         if (selection == null) {
             return;
         }
-        r18n().msg("multiverse.edit.working").prefix()
+        r18n().msg(MSG_EDIT_WORKING).prefix()
                 .with(KEY_COUNT, String.valueOf(selection.blockCount())).send(player);
         editor.copy(player.getUniqueId(), selection, feetAnchor(player)).thenAccept(count ->
                 r18n().msg("multiverse.edit.copy_done").prefix()
@@ -573,7 +577,7 @@ public final class MultiverseHandler {
         if (selection == null) {
             return;
         }
-        r18n().msg("multiverse.edit.working").prefix()
+        r18n().msg(MSG_EDIT_WORKING).prefix()
                 .with(KEY_COUNT, String.valueOf(selection.blockCount())).send(player);
         editor.cut(player.getUniqueId(), selection, feetAnchor(player)).thenAccept(count ->
                 r18n().msg("multiverse.edit.cut_done").prefix()
@@ -588,7 +592,7 @@ public final class MultiverseHandler {
 
     private void onPasteClipboard(@NotNull Player player) {
         if (editor.clipboard(player.getUniqueId()).isEmpty()) {
-            r18n().msg("multiverse.edit.no_clipboard").prefix().send(player);
+            r18n().msg(MSG_EDIT_NO_CLIPBOARD).prefix().send(player);
             return;
         }
         editor.paste(player, true, false).thenAccept(result -> result.ifPresent(r ->
@@ -638,7 +642,7 @@ public final class MultiverseHandler {
             return;
         }
         if (!editor.rotate(player.getUniqueId(), turns)) {
-            r18n().msg("multiverse.edit.no_clipboard").prefix().send(player);
+            r18n().msg(MSG_EDIT_NO_CLIPBOARD).prefix().send(player);
             return;
         }
         r18n().msg("multiverse.edit.rotate_done").prefix()
@@ -652,7 +656,7 @@ public final class MultiverseHandler {
         String axis = ctx.get("axis", String.class).orElse("x").trim().toLowerCase(java.util.Locale.ROOT);
         boolean flipX = !axis.startsWith("z") && !axis.startsWith("n");
         if (!editor.flip(player.getUniqueId(), flipX)) {
-            r18n().msg("multiverse.edit.no_clipboard").prefix().send(player);
+            r18n().msg(MSG_EDIT_NO_CLIPBOARD).prefix().send(player);
             return;
         }
         r18n().msg("multiverse.edit.flip_done").prefix()

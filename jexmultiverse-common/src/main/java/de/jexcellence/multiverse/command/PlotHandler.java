@@ -45,6 +45,8 @@ public final class PlotHandler {
     private static final String KEY_VALUE        = "value";
     private static final String KEY_ALIAS        = "alias";
 
+    private static final String MSG_FLAG_SET_USAGE = "plot.error.flag_set_usage";
+
     private final PlotService plots;
     private final MultiverseService mv;
     private final ViewFrame viewFrame;
@@ -152,7 +154,7 @@ public final class PlotHandler {
         }
 
         plots.unclaim(plot).thenAccept(success -> PlatformScheduler.of(plugin).runSync(() -> {
-            if (success) {
+            if (Boolean.TRUE.equals(success)) {
                 r18n().msg("plot.unclaimed").prefix()
                         .with(KEY_GRID_X, String.valueOf(plot.getGridX()))
                         .with(KEY_GRID_Z, String.valueOf(plot.getGridZ()))
@@ -349,52 +351,58 @@ public final class PlotHandler {
 
         var action = ctx.require("action", PlotFlagAction.class);
         switch (action) {
-            case LIST -> {
-                r18n().msg("plot.flag_list_header").prefix()
-                        .with(KEY_GRID_X, String.valueOf(plot.getGridX()))
-                        .with(KEY_GRID_Z, String.valueOf(plot.getGridZ()))
-                        .send(player);
-                for (var f : PlotFlag.values()) {
-                    var effective = plots.getFlag(plot, f);
-                    var override = plots.hasFlagOverride(plot, f);
-                    r18n().msg("plot.flag_list_entry")
-                            .with("flag", f.key())
-                            .with(KEY_VALUE, String.valueOf(effective))
-                            .with("source", override ? "override" : "default")
-                            .send(player);
-                }
-            }
-            case SET -> {
-                var flag = ctx.get("flag", PlotFlag.class).orElse(null);
-                if (flag == null) {
-                    r18n().msg("plot.error.flag_set_usage").prefix().send(player);
-                    return;
-                }
-                var raw = ctx.get(KEY_VALUE, String.class).orElse(null);
-                Boolean value = parseBoolean(raw);
-                if (value == null) {
-                    r18n().msg("plot.error.flag_set_usage").prefix().send(player);
-                    return;
-                }
-                plots.setFlag(plot, flag, value).thenAccept(ok -> PlatformScheduler.of(plugin).runSync(() ->
-                        r18n().msg(ok ? "plot.flag_set" : "plot.error.flag_failed").prefix()
-                                .with("flag", flag.key())
-                                .with(KEY_VALUE, String.valueOf(value))
-                                .send(player)));
-            }
-            case REMOVE -> {
-                var flag = ctx.get("flag", PlotFlag.class).orElse(null);
-                if (flag == null) {
-                    r18n().msg("plot.error.flag_remove_usage").prefix().send(player);
-                    return;
-                }
-                plots.removeFlag(plot, flag).thenAccept(ok -> PlatformScheduler.of(plugin).runSync(() ->
-                        r18n().msg(ok ? "plot.flag_removed" : "plot.error.flag_failed").prefix()
-                                .with("flag", flag.key())
-                                .send(player)));
-            }
-            default -> r18n().msg("plot.error.flag_set_usage").prefix().send(player);
+            case LIST   -> handleFlagList(player, plot);
+            case SET    -> handleFlagSet(ctx, player, plot);
+            case REMOVE -> handleFlagRemove(ctx, player, plot);
+            default     -> r18n().msg(MSG_FLAG_SET_USAGE).prefix().send(player);
         }
+    }
+
+    private void handleFlagList(@NotNull Player player, @NotNull Plot plot) {
+        r18n().msg("plot.flag_list_header").prefix()
+                .with(KEY_GRID_X, String.valueOf(plot.getGridX()))
+                .with(KEY_GRID_Z, String.valueOf(plot.getGridZ()))
+                .send(player);
+        for (var f : PlotFlag.values()) {
+            var effective = plots.getFlag(plot, f);
+            var override = plots.hasFlagOverride(plot, f);
+            r18n().msg("plot.flag_list_entry")
+                    .with("flag", f.key())
+                    .with(KEY_VALUE, String.valueOf(effective))
+                    .with("source", override ? "override" : "default")
+                    .send(player);
+        }
+    }
+
+    private void handleFlagSet(@NotNull CommandContext ctx, @NotNull Player player, @NotNull Plot plot) {
+        var flag = ctx.get("flag", PlotFlag.class).orElse(null);
+        if (flag == null) {
+            r18n().msg(MSG_FLAG_SET_USAGE).prefix().send(player);
+            return;
+        }
+        var raw = ctx.get(KEY_VALUE, String.class).orElse(null);
+        Boolean value = parseBoolean(raw);
+        if (value == null) {
+            r18n().msg(MSG_FLAG_SET_USAGE).prefix().send(player);
+            return;
+        }
+        plots.setFlag(plot, flag, value).thenAccept(ok -> PlatformScheduler.of(plugin).runSync(() ->
+                r18n().msg(ok ? "plot.flag_set" : "plot.error.flag_failed").prefix()
+                        .with("flag", flag.key())
+                        .with(KEY_VALUE, String.valueOf(value))
+                        .send(player)));
+    }
+
+    private void handleFlagRemove(@NotNull CommandContext ctx, @NotNull Player player, @NotNull Plot plot) {
+        var flag = ctx.get("flag", PlotFlag.class).orElse(null);
+        if (flag == null) {
+            r18n().msg("plot.error.flag_remove_usage").prefix().send(player);
+            return;
+        }
+        plots.removeFlag(plot, flag).thenAccept(ok -> PlatformScheduler.of(plugin).runSync(() ->
+                r18n().msg(ok ? "plot.flag_removed" : "plot.error.flag_failed").prefix()
+                        .with("flag", flag.key())
+                        .send(player)));
     }
 
     private static @org.jetbrains.annotations.Nullable Boolean parseBoolean(

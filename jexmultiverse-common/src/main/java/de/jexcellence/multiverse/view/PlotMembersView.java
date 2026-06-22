@@ -109,7 +109,7 @@ public class PlotMembersView extends PaginatedView<PlotMembersView.Entry> {
             var plugin = pluginState.get(click);
             service.removeMember(plot, entry.uuid()).thenAccept(ok -> PlatformScheduler.of(plugin).runSync(() -> {
                 String msgKey;
-                if (ok) {
+                if (Boolean.TRUE.equals(ok)) {
                     msgKey = entry.role() == MemberRole.TRUSTED ? "plot.untrusted" : "plot.undenied";
                 } else {
                     msgKey = "plot.error.member_failed";

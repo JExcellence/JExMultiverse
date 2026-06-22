@@ -213,7 +213,7 @@ public class MultiverseEditorView extends BaseView {
                 .findFirst();
 
         service.setGlobalSpawn(world.getIdentifier()).thenAccept(success -> {
-            if (success) {
+            if (Boolean.TRUE.equals(success)) {
                 var r18n = R18nManager.getInstance();
                 previous.ifPresentOrElse(
                         prev -> r18n.msg("multiverse_editor_ui.global_spawn.replaced").prefix()

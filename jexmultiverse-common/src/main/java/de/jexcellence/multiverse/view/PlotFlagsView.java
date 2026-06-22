@@ -88,7 +88,7 @@ public class PlotFlagsView extends BaseView {
                     var current = service.getFlag(plot, flag);
                     var plugin = pluginState.get(click);
                     service.setFlag(plot, flag, !current).thenAccept(ok -> PlatformScheduler.of(plugin).runSync(() -> {
-                        if (ok) {
+                        if (Boolean.TRUE.equals(ok)) {
                             click.getClickedContainer().renderItem(
                                     click.getClickedSlot(),
                                     flagItem(player, plot, service, flag));
@@ -96,7 +96,7 @@ public class PlotFlagsView extends BaseView {
                         var keyMsg = ok ? "plot.flag_set" : "plot.error.flag_failed";
                         R18nManager.getInstance().msg(keyMsg).prefix()
                                 .with("flag", flag.key())
-                                .with("value", String.valueOf(!current))
+                                .with(KEY_VALUE, String.valueOf(!current))
                                 .send(click.getPlayer());
                     }));
                 });

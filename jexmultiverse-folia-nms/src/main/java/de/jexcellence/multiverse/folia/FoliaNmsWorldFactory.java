@@ -360,7 +360,7 @@ final class FoliaNmsWorldFactory {
     /** Only calls {@code setAccessible(true)} when the member is not already accessible. */
     private static void makeAccessible(@NotNull java.lang.reflect.AccessibleObject member) {
         if (!java.lang.reflect.Modifier.isPublic(((java.lang.reflect.Member) member).getModifiers())) {
-            member.setAccessible(true);
+            member.setAccessible(true); // NOSONAR java:S3011 — NMS reflection requires access to non-public members
         }
     }
 
@@ -378,40 +378,72 @@ final class FoliaNmsWorldFactory {
                                           @NotNull Class<?> cResourceKey) throws Exception {
         // Fast path
         try {
-            final Method m = registry.getClass().getMethod("getValue", cResourceKey);
-            return m.invoke(registry, resourceKey);
-        } catch (final NoSuchMethodException ignored) { /* fall through */ }
+            return registry.getClass().getMethod("getValue", cResourceKey).invoke(registry, resourceKey);
+        } catch (final NoSuchMethodException ignored) {
+            // No public getValue(ResourceKey) — fall through to the name-based search.
+        }
 
-        // Try common alternatives by name
+        // Try common alternatives by name, walking supertypes then interfaces.
         for (final String candidateName : new String[]{ "getValue", "getOrThrow", "get", "getValueOrThrow" }) {
-            Class<?> c = registry.getClass();
-            while (c != null) {
-                for (final Method m : c.getDeclaredMethods()) {
-                    if (!m.getName().equals(candidateName) || m.getParameterCount() != 1) continue;
-                    final Class<?> paramType = m.getParameterTypes()[0];
-                    if (!paramType.isAssignableFrom(cResourceKey)) continue;
-                    makeAccessible(m);
-                    final Object result = m.invoke(registry, resourceKey);
-                    if (result instanceof java.util.Optional<?> opt) return opt.orElse(null);
-                    return result;
-                }
-                c = c.getSuperclass();
-            }
-            // Also walk interfaces
-            for (final Class<?> i : registry.getClass().getInterfaces()) {
-                for (final Method m : i.getMethods()) {
-                    if (!m.getName().equals(candidateName) || m.getParameterCount() != 1) continue;
-                    final Class<?> paramType = m.getParameterTypes()[0];
-                    if (!paramType.isAssignableFrom(cResourceKey)) continue;
-                    makeAccessible(m);
-                    final Object result = m.invoke(registry, resourceKey);
-                    if (result instanceof java.util.Optional<?> opt) return opt.orElse(null);
-                    return result;
-                }
+            final Method getter = findGetter(registry.getClass(), candidateName, cResourceKey);
+            if (getter != null) {
+                return invokeGetter(getter, registry, resourceKey);
             }
         }
         throw new NmsWorldLoadException("No suitable get-by-ResourceKey method found on "
                 + registry.getClass().getName());
+    }
+
+    /**
+     * Finds a single-arg getter named {@code candidateName} whose parameter is
+     * assignable from {@code cResourceKey}, searching the class hierarchy first
+     * then the implemented interfaces. Returns {@code null} if none match.
+     */
+    private static Method findGetter(@NotNull Class<?> registryClass,
+                                     @NotNull String candidateName,
+                                     @NotNull Class<?> cResourceKey) {
+        Class<?> c = registryClass;
+        while (c != null) {
+            final Method m = matchGetter(c.getDeclaredMethods(), candidateName, cResourceKey);
+            if (m != null) {
+                return m;
+            }
+            c = c.getSuperclass();
+        }
+        for (final Class<?> i : registryClass.getInterfaces()) {
+            final Method m = matchGetter(i.getMethods(), candidateName, cResourceKey);
+            if (m != null) {
+                return m;
+            }
+        }
+        return null;
+    }
+
+    /** First {@code methods} entry matching name + ResourceKey-assignable single param, made accessible. */
+    private static Method matchGetter(@NotNull Method[] methods,
+                                      @NotNull String candidateName,
+                                      @NotNull Class<?> cResourceKey) {
+        for (final Method m : methods) {
+            if (!m.getName().equals(candidateName) || m.getParameterCount() != 1) {
+                continue;
+            }
+            if (m.getParameterTypes()[0].isAssignableFrom(cResourceKey)) {
+                makeAccessible(m);
+                return m;
+            }
+        }
+        return null;
+    }
+
+    /** Invokes {@code getter}, unwrapping an {@link java.util.Optional} result to its value or {@code null}. */
+    private static Object invokeGetter(@NotNull Method getter,
+                                       @NotNull Object registry,
+                                       @NotNull Object resourceKey) throws Exception {
+        final Object result = getter.invoke(registry, resourceKey);
+        if (result instanceof java.util.Optional<?> opt) {
+            return opt.orElse(null);
+        }
+        return result;
     }
 
     /** RegistryAccess#lookupOrThrow(ResourceKey<Registry<X>>) — found by name+arity. */

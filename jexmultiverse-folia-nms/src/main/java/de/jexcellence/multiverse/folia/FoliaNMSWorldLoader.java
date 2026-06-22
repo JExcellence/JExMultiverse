@@ -391,19 +391,9 @@ public final class FoliaNMSWorldLoader implements RuntimeWorldLoader {
             Class<?> c = owner;
             while (c != null) {
                 for (final Method m : c.getDeclaredMethods()) {
-                    if (!m.getName().equals(name)) continue;
-                    final Class<?>[] mp = m.getParameterTypes();
-                    if (mp.length != params.length) continue;
-                    boolean match = true;
-                    for (int i = 0; i < mp.length; i++) {
-                        if (!mp[i].isAssignableFrom(params[i])) {
-                            match = false;
-                            break;
-                        }
-                    }
-                    if (match) {
+                    if (signatureMatches(m, name, params)) {
                         if (!java.lang.reflect.Modifier.isPublic(m.getModifiers())) {
-                            m.setAccessible(true);
+                            m.setAccessible(true); // NOSONAR java:S3011 — NMS reflection requires access to non-public members
                         }
                         return m;
                     }
@@ -411,6 +401,25 @@ public final class FoliaNMSWorldLoader implements RuntimeWorldLoader {
                 c = c.getSuperclass();
             }
             return null;
+        }
+
+        /** {@code true} if {@code m} matches {@code name} and each param type is assignable. */
+        private static boolean signatureMatches(@NotNull Method m,
+                                                 @NotNull String name,
+                                                 @NotNull Class<?>... params) {
+            if (!m.getName().equals(name)) {
+                return false;
+            }
+            final Class<?>[] mp = m.getParameterTypes();
+            if (mp.length != params.length) {
+                return false;
+            }
+            for (int i = 0; i < mp.length; i++) {
+                if (!mp[i].isAssignableFrom(params[i])) {
+                    return false;
+                }
+            }
+            return true;
         }
 
         /**
