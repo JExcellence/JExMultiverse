@@ -85,6 +85,17 @@ public interface MultiverseProvider {
      */
     @NotNull CompletableFuture<Boolean> spawn(@NotNull Player player);
 
+    /**
+     * Sets the JExMultiverse spawn of a world to the given location (the spawn
+     * {@link #spawn(Player)} then teleports to, per the resolution priority).
+     *
+     * @param worldName the world identifier
+     * @param location  the new spawn location
+     * @return a future containing {@code true} if the spawn was set
+     * @since 3.6.0
+     */
+    @NotNull CompletableFuture<Boolean> setSpawn(@NotNull String worldName, @NotNull Location location);
+
     // ── Plot grid (PLOT-type worlds only) ──────────────────────────────────────
 
     /**
