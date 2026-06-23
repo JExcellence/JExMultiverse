@@ -123,9 +123,13 @@ public class MultiverseListView extends PaginatedView<MVWorld> {
                         .send(p);
                 return;
             }
-            var spawn = entry.getSpawnLocation() != null
-                    ? entry.getSpawnLocation()
-                    : bukkit.get().getSpawnLocation();
+            // Rebind a possibly world-less stored spawn (deserialized before the
+            // world loaded) to the now-loaded world before teleporting.
+            var stored = entry.getSpawnLocation();
+            var spawn = stored != null ? stored.clone() : bukkit.get().getSpawnLocation();
+            if (spawn.getWorld() == null) {
+                spawn.setWorld(bukkit.get());
+            }
             click.closeForPlayer();
             PlatformScheduler.of(plugin).runSync(() -> {
                 p.teleportAsync(spawn).thenAccept(success -> {

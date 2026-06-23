@@ -60,12 +60,14 @@ public class LocationConverter implements AttributeConverter<Location, String> {
             final JsonNode node = MAPPER.readTree(json);
             final String worldUuidStr = node.has(FIELD_WORLD_UUID) ? node.get(FIELD_WORLD_UUID).asText() : null;
             final String worldName = node.has(FIELD_WORLD_NAME) ? node.get(FIELD_WORLD_NAME).asText() : null;
+            // The world is frequently NOT loaded yet at deserialization time —
+            // MVWorld rows are hydrated before their worlds are loaded into Bukkit.
+            // Preserve the coordinates with a (possibly null) world rather than
+            // discarding the whole location: consumers (SpawnListener /
+            // MultiverseService spawn resolvers) rebind the live world by name
+            // before use. Returning null here is what silently dropped the global
+            // spawn on join.
             final World world = resolveWorld(worldUuidStr, worldName);
-            if (world == null) {
-                LOGGER.log(Level.WARNING, () ->
-                        "World not found for location: UUID=" + worldUuidStr + ", Name=" + worldName);
-                return null;
-            }
             return new Location(world, node.get("x").asDouble(), node.get("y").asDouble(),
                     node.get("z").asDouble(), (float) node.get("yaw").asDouble(),
                     (float) node.get("pitch").asDouble());

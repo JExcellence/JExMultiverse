@@ -241,8 +241,9 @@ public final class MultiverseHandler {
             return;
         }
 
-        var spawnLocation = world.getSpawnLocation();
-        var target = spawnLocation != null ? spawnLocation : bukkitWorld.get().getSpawnLocation();
+        // The stored spawn may carry a null world (deserialized before the world
+        // loaded); rebind it to the now-loaded world before teleporting.
+        final var target = liveSpawn(world.getSpawnLocation(), bukkitWorld.get());
 
         r18n().msg("multiverse.teleporting").prefix()
                 .with(KEY_WORLD_NAME, world.getIdentifier())
@@ -254,6 +255,22 @@ public final class MultiverseHandler {
                     .with(KEY_WORLD_NAME, world.getIdentifier())
                     .send(player);
         });
+    }
+
+    /**
+     * Resolves a teleportable spawn: the stored spawn rebound to {@code world}
+     * (its deserialized world reference may be {@code null} if the world wasn't
+     * loaded yet), or the world's own spawn when none is stored.
+     */
+    private static @NotNull Location liveSpawn(@Nullable Location stored, @NotNull World world) {
+        if (stored == null) {
+            return world.getSpawnLocation();
+        }
+        final Location loc = stored.clone();
+        if (loc.getWorld() == null) {
+            loc.setWorld(world);
+        }
+        return loc;
     }
 
     // ── Load ────────────────────────────────────────────────────────────────────
