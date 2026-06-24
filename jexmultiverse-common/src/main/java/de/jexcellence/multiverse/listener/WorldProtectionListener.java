@@ -3,6 +3,7 @@ package de.jexcellence.multiverse.listener;
 import de.jexcellence.jextranslate.R18nManager;
 import de.jexcellence.multiverse.service.BuildModeService;
 import de.jexcellence.multiverse.service.MultiverseService;
+import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
@@ -91,11 +92,26 @@ public class WorldProtectionListener implements Listener {
 
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onInteract(@NotNull PlayerInteractEvent event) {
-        // "Use" interactions stay allowed so players can right-click crates, NPCs
-        // rendered as blocks, containers, doors and buttons. Only left-clicking a
-        // block (the start of breaking / punching) is blocked here — actual world
-        // modification is still caught by onBreak / onPlace / the bucket handlers.
-        if (event.getAction() == Action.LEFT_CLICK_BLOCK && denied(event.getPlayer())) {
+        Action action = event.getAction();
+        // Left-clicking a block (start of breaking / punching) is always blocked.
+        if (action == Action.LEFT_CLICK_BLOCK) {
+            if (denied(event.getPlayer())) {
+                event.setCancelled(true);
+            }
+            return;
+        }
+        if (action != Action.RIGHT_CLICK_BLOCK) {
+            return;
+        }
+        // Genuine "use" — opening a crate / container / door / button — stays
+        // allowed. But item-driven modification with no place/break event of its
+        // own (fire, spawn eggs, bonemeal, tilling, entity placement) is blocked
+        // on non-interactable targets.
+        var block = event.getClickedBlock();
+        if (block != null && block.getType().isInteractable()) {
+            return;
+        }
+        if (isModifierItem(event.getMaterial()) && denied(event.getPlayer())) {
             event.setCancelled(true);
         }
     }
@@ -148,6 +164,28 @@ public class WorldProtectionListener implements Listener {
         }
         warn(player);
         return true;
+    }
+
+    /**
+     * Items that modify the world on right-click without firing a place/break
+     * event of their own — fire starters, spawn eggs, bonemeal, terrain tools,
+     * liquids, and entity-placement items. These are blocked even though general
+     * right-click "use" is allowed, so a locked world can't be set alight,
+     * populated with mobs, tilled, or littered with placed entities.
+     */
+    private static boolean isModifierItem(@Nullable Material material) {
+        if (material == null) {
+            return false;
+        }
+        if (material == Material.FLINT_AND_STEEL || material == Material.FIRE_CHARGE
+                || material == Material.BONE_MEAL || material == Material.ARMOR_STAND
+                || material == Material.END_CRYSTAL || material == Material.ITEM_FRAME
+                || material == Material.GLOW_ITEM_FRAME || material == Material.PAINTING) {
+            return true;
+        }
+        String name = material.name();
+        return name.endsWith("_SPAWN_EGG") || name.endsWith("_HOE") || name.endsWith("_SHOVEL")
+                || name.endsWith("_BUCKET") || name.endsWith("_BOAT") || name.endsWith("_MINECART");
     }
 
     /** Resolves the acting player behind an entity (direct, or a fired projectile). */
