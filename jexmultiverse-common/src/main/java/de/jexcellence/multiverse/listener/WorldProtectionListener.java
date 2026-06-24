@@ -10,6 +10,7 @@ import org.bukkit.entity.Projectile;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
@@ -18,7 +19,6 @@ import org.bukkit.event.hanging.HangingPlaceEvent;
 import org.bukkit.event.player.PlayerArmorStandManipulateEvent;
 import org.bukkit.event.player.PlayerBucketEmptyEvent;
 import org.bukkit.event.player.PlayerBucketFillEvent;
-import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -28,10 +28,13 @@ import org.jetbrains.annotations.Nullable;
 /**
  * Build-lock protection for managed worlds — a lightweight, per-world WorldGuard.
  * In a world flagged build-locked (see {@code MVWorld#isBuildLocked} / {@code
- * /mv lock}) every player action is cancelled: block break / place, bucket use,
- * block interaction (doors, buttons, containers, redstone), entity interaction,
- * armour-stand manipulation, hanging (item-frame / painting) break & place, and
- * player-dealt entity damage.
+ * /mv lock}) world-modifying actions are cancelled: block break / place, bucket
+ * use, left-clicking blocks, armour-stand item swaps, hanging (item-frame /
+ * painting) break &amp; place, and player-dealt entity damage (so NPCs/mobs can't
+ * be hit). <b>Right-click "use" interactions stay allowed</b> — players can still
+ * right-click NPCs and entities, open crates and containers, and use doors /
+ * buttons. Actual placement attempted via right-click is still blocked by the
+ * block-place handler.
  *
  * <p>Two bypasses, both deliberate: <b>operators</b> always pass, and players in
  * <b>build mode</b> ({@code /mv build}, gated by {@code jexmultiverse.build})
@@ -88,14 +91,11 @@ public class WorldProtectionListener implements Listener {
 
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onInteract(@NotNull PlayerInteractEvent event) {
-        if (event.getClickedBlock() != null && denied(event.getPlayer())) {
-            event.setCancelled(true);
-        }
-    }
-
-    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
-    public void onInteractEntity(@NotNull PlayerInteractEntityEvent event) {
-        if (denied(event.getPlayer())) {
+        // "Use" interactions stay allowed so players can right-click crates, NPCs
+        // rendered as blocks, containers, doors and buttons. Only left-clicking a
+        // block (the start of breaking / punching) is blocked here — actual world
+        // modification is still caught by onBreak / onPlace / the bucket handlers.
+        if (event.getAction() == Action.LEFT_CLICK_BLOCK && denied(event.getPlayer())) {
             event.setCancelled(true);
         }
     }
