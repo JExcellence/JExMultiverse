@@ -23,6 +23,7 @@ import de.jexcellence.multiverse.database.repository.PlotMemberRepository;
 import de.jexcellence.multiverse.database.repository.PlotRepository;
 import de.jexcellence.multiverse.listener.PlotFlagListener;
 import de.jexcellence.multiverse.listener.PlotProtectionListener;
+import de.jexcellence.multiverse.listener.WorldProtectionListener;
 import de.jexcellence.multiverse.listener.SelectionWandListener;
 import de.jexcellence.multiverse.service.PlotService;
 import de.jexcellence.multiverse.database.repository.MVWorldRepository;
@@ -382,6 +383,9 @@ public abstract class JExMultiverse {
         pm.registerEvents(new PlotProtectionListener(plotService, multiverseService, plugin), plugin);
         pm.registerEvents(new PlotFlagListener(plotService), plugin);
         pm.registerEvents(new SelectionWandListener(selectionService), plugin);
+        pm.registerEvents(multiverseService.buildMode(), plugin);
+        pm.registerEvents(new WorldProtectionListener(
+                multiverseService, multiverseService.buildMode(), plugin), plugin);
     }
 
     // ── Accessors ────────────────────────────────────────────────────────────────

@@ -9,6 +9,18 @@ multiverse:
   world_does_not_exist: "<gradient:#dc143c:#b22222>Fehler:</gradient> <white>Welt <gradient:#ff7f50:#ff4500>{world_name}</gradient> existiert nicht.</white>"
   world_already_exists: "<gradient:#dc143c:#b22222>Fehler:</gradient> <white>Welt <gradient:#ff7f50:#ff4500>{world_name}</gradient> existiert bereits.</white>"
 
+  # ── Build-Sperre / Baumodus ──
+  lock_success: "<gradient:#32cd32:#228b22>Gesperrt:</gradient> <white>Welt <gradient:#ff7f50:#ff4500>{world_name}</gradient> ist jetzt build-gesperrt. <gray>Nur Operatoren und /mv build können hier agieren.</gray></white>"
+  unlock_success: "<gradient:#32cd32:#228b22>Entsperrt:</gradient> <white>Welt <gradient:#ff7f50:#ff4500>{world_name}</gradient> ist nicht mehr build-gesperrt.</white>"
+  lock_already: "<gradient:#ffa500:#ff8c00>Hinweis:</gradient> <white>Welt <gradient:#ff7f50:#ff4500>{world_name}</gradient> ist bereits build-gesperrt.</white>"
+  unlock_already: "<gradient:#ffa500:#ff8c00>Hinweis:</gradient> <white>Welt <gradient:#ff7f50:#ff4500>{world_name}</gradient> ist nicht build-gesperrt.</white>"
+  lock_failed: "<gradient:#dc143c:#b22222>Fehler:</gradient> <white>Die Build-Sperre für <gradient:#ff7f50:#ff4500>{world_name}</gradient> konnte nicht geändert werden.</white>"
+  lock_not_managed: "<gradient:#dc143c:#b22222>Fehler:</gradient> <white>Welt <gradient:#ff7f50:#ff4500>{world_name}</gradient> ist keine verwaltete Multiverse-Welt.</white>"
+  lock_needs_world: "<gradient:#dc143c:#b22222>Fehler:</gradient> <white>Von der Konsole musst du eine Welt angeben: <gradient:#ff7f50:#ff4500>/mv lock <welt></gradient>.</white>"
+  build_enabled: "<gradient:#32cd32:#228b22>Baumodus AN:</gradient> <white>Du kannst jetzt in build-gesperrten Welten bauen. <gray>Setzt sich beim Abmelden zurück.</gray></white>"
+  build_disabled: "<gradient:#ffa500:#ff8c00>Baumodus AUS:</gradient> <white>Du umgehst build-gesperrte Welten nicht mehr.</white>"
+  world_locked_denied: "<gradient:#dc143c:#b22222>Gesperrt:</gradient> <white>Diese Welt ist build-gesperrt. Nutze <gradient:#ff7f50:#ff4500>/mv build</gradient>, falls du im Team bist.</white>"
+
   creating_world: "<gradient:#ffa500:#ff8c00>Erstelle:</gradient> <white>Erstelle Welt <gradient:#ff7f50:#ff4500>{world_name}</gradient>...</white>"
   create_success: "<gradient:#32cd32:#228b22>Erstellt:</gradient> <white>Welt <gradient:#ff7f50:#ff4500>{world_name}</gradient> erstellt. <gray>(Typ: {type}, Env: {environment})</gray></white>"
   create_failed: "<gradient:#dc143c:#b22222>Fehler:</gradient> <white>Welt <gradient:#ff7f50:#ff4500>{world_name}</gradient> konnte nicht erstellt werden.</white>"

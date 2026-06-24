@@ -134,6 +134,26 @@ subcommands:
     permission: "jexmultiverse.command.schematic"
     senders: [player]
 
+  # ── Build-lock (lightweight per-world protection) ───────────────────────────
+  - name: lock
+    description: "Build-lock a world: block every action except operators / build mode"
+    permission: "jexmultiverse.command.lock"
+    senders: [player, console]
+    argumentSchema:
+      - { name: world, type: world, required: false, description: "Target world (defaults to your current world)" }
+
+  - name: unlock
+    description: "Remove a world's build-lock"
+    permission: "jexmultiverse.command.lock"
+    senders: [player, console]
+    argumentSchema:
+      - { name: world, type: world, required: false, description: "Target world (defaults to your current world)" }
+
+  - name: build
+    description: "Toggle personal build mode — bypass build-locked worlds"
+    permission: "jexmultiverse.command.build"
+    senders: [player]
+
   - name: help
     description: "Show help"
     senders: [player]

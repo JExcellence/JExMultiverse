@@ -9,6 +9,18 @@ multiverse:
   world_does_not_exist: "<gradient:#dc143c:#b22222>Error:</gradient> <white>World <gradient:#ff7f50:#ff4500>{world_name}</gradient> does not exist.</white>"
   world_already_exists: "<gradient:#dc143c:#b22222>Error:</gradient> <white>World <gradient:#ff7f50:#ff4500>{world_name}</gradient> already exists.</white>"
 
+  # ── Build-lock / build mode ──
+  lock_success: "<gradient:#32cd32:#228b22>Locked:</gradient> <white>World <gradient:#ff7f50:#ff4500>{world_name}</gradient> is now build-locked. <gray>Only operators and /mv build can act here.</gray></white>"
+  unlock_success: "<gradient:#32cd32:#228b22>Unlocked:</gradient> <white>World <gradient:#ff7f50:#ff4500>{world_name}</gradient> is no longer build-locked.</white>"
+  lock_already: "<gradient:#ffa500:#ff8c00>Note:</gradient> <white>World <gradient:#ff7f50:#ff4500>{world_name}</gradient> is already build-locked.</white>"
+  unlock_already: "<gradient:#ffa500:#ff8c00>Note:</gradient> <white>World <gradient:#ff7f50:#ff4500>{world_name}</gradient> is not build-locked.</white>"
+  lock_failed: "<gradient:#dc143c:#b22222>Error:</gradient> <white>Could not update the build-lock for <gradient:#ff7f50:#ff4500>{world_name}</gradient>.</white>"
+  lock_not_managed: "<gradient:#dc143c:#b22222>Error:</gradient> <white>World <gradient:#ff7f50:#ff4500>{world_name}</gradient> is not a managed multiverse world.</white>"
+  lock_needs_world: "<gradient:#dc143c:#b22222>Error:</gradient> <white>From the console you must name a world: <gradient:#ff7f50:#ff4500>/mv lock <world></gradient>.</white>"
+  build_enabled: "<gradient:#32cd32:#228b22>Build mode ON:</gradient> <white>You can now build in build-locked worlds. <gray>It resets when you log out.</gray></white>"
+  build_disabled: "<gradient:#ffa500:#ff8c00>Build mode OFF:</gradient> <white>You no longer bypass build-locked worlds.</white>"
+  world_locked_denied: "<gradient:#dc143c:#b22222>Locked:</gradient> <white>This world is build-locked. Use <gradient:#ff7f50:#ff4500>/mv build</gradient> if you're staff.</white>"
+
   creating_world: "<gradient:#ffa500:#ff8c00>Creating:</gradient> <white>Creating world <gradient:#ff7f50:#ff4500>{world_name}</gradient>...</white>"
   create_success: "<gradient:#32cd32:#228b22>Created:</gradient> <white>World <gradient:#ff7f50:#ff4500>{world_name}</gradient> created. <gray>(type: {type}, env: {environment})</gray></white>"
   create_failed: "<gradient:#dc143c:#b22222>Error:</gradient> <white>Failed to create world <gradient:#ff7f50:#ff4500>{world_name}</gradient>.</white>"

@@ -79,6 +79,15 @@ public class MVWorld extends LongIdEntity {
     @Column(name = "schematic_name", length = 128)
     private String schematicName;
 
+    /**
+     * When {@code true} the world is build-locked: every player action (break,
+     * place, interact, container access, entity damage, …) is cancelled for
+     * everyone except operators and players in build mode (see
+     * {@code WorldProtectionListener}). Use it for showcase / hub / lobby worlds.
+     */
+    @Column(name = "is_build_locked", nullable = false)
+    private boolean buildLocked;
+
     // ── Constructors ────────────────────────────────────────────────────
 
     public MVWorld() {
@@ -96,6 +105,7 @@ public class MVWorld extends LongIdEntity {
         this.plotSizeOverride = builder.plotSizeOverride;
         this.roadWidthOverride = builder.roadWidthOverride;
         this.schematicName = builder.schematicName;
+        this.buildLocked = builder.buildLocked;
     }
 
     // ── Getters & Setters ───────────────────────────────────────────────
@@ -178,6 +188,14 @@ public class MVWorld extends LongIdEntity {
 
     public void setSchematicName(@Nullable String schematicName) {
         this.schematicName = schematicName;
+    }
+
+    public boolean isBuildLocked() {
+        return buildLocked;
+    }
+
+    public void setBuildLocked(boolean buildLocked) {
+        this.buildLocked = buildLocked;
     }
 
     // ── Snapshot ─────────────────────────────────────────────────────────
@@ -272,6 +290,7 @@ public class MVWorld extends LongIdEntity {
         private Integer plotSizeOverride;
         private Integer roadWidthOverride;
         private String schematicName;
+        private boolean buildLocked;
 
         private Builder() {}
 
@@ -374,6 +393,15 @@ public class MVWorld extends LongIdEntity {
          */
         public @NotNull Builder schematicName(@Nullable String schematicName) {
             this.schematicName = schematicName;
+            return this;
+        }
+
+        /**
+         * Sets whether this world is build-locked (all actions blocked except
+         * operators / build mode).
+         */
+        public @NotNull Builder buildLocked(boolean buildLocked) {
+            this.buildLocked = buildLocked;
             return this;
         }
 

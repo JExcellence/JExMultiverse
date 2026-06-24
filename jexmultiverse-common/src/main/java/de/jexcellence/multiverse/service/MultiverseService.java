@@ -51,6 +51,9 @@ public class MultiverseService implements MultiverseProvider {
     private final JavaPlugin plugin;
     private final PlatformScheduler scheduler;
 
+    /** Per-session build-mode toggle, shared by the command + the protection listener. */
+    private final BuildModeService buildMode = new BuildModeService();
+
     /** Late-bound: PlotService is wired after both services are constructed. */
     private @Nullable PlotService plotService;
 
@@ -501,6 +504,47 @@ public class MultiverseService implements MultiverseProvider {
      */
     public @NotNull CompletableFuture<Optional<MVWorld>> getGlobalSpawnWorldEntity() {
         return repository.findByGlobalSpawnAsync();
+    }
+
+    /**
+     * Synchronous, cache-only check of whether a Bukkit world is build-locked.
+     * Safe to call from the hot path of block / interaction event handlers —
+     * unmanaged worlds (not in the cache) are never locked.
+     *
+     * @param world the Bukkit world
+     * @return {@code true} if the world is a managed, build-locked world
+     */
+    public boolean isBuildLocked(@NotNull World world) {
+        return worldFactory.getCachedWorld(world.getName())
+                .map(MVWorld::isBuildLocked)
+                .orElse(false);
+    }
+
+    /** The shared build-mode toggle (register as a listener; reuse in commands). */
+    public @NotNull BuildModeService buildMode() {
+        return buildMode;
+    }
+
+    /**
+     * Sets the build-lock flag on a managed world and refreshes the cache.
+     *
+     * @param identifier the world name
+     * @param locked     {@code true} to lock the world to build mode / operators
+     * @return a future containing {@code true} if the world exists and was updated
+     */
+    public @NotNull CompletableFuture<Boolean> setBuildLocked(@NotNull String identifier,
+                                                              boolean locked) {
+        return getWorldEntity(identifier).thenCompose(opt -> {
+            if (opt.isEmpty()) {
+                return CompletableFuture.completedFuture(false);
+            }
+            var world = opt.get();
+            world.setBuildLocked(locked);
+            return repository.saveWorld(world).thenApply(saved -> {
+                worldFactory.cacheWorld(saved);
+                return true;
+            });
+        });
     }
 
     /**

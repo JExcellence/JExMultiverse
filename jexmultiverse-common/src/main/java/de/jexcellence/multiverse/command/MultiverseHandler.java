@@ -109,7 +109,10 @@ public final class MultiverseHandler {
                 Map.entry("multiverse.save",           this::onSave),
                 Map.entry("multiverse.rotate",         this::onRotate),
                 Map.entry("multiverse.flip",           this::onFlip),
-                Map.entry("multiverse.undo",           this::onUndo)
+                Map.entry("multiverse.undo",           this::onUndo),
+                Map.entry("multiverse.lock",           this::onLock),
+                Map.entry("multiverse.unlock",         this::onUnlock),
+                Map.entry("multiverse.build",          this::onBuild)
         );
     }
 
@@ -117,6 +120,65 @@ public final class MultiverseHandler {
 
     private void onRoot(@NotNull CommandContext ctx) {
         onHelp(ctx);
+    }
+
+    // ── Build-lock (a lightweight per-world protection) ───────────────────────────
+
+    private void onLock(@NotNull CommandContext ctx) {
+        setBuildLock(ctx, true);
+    }
+
+    private void onUnlock(@NotNull CommandContext ctx) {
+        setBuildLock(ctx, false);
+    }
+
+    /**
+     * Locks / unlocks the target world (defaults to the sender's current world).
+     * A locked world blocks every player action except for operators and players
+     * in build mode ({@code /mv build}).
+     */
+    private void setBuildLock(@NotNull CommandContext ctx, boolean locked) {
+        var sender = ctx.sender();
+        MVWorld world = ctx.get(KEY_WORLD, MVWorld.class).orElse(null);
+        if (world == null) {
+            var player = ctx.asPlayer().orElse(null);
+            if (player == null) {
+                r18n().msg("multiverse.lock_needs_world").prefix().send(sender);
+                return;
+            }
+            world = worldFactory.getCachedWorld(player.getWorld().getName()).orElse(null);
+            if (world == null) {
+                r18n().msg("multiverse.lock_not_managed").prefix()
+                        .with(KEY_WORLD_NAME, player.getWorld().getName()).send(sender);
+                return;
+            }
+        }
+        final String name = world.getIdentifier();
+        if (world.isBuildLocked() == locked) {
+            r18n().msg(locked ? "multiverse.lock_already" : "multiverse.unlock_already").prefix()
+                    .with(KEY_WORLD_NAME, name).send(sender);
+            return;
+        }
+        service.setBuildLocked(name, locked).thenAccept(ok -> PlatformScheduler.of(plugin).runSync(() ->
+                r18n().msg(lockResultKey(locked, Boolean.TRUE.equals(ok))).prefix()
+                        .with(KEY_WORLD_NAME, name).send(sender)));
+    }
+
+    private static @NotNull String lockResultKey(boolean locked, boolean ok) {
+        if (!ok) {
+            return "multiverse.lock_failed";
+        }
+        return locked ? "multiverse.lock_success" : "multiverse.unlock_success";
+    }
+
+    private void onBuild(@NotNull CommandContext ctx) {
+        var player = ctx.asPlayer().orElse(null);
+        if (player == null) {
+            r18n().msg("multiverse.lock_needs_world").prefix().send(ctx.sender());
+            return;
+        }
+        boolean enabled = service.buildMode().toggle(player);
+        r18n().msg(enabled ? "multiverse.build_enabled" : "multiverse.build_disabled").prefix().send(player);
     }
 
     // ── Create ──────────────────────────────────────────────────────────────────
