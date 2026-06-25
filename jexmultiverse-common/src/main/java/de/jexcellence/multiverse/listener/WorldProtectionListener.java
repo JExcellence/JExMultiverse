@@ -1,6 +1,5 @@
 package de.jexcellence.multiverse.listener;
 
-import de.jexcellence.jextranslate.R18nManager;
 import de.jexcellence.multiverse.service.BuildModeService;
 import de.jexcellence.multiverse.service.MultiverseService;
 import org.bukkit.Material;
@@ -21,8 +20,6 @@ import org.bukkit.event.player.PlayerArmorStandManipulateEvent;
 import org.bukkit.event.player.PlayerBucketEmptyEvent;
 import org.bukkit.event.player.PlayerBucketFillEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
-import org.bukkit.metadata.FixedMetadataValue;
-import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -39,27 +36,21 @@ import org.jetbrains.annotations.Nullable;
  *
  * <p>Two bypasses, both deliberate: <b>operators</b> always pass, and players in
  * <b>build mode</b> ({@code /mv build}, gated by {@code jexmultiverse.build})
- * pass. Unmanaged worlds are never touched. All checks are synchronous cache
- * reads via {@link MultiverseService#isBuildLocked(World)}.
+ * pass. Unmanaged worlds are never touched. Denied actions fail <b>silently</b> —
+ * no chat message. All checks are synchronous cache reads via
+ * {@link MultiverseService#isBuildLocked(World)}.
  *
  * @author JExcellence
  * @since 3.4.0
  */
 public class WorldProtectionListener implements Listener {
 
-    private static final String WARN_KEY = "jexmultiverse.last_build_warn";
-    private static final String DENIED_KEY = "multiverse.world_locked_denied";
-    private static final long WARN_THROTTLE_MS = 1500L;
-
     private final MultiverseService mv;
     private final BuildModeService buildMode;
-    private final JavaPlugin plugin;
 
-    public WorldProtectionListener(@NotNull MultiverseService mv, @NotNull BuildModeService buildMode,
-                                   @NotNull JavaPlugin plugin) {
+    public WorldProtectionListener(@NotNull MultiverseService mv, @NotNull BuildModeService buildMode) {
         this.mv = mv;
         this.buildMode = buildMode;
-        this.plugin = plugin;
     }
 
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
@@ -162,7 +153,7 @@ public class WorldProtectionListener implements Listener {
         if (player.isOp() || buildMode.isEnabled(player.getUniqueId())) {
             return false;
         }
-        warn(player);
+        // Locked, no bypass — cancel silently (no chat spam for staff/visitors).
         return true;
     }
 
@@ -197,16 +188,5 @@ public class WorldProtectionListener implements Listener {
             return shooter;
         }
         return null;
-    }
-
-    private void warn(@NotNull Player player) {
-        var meta = player.getMetadata(WARN_KEY);
-        long now = System.currentTimeMillis();
-        long last = meta.isEmpty() ? 0L : meta.get(0).asLong();
-        if (now - last < WARN_THROTTLE_MS) {
-            return;
-        }
-        player.setMetadata(WARN_KEY, new FixedMetadataValue(plugin, now));
-        R18nManager.getInstance().msg(DENIED_KEY).prefix().send(player);
     }
 }

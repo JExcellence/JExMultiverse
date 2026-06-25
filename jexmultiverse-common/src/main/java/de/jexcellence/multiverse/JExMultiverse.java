@@ -385,7 +385,7 @@ public abstract class JExMultiverse {
         pm.registerEvents(new SelectionWandListener(selectionService), plugin);
         pm.registerEvents(multiverseService.buildMode(), plugin);
         pm.registerEvents(new WorldProtectionListener(
-                multiverseService, multiverseService.buildMode(), plugin), plugin);
+                multiverseService, multiverseService.buildMode()), plugin);
     }
 
     // ── Accessors ────────────────────────────────────────────────────────────────
