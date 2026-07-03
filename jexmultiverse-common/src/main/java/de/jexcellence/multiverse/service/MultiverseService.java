@@ -363,12 +363,10 @@ public class MultiverseService implements MultiverseProvider {
                     }
                     var unloaded = worldFactory.unloadWorld(identifier, false);
                     if (!unloaded) {
-                        // DB row gone but world still loaded — log loudly so the
-                        // admin knows to restart to fully reclaim the slot.
                         logger.warn("Deleted DB row for '{}' but failed to unload Bukkit world. " +
                                 "Restart the server to fully release the world.", identifier);
                         worldFactory.invalidateCache(identifier);
-                        future.complete(true);
+                        future.complete(false);
                         return;
                     }
                     worldFactory.deleteWorldFiles(identifier).thenAccept(filesDeleted -> {

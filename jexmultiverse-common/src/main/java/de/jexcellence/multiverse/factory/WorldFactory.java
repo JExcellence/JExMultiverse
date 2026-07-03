@@ -299,10 +299,9 @@ public class WorldFactory {
             return true;
         }
 
-        // Teleport all players out before unloading
         var defaultWorld = Bukkit.getWorlds().getFirst();
         for (var player : world.getPlayers()) {
-            player.teleportAsync(defaultWorld.getSpawnLocation());
+            player.teleport(defaultWorld.getSpawnLocation());
         }
 
         var success = Bukkit.unloadWorld(world, save);
