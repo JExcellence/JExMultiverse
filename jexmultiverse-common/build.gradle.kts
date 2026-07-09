@@ -48,6 +48,7 @@ dependencies {
     compileOnly(libs.xseries)
     compileOnly(libs.worldedit.bukkit)
 
+    compileOnly(project(":JExPlatform"))
     compileOnly(libs.bundles.jexcellence) {
         exclude(group = "de.jexcellence.hibernate")
         isTransitive = false
