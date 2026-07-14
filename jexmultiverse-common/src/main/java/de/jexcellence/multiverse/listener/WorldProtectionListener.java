@@ -84,13 +84,9 @@ public class WorldProtectionListener implements Listener {
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onInteract(@NotNull PlayerInteractEvent event) {
         Action action = event.getAction();
-        // Left-clicking a block (start of breaking / punching) is always blocked.
-        if (action == Action.LEFT_CLICK_BLOCK) {
-            if (denied(event.getPlayer())) {
-                event.setCancelled(true);
-            }
-            return;
-        }
+        // Left-click is NOT cancelled here — BlockBreakEvent already prevents
+        // actual breaking in locked worlds, and cancelling LEFT_CLICK_BLOCK
+        // blocks third-party plugins (e.g. AdvancedCrates preview).
         if (action != Action.RIGHT_CLICK_BLOCK) {
             return;
         }
