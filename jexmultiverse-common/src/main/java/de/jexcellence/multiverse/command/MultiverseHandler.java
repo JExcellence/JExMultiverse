@@ -2,15 +2,15 @@ package de.jexcellence.multiverse.command;
 
 import com.raindropcentral.commands.v2.CommandContext;
 import com.raindropcentral.commands.v2.CommandHandler;
+import de.jexcellence.jexplatform.schematic.PlacedSchematic;
 import de.jexcellence.jexplatform.schematic.edit.SchematicEditor;
 import de.jexcellence.jexplatform.schematic.edit.Selection;
 import de.jexcellence.jexplatform.schematic.edit.SelectionService;
+import de.jexcellence.jexplatform.utility.workload.WorkloadExecutor;
 import de.jexcellence.jextranslate.R18nManager;
 import de.jexcellence.multiverse.api.MVWorldType;
 import de.jexcellence.multiverse.database.entity.MVWorld;
 import de.jexcellence.multiverse.factory.WorldFactory;
-import de.jexcellence.multiverse.generator.plot.PlotSchematicPopulator;
-import de.jexcellence.multiverse.generator.plot.PlotSchematicPopulator.PlacementParams;
 import de.jexcellence.multiverse.service.MultiverseService;
 import de.jexcellence.multiverse.service.SchematicService;
 import de.jexcellence.multiverse.view.MultiverseEditorView;
@@ -27,8 +27,10 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
-import java.util.Random;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * JExCommand 2.0 handler collection for {@code /multiverse}.
@@ -60,14 +62,13 @@ public final class MultiverseHandler {
     private static final String MSG_EDIT_WORKING      = "multiverse.edit.working";
     private static final String MSG_EDIT_NO_CLIPBOARD = "multiverse.edit.no_clipboard";
 
-    private static final Random RANDOM = new Random();
-
     private final MultiverseService service;
     private final WorldFactory worldFactory;
     private final ViewFrame viewFrame;
     private final JavaPlugin plugin;
     private final SelectionService selections;
     private final SchematicEditor editor;
+    private final WorkloadExecutor workloadExecutor;
     private final de.jexcellence.jexplatform.schematic.edit.SelectionBorderService selectionBorder;
 
     public MultiverseHandler(@NotNull MultiverseService service,
@@ -76,6 +77,7 @@ public final class MultiverseHandler {
                              @NotNull JavaPlugin plugin,
                              @NotNull SelectionService selections,
                              @NotNull SchematicEditor editor,
+                             @NotNull WorkloadExecutor workloadExecutor,
                              @NotNull de.jexcellence.jexplatform.schematic.edit.SelectionBorderService selectionBorder) {
         this.service = service;
         this.worldFactory = worldFactory;
@@ -83,6 +85,7 @@ public final class MultiverseHandler {
         this.plugin = plugin;
         this.selections = selections;
         this.editor = editor;
+        this.workloadExecutor = workloadExecutor;
         this.selectionBorder = selectionBorder;
     }
 
@@ -453,6 +456,10 @@ public final class MultiverseHandler {
             return;
         }
 
+        r18n().msg("multiverse.paste_started").prefix()
+                .with(KEY_SCHEMATIC, name)
+                .send(sender);
+
         if (world.getType() == MVWorldType.PLOT) {
             // PLOT worlds: tile the schematic across the plot grid in loaded chunks.
             int plotSize = worldFactory.effectivePlotSize(world);
@@ -460,36 +467,36 @@ public final class MultiverseHandler {
             int plotHeight = worldFactory.plotConfig().plotHeight();
 
             var chunks = bukkit.getLoadedChunks();
-            int placed = placeSchematicsInChunks(chunks, schematicService, name, bukkit,
-                    plotSize, roadWidth, plotHeight);
-
-            r18n().msg("multiverse.applyschematic_done").prefix()
-                    .with(KEY_WORLD_NAME, world.getIdentifier())
-                    .with(KEY_SCHEMATIC, name)
-                    .with(KEY_COUNT, String.valueOf(placed))
-                    .with("chunks", String.valueOf(chunks.length))
-                    .send(sender);
+            placeSchematicsInChunksAsync(chunks, schematicService, name, bukkit,
+                    plotSize, roadWidth, plotHeight)
+                    .thenAccept(placed -> r18n().msg("multiverse.applyschematic_done").prefix()
+                            .with(KEY_WORLD_NAME, world.getIdentifier())
+                            .with(KEY_SCHEMATIC, name)
+                            .with(KEY_COUNT, String.valueOf(placed))
+                            .with("chunks", String.valueOf(chunks.length))
+                            .send(sender));
         } else {
             // Non-PLOT worlds (VOID / NORMAL hub builds): single paste at the
             // world spawn, mirroring the create-time non-plot behaviour.
             var spawn = bukkit.getSpawnLocation();
-            loaded.place(bukkit, spawn.getBlockX(), spawn.getBlockY(), spawn.getBlockZ());
-            r18n().msg("multiverse.applyschematic_done_single").prefix()
-                    .with(KEY_WORLD_NAME, world.getIdentifier())
-                    .with(KEY_SCHEMATIC, name)
-                    .with("x", String.valueOf(spawn.getBlockX()))
-                    .with("y", String.valueOf(spawn.getBlockY()))
-                    .with("z", String.valueOf(spawn.getBlockZ()))
-                    .send(sender);
+            loaded.placeAsync(bukkit, spawn.getBlockX(), spawn.getBlockY(), spawn.getBlockZ(), workloadExecutor)
+                    .thenRun(() -> r18n().msg("multiverse.applyschematic_done_single").prefix()
+                            .with(KEY_WORLD_NAME, world.getIdentifier())
+                            .with(KEY_SCHEMATIC, name)
+                            .with("x", String.valueOf(spawn.getBlockX()))
+                            .with("y", String.valueOf(spawn.getBlockY()))
+                            .with("z", String.valueOf(spawn.getBlockZ()))
+                            .send(sender));
         }
     }
 
-    private int placeSchematicsInChunks(org.bukkit.Chunk @NotNull [] chunks,
-                                        @NotNull SchematicService schematicService,
-                                        @NotNull String name, @NotNull World bukkit,
-                                        int plotSize, int roadWidth, int plotHeight) {
+    private @NotNull CompletableFuture<Integer> placeSchematicsInChunksAsync(
+            org.bukkit.Chunk @NotNull [] chunks,
+            @NotNull SchematicService schematicService,
+            @NotNull String name, @NotNull World bukkit,
+            int plotSize, int roadWidth, int plotHeight) {
         int interval = plotSize + roadWidth;
-        int placed = 0;
+        List<int[]> anchors = new ArrayList<>();
         for (var chunk : chunks) {
             int chunkMinX = chunk.getX() << 4;
             int chunkMinZ = chunk.getZ() << 4;
@@ -503,16 +510,31 @@ public final class MultiverseHandler {
                     int anchorZ = gridZ * interval;
                     if (anchorX >= chunkMinX && anchorX <= chunkMaxX
                             && anchorZ >= chunkMinZ && anchorZ <= chunkMaxZ) {
-                        PlotSchematicPopulator.placeManually(
-                                schematicService, name, bukkit,
-                                new PlacementParams(gridX, gridZ, plotSize, roadWidth, plotHeight),
-                                RANDOM);
-                        placed++;
+                        anchors.add(new int[]{gridX, gridZ});
                     }
                 }
             }
         }
-        return placed;
+        CompletableFuture<Void> chain = CompletableFuture.completedFuture(null);
+        int offsetX = schematicService.offsetX();
+        int offsetY = schematicService.offsetY();
+        int offsetZ = schematicService.offsetZ();
+        for (int[] anchor : anchors) {
+            chain = chain.thenCompose(v -> {
+                PlacedSchematic schematic = schematicService.load(name).orElse(null);
+                if (schematic == null) {
+                    return CompletableFuture.completedFuture(null);
+                }
+                int totalInterval = plotSize + roadWidth;
+                return schematic.placeAsync(bukkit,
+                        anchor[0] * totalInterval + offsetX,
+                        plotHeight + offsetY,
+                        anchor[1] * totalInterval + offsetZ,
+                        workloadExecutor);
+            });
+        }
+        int total = anchors.size();
+        return chain.thenApply(v -> total);
     }
 
     // ── Paste schematic (anywhere) ───────────────────────────────────────────────
@@ -543,18 +565,21 @@ public final class MultiverseHandler {
         int originX = loc.getBlockX() - size.getBlockX() / 2;
         int originY = loc.getBlockY();
         int originZ = loc.getBlockZ() - size.getBlockZ() / 2;
-        placed.place(world, originX, originY, originZ);
 
-        r18n().msg("multiverse.paste_done").prefix()
+        r18n().msg("multiverse.paste_started").prefix()
                 .with(KEY_SCHEMATIC, name)
-                .with(KEY_WORLD_NAME, world.getName())
-                .with("x", String.valueOf(loc.getBlockX()))
-                .with("y", String.valueOf(loc.getBlockY()))
-                .with("z", String.valueOf(loc.getBlockZ()))
-                .with("width", String.valueOf(size.getBlockX()))
-                .with("height", String.valueOf(size.getBlockY()))
-                .with("length", String.valueOf(size.getBlockZ()))
                 .send(player);
+        placed.placeAsync(world, originX, originY, originZ, workloadExecutor)
+                .thenRun(() -> r18n().msg("multiverse.paste_done").prefix()
+                        .with(KEY_SCHEMATIC, name)
+                        .with(KEY_WORLD_NAME, world.getName())
+                        .with("x", String.valueOf(loc.getBlockX()))
+                        .with("y", String.valueOf(loc.getBlockY()))
+                        .with("z", String.valueOf(loc.getBlockZ()))
+                        .with("width", String.valueOf(size.getBlockX()))
+                        .with("height", String.valueOf(size.getBlockY()))
+                        .with("length", String.valueOf(size.getBlockZ()))
+                        .send(player));
 
         boolean setSpawn = ctx.get("setspawn", String.class)
                 .map(s -> s.equalsIgnoreCase("setspawn")).orElse(false);

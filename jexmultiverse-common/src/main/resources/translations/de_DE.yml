@@ -58,6 +58,7 @@ multiverse:
   applyschematic_done: "<gradient:#32cd32:#228b22>Angewendet:</gradient> <white><gradient:#ff7f50:#ff4500>{schematic}</gradient> auf <gradient:#ff7f50:#ff4500>{count}</gradient> Plot(s) in <gradient:#ff7f50:#ff4500>{world_name}</gradient> gepastet ({chunks} Chunks gescannt).</white>"
   applyschematic_done_single: "<gradient:#32cd32:#228b22>Angewendet:</gradient> <white><gradient:#ff7f50:#ff4500>{schematic}</gradient> einmalig am Spawn <gradient:#ff7f50:#ff4500>{x}/{y}/{z}</gradient> in <gradient:#ff7f50:#ff4500>{world_name}</gradient> gepastet.</white>"
   paste_player_only: "<gradient:#dc143c:#b22222>Fehler:</gradient> <white>Nur Spieler können Schematics einfügen.</white>"
+  paste_started: "<gradient:#ffa500:#ff8c00>Platziere:</gradient> <white><gradient:#ff7f50:#ff4500>{schematic}</gradient> wird eingefügt — kann einen Moment dauern…</white>"
   paste_done: "<gradient:#32cd32:#228b22>Eingefügt:</gradient> <white><gradient:#ff7f50:#ff4500>{schematic}</gradient> ({width}x{height}x{length}) bei <gradient:#ff7f50:#ff4500>{x}, {y}, {z}</gradient> in <gradient:#ff7f50:#ff4500>{world_name}</gradient>.</white>"
   paste_spawn_set: "<gradient:#32cd32:#228b22>Spawn:</gradient> <white>Spawn von <gradient:#ff7f50:#ff4500>{world_name}</gradient> auf den Einfügepunkt gesetzt.</white>"
   edit:

@@ -363,7 +363,7 @@ public abstract class JExMultiverse {
         factory.registerTree("commands/multiverse.yml",
                 new de.jexcellence.multiverse.command.MultiverseHandler(
                         multiverseService, worldFactory, viewFrame, plugin,
-                        selectionService, schematicEditor, selectionBorder).handlerMap(),
+                        selectionService, schematicEditor, workloadExecutor, selectionBorder).handlerMap(),
                 messages, registry);
         factory.registerTree("commands/spawn.yml",
                 new de.jexcellence.multiverse.command.SpawnHandler(
