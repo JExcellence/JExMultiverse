@@ -95,6 +95,15 @@ public class WorldProtectionListener implements Listener {
         // own (fire, spawn eggs, bonemeal, tilling, entity placement) is blocked
         // on non-interactable targets.
         var block = event.getClickedBlock();
+        // Decorated pots (deco "vases") swallow the held item on right-click even
+        // though isInteractable() is false and the item isn't a "modifier" — so a
+        // plain right-click (e.g. holding a Trident) silently deposits it into the
+        // pot, unrecoverable without breaking the block. Always block that in a
+        // locked world.
+        if (block != null && block.getType() == Material.DECORATED_POT && denied(event.getPlayer())) {
+            event.setCancelled(true);
+            return;
+        }
         if (block != null && block.getType().isInteractable()) {
             return;
         }
