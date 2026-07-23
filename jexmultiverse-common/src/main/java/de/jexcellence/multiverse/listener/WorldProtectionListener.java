@@ -104,6 +104,14 @@ public class WorldProtectionListener implements Listener {
             event.setCancelled(true);
             return;
         }
+        // Storage + utility blocks (chests, furnaces, grindstone, anvil, …) are
+        // otherwise "genuine use" and would be allowed; in a locked world (spawn)
+        // players shouldn't open/use them. Doors, buttons, and non-vanilla crate
+        // blocks are NOT in this set, so navigation + AdvancedCrates still work.
+        if (block != null && isBlockedContainer(block.getType()) && denied(event.getPlayer())) {
+            event.setCancelled(true);
+            return;
+        }
         if (block != null && block.getType().isInteractable()) {
             return;
         }
@@ -169,6 +177,25 @@ public class WorldProtectionListener implements Listener {
      * right-click "use" is allowed, so a locked world can't be set alight,
      * populated with mobs, tilled, or littered with placed entities.
      */
+    /**
+     * Storage + utility blocks blocked from use in a locked world (spawn). Doors,
+     * buttons, levers, and non-vanilla crate blocks are intentionally excluded so
+     * navigation and AdvancedCrates keep working. NOTE: a crate placed on a vanilla
+     * CHEST/BARREL will also be blocked — exclude its location if that's the case.
+     */
+    private static boolean isBlockedContainer(@NotNull Material mat) {
+        if (org.bukkit.Tag.SHULKER_BOXES.isTagged(mat)) {
+            return true;
+        }
+        return switch (mat) {
+            case CHEST, TRAPPED_CHEST, BARREL, HOPPER, DROPPER, DISPENSER,
+                 FURNACE, BLAST_FURNACE, SMOKER, BREWING_STAND, CRAFTING_TABLE,
+                 GRINDSTONE, ANVIL, CHIPPED_ANVIL, DAMAGED_ANVIL, ENCHANTING_TABLE,
+                 STONECUTTER, LOOM, CARTOGRAPHY_TABLE, SMITHING_TABLE, LECTERN, BEACON -> true;
+            default -> false;
+        };
+    }
+
     private static boolean isModifierItem(@Nullable Material material) {
         if (material == null) {
             return false;
