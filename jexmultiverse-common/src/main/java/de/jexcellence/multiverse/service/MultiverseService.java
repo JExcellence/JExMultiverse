@@ -11,6 +11,7 @@ import de.jexcellence.multiverse.api.PlotBounds;
 import de.jexcellence.multiverse.api.PlotCoord;
 import de.jexcellence.multiverse.api.PlotOwnership;
 import de.jexcellence.multiverse.database.entity.MVWorld;
+import de.jexcellence.multiverse.protection.BuildLockInteractionMode;
 import de.jexcellence.multiverse.database.repository.MVWorldRepository;
 import de.jexcellence.multiverse.factory.BukkitYmlWriter;
 import de.jexcellence.multiverse.factory.WorldFactory;
@@ -518,6 +519,18 @@ public class MultiverseService implements MultiverseProvider {
                 .orElse(false);
     }
 
+    /**
+     * Returns the cached interaction profile for a build-locked world.
+     *
+     * @param world the Bukkit world
+     * @return the configured interaction mode, defaulting to {@link BuildLockInteractionMode#SAFE}
+     */
+    public @NotNull BuildLockInteractionMode buildLockInteractionMode(@NotNull World world) {
+        return worldFactory.getCachedWorld(world.getName())
+                .map(MVWorld::getBuildLockInteractionMode)
+                .orElse(BuildLockInteractionMode.SAFE);
+    }
+
     /** The shared build-mode toggle (register as a listener; reuse in commands). */
     public @NotNull BuildModeService buildMode() {
         return buildMode;
@@ -538,6 +551,28 @@ public class MultiverseService implements MultiverseProvider {
             }
             var world = opt.get();
             world.setBuildLocked(locked);
+            return repository.saveWorld(world).thenApply(saved -> {
+                worldFactory.cacheWorld(saved);
+                return true;
+            });
+        });
+    }
+
+    /**
+     * Sets the build-lock interaction profile on a managed world and refreshes the cache.
+     *
+     * @param identifier the world name
+     * @param mode the interaction profile
+     * @return a future containing {@code true} if the world exists and was updated
+     */
+    public @NotNull CompletableFuture<Boolean> setBuildLockInteractionMode(
+            @NotNull String identifier, @NotNull BuildLockInteractionMode mode) {
+        return getWorldEntity(identifier).thenCompose(opt -> {
+            if (opt.isEmpty()) {
+                return CompletableFuture.completedFuture(false);
+            }
+            var world = opt.get();
+            world.setBuildLockInteractionMode(mode);
             return repository.saveWorld(world).thenApply(saved -> {
                 worldFactory.cacheWorld(saved);
                 return true;

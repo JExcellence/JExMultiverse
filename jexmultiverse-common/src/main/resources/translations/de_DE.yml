@@ -151,6 +151,29 @@ multiverse_editor_ui:
       - ""
       - "<gradient:#ff7f50:#ff4500>Klick</gradient> <gray>um weiterzuschalten</gray>"
     updated: "<gradient:#32cd32:#228b22>Schwierigkeit:</gradient> <white>Schwierigkeit in <gradient:#ff7f50:#ff4500>{world_name}</gradient> auf <gradient:#ffa500:#ff6347>{value}</gradient> gesetzt.</white>"
+  build_lock:
+    name: "<gradient:#ff7f50:#ff4500>Build-Sperre</gradient> <dark_gray>({value})</dark_gray>"
+    lore:
+      - ""
+      - "<gray>Status:</gray> <gradient:#ffa500:#ff6347>{value}</gradient>"
+      - ""
+      - "<gray>Blockt Bauen, ausser Staff nutzt /mv build.</gray>"
+      - "<gray>Speichern, um diese Einstellung zu behalten.</gray>"
+      - ""
+      - "<gradient:#ff7f50:#ff4500>Klick</gradient> <gray>zum Umschalten</gray>"
+    toggled: "<gradient:#32cd32:#228b22>Build-Sperre:</gradient> <white><gradient:#ff7f50:#ff4500>{world_name}</gradient> ist jetzt <gradient:#ffa500:#ff6347>{value}</gradient>.</white>"
+  interactions:
+    name: "<gradient:#ff7f50:#ff4500>Gesperrte Interaktionen</gradient> <dark_gray>({value})</dark_gray>"
+    lore:
+      - ""
+      - "<gray>Modus:</gray> <gradient:#ffa500:#ff6347>{value}</gradient>"
+      - ""
+      - "<gray>open = altes Verhalten, safe = Tueren/Schilder/Eier/Trampeln blockiert,</gray>"
+      - "<gray>locked = alle Block-Interaktionen blockiert.</gray>"
+      - "<gray>Speichern, um diese Einstellung zu behalten.</gray>"
+      - ""
+      - "<gradient:#ff7f50:#ff4500>Klick</gradient> <gray>zum Wechseln</gray>"
+    toggled: "<gradient:#32cd32:#228b22>Interaktionen:</gradient> <white><gradient:#ff7f50:#ff4500>{world_name}</gradient> nutzt jetzt <gradient:#ffa500:#ff6347>{value}</gradient>.</white>"
   save:
     name: "<gradient:#32cd32:#228b22>Änderungen speichern</gradient>"
     lore:

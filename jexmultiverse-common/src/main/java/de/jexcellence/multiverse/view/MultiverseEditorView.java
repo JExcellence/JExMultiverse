@@ -3,6 +3,7 @@ package de.jexcellence.multiverse.view;
 import de.jexcellence.jexplatform.view.BaseView;
 import de.jexcellence.jextranslate.R18nManager;
 import de.jexcellence.multiverse.database.entity.MVWorld;
+import de.jexcellence.multiverse.protection.BuildLockInteractionMode;
 import de.jexcellence.multiverse.service.MultiverseService;
 import me.devnatan.inventoryframework.context.RenderContext;
 import me.devnatan.inventoryframework.context.SlotClickContext;
@@ -76,7 +77,7 @@ public class MultiverseEditorView extends BaseView {
         return new String[]{
                 "  S G P  ",
                 "  T W D  ",
-                "    V    "
+                "  B L V  "
         };
     }
 
@@ -96,6 +97,8 @@ public class MultiverseEditorView extends BaseView {
         render.layoutSlot('T', timeItem(player, world)).onClick(c -> handleTime(c, world, player));
         render.layoutSlot('W', weatherItem(player, world)).onClick(c -> handleWeather(c, world, player));
         render.layoutSlot('D', difficultyItem(player, world)).onClick(c -> handleDifficulty(c, world, player));
+        render.layoutSlot('B', buildLockItem(player, world)).onClick(c -> handleBuildLock(c, world));
+        render.layoutSlot('L', interactionItem(player, world)).onClick(c -> handleInteractionMode(c, world));
         render.layoutSlot('V', saveItem(player, world)).onClick(c -> handleSave(c, world, service));
     }
 
@@ -160,6 +163,31 @@ public class MultiverseEditorView extends BaseView {
                 Material.CREEPER_HEAD,
                 i18n("difficulty.name", player).withPlaceholder(KEY_VALUE, diff).build().component(),
                 i18n("difficulty.lore", player).withPlaceholder(KEY_VALUE, diff).build().children()
+        );
+    }
+
+    private ItemStack buildLockItem(Player player, MVWorld world) {
+        var on = world.isBuildLocked();
+        var stateStr = on ? VAL_ENABLED : VAL_DISABLED;
+        return createItem(
+                on ? Material.IRON_DOOR : Material.OAK_DOOR,
+                i18n("build_lock.name", player).withPlaceholder(KEY_VALUE, stateStr).build().component(),
+                i18n("build_lock.lore", player).withPlaceholder(KEY_VALUE, stateStr).build().children()
+        );
+    }
+
+    private ItemStack interactionItem(Player player, MVWorld world) {
+        BuildLockInteractionMode mode = world.getBuildLockInteractionMode();
+        return createItem(
+                switch (mode) {
+                    case OPEN -> Material.OAK_BUTTON;
+                    case SAFE -> Material.LEVER;
+                    case LOCKED -> Material.BARRIER;
+                },
+                i18n("interactions.name", player)
+                        .withPlaceholder(KEY_VALUE, mode.name().toLowerCase()).build().component(),
+                i18n("interactions.lore", player)
+                        .withPlaceholder(KEY_VALUE, mode.name().toLowerCase()).build().children()
         );
     }
 
@@ -310,6 +338,32 @@ public class MultiverseEditorView extends BaseView {
         refreshSlot(click, difficultyItem(viewer, world));
     }
 
+    private void handleBuildLock(SlotClickContext click, MVWorld world) {
+        click.setCancelled(true);
+        var p = click.getPlayer();
+        world.setBuildLocked(!world.isBuildLocked());
+        var stateStr = world.isBuildLocked() ? VAL_ENABLED : VAL_DISABLED;
+        R18nManager.getInstance()
+                .msg("multiverse_editor_ui.build_lock.toggled").prefix()
+                .with(KEY_WORLD_NAME, world.getIdentifier())
+                .with(KEY_VALUE, stateStr)
+                .send(p);
+        refreshSlot(click, buildLockItem(p, world));
+    }
+
+    private void handleInteractionMode(SlotClickContext click, MVWorld world) {
+        click.setCancelled(true);
+        var p = click.getPlayer();
+        BuildLockInteractionMode mode = world.getBuildLockInteractionMode().next();
+        world.setBuildLockInteractionMode(mode);
+        R18nManager.getInstance()
+                .msg("multiverse_editor_ui.interactions.toggled").prefix()
+                .with(KEY_WORLD_NAME, world.getIdentifier())
+                .with(KEY_VALUE, mode.name().toLowerCase())
+                .send(p);
+        refreshSlot(click, interactionItem(p, world));
+    }
+
     private void handleSave(SlotClickContext click, MVWorld world, MultiverseService service) {
         click.setCancelled(true);
         var p = click.getPlayer();
@@ -321,8 +375,9 @@ public class MultiverseEditorView extends BaseView {
                                 .with(KEY_WORLD_NAME, saved.getIdentifier())
                                 .send(p))
         ).exceptionally(ex -> {
-            plugin.getLogger().log(java.util.logging.Level.SEVERE,
-                    "Failed to save world '" + world.getIdentifier() + "'", ex);
+            var worldIdentifier = world.getIdentifier();
+            plugin.getLogger().log(java.util.logging.Level.SEVERE, ex,
+                    () -> "Failed to save world '" + worldIdentifier + "'");
             var rootCause = ex.getCause() != null ? ex.getCause() : ex;
             var msg = rootCause.getClass().getSimpleName()
                     + (rootCause.getMessage() != null ? ": " + rootCause.getMessage() : "");

@@ -151,6 +151,29 @@ multiverse_editor_ui:
       - ""
       - "<gradient:#ff7f50:#ff4500>Click</gradient> <gray>to advance</gray>"
     updated: "<gradient:#32cd32:#228b22>Difficulty:</gradient> <white>Difficulty in <gradient:#ff7f50:#ff4500>{world_name}</gradient> set to <gradient:#ffa500:#ff6347>{value}</gradient>.</white>"
+  build_lock:
+    name: "<gradient:#ff7f50:#ff4500>Build Lock</gradient> <dark_gray>({value})</dark_gray>"
+    lore:
+      - ""
+      - "<gray>Status:</gray> <gradient:#ffa500:#ff6347>{value}</gradient>"
+      - ""
+      - "<gray>Blocks building unless staff uses /mv build.</gray>"
+      - "<gray>Save to persist this setting.</gray>"
+      - ""
+      - "<gradient:#ff7f50:#ff4500>Click</gradient> <gray>to toggle</gray>"
+    toggled: "<gradient:#32cd32:#228b22>Build Lock:</gradient> <white><gradient:#ff7f50:#ff4500>{world_name}</gradient> is now <gradient:#ffa500:#ff6347>{value}</gradient>.</white>"
+  interactions:
+    name: "<gradient:#ff7f50:#ff4500>Locked Interactions</gradient> <dark_gray>({value})</dark_gray>"
+    lore:
+      - ""
+      - "<gray>Mode:</gray> <gradient:#ffa500:#ff6347>{value}</gradient>"
+      - ""
+      - "<gray>open = legacy use, safe = doors/signs/eggs/trample blocked,</gray>"
+      - "<gray>locked = all block interactions blocked.</gray>"
+      - "<gray>Save to persist this setting.</gray>"
+      - ""
+      - "<gradient:#ff7f50:#ff4500>Click</gradient> <gray>to cycle</gray>"
+    toggled: "<gradient:#32cd32:#228b22>Interactions:</gradient> <white><gradient:#ff7f50:#ff4500>{world_name}</gradient> mode is now <gradient:#ffa500:#ff6347>{value}</gradient>.</white>"
   save:
     name: "<gradient:#32cd32:#228b22>Save Changes</gradient>"
     lore:

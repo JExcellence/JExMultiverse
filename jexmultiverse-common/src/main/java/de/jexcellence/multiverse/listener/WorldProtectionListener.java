@@ -1,5 +1,6 @@
 package de.jexcellence.multiverse.listener;
 
+import de.jexcellence.multiverse.protection.BuildLockInteractionMode;
 import de.jexcellence.multiverse.service.BuildModeService;
 import de.jexcellence.multiverse.service.MultiverseService;
 import org.bukkit.Material;
@@ -12,47 +13,44 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.block.BlockFertilizeEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.block.SignChangeEvent;
+import org.bukkit.event.entity.CreatureSpawnEvent;
+import org.bukkit.event.entity.EntityChangeBlockEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.hanging.HangingBreakByEntityEvent;
 import org.bukkit.event.hanging.HangingPlaceEvent;
 import org.bukkit.event.player.PlayerArmorStandManipulateEvent;
 import org.bukkit.event.player.PlayerBucketEmptyEvent;
 import org.bukkit.event.player.PlayerBucketFillEvent;
+import org.bukkit.event.player.PlayerEggThrowEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * Build-lock protection for managed worlds — a lightweight, per-world WorldGuard.
- * In a world flagged build-locked (see {@code MVWorld#isBuildLocked} / {@code
- * /mv lock}) world-modifying actions are cancelled: block break / place, bucket
- * use, left-clicking blocks, armour-stand item swaps, hanging (item-frame /
- * painting) break &amp; place, and player-dealt entity damage (so NPCs/mobs can't
- * be hit). <b>Right-click "use" interactions stay allowed</b> — players can still
- * right-click NPCs and entities, open crates and containers, and use doors /
- * buttons. Actual placement attempted via right-click is still blocked by the
- * block-place handler.
- *
- * <p>Two bypasses, both deliberate: <b>operators</b> always pass, and players in
- * <b>build mode</b> ({@code /mv build}, gated by {@code jexmultiverse.build})
- * pass. Unmanaged worlds are never touched. Denied actions fail <b>silently</b> —
- * no chat message. All checks are synchronous cache reads via
- * {@link MultiverseService#isBuildLocked(World)}.
- *
- * @author JExcellence
- * @since 3.4.0
+ * Build-lock protection for managed worlds. Build actions are always denied in a
+ * locked world unless the player is operator or in /mv build; block interactions
+ * are controlled by the world's {@link BuildLockInteractionMode}.
  */
 public class WorldProtectionListener implements Listener {
 
     private final MultiverseService mv;
     private final BuildModeService buildMode;
 
+    /**
+     * Creates the build-lock protection listener.
+     *
+     * @param mv multiverse service
+     * @param buildMode temporary staff build-mode service
+     */
     public WorldProtectionListener(@NotNull MultiverseService mv, @NotNull BuildModeService buildMode) {
         this.mv = mv;
         this.buildMode = buildMode;
     }
 
+    /** Prevents block breaking in build-locked worlds. */
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onBreak(@NotNull BlockBreakEvent event) {
         if (denied(event.getPlayer())) {
@@ -60,6 +58,7 @@ public class WorldProtectionListener implements Listener {
         }
     }
 
+    /** Prevents block placement in build-locked worlds. */
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onPlace(@NotNull BlockPlaceEvent event) {
         if (denied(event.getPlayer())) {
@@ -67,6 +66,7 @@ public class WorldProtectionListener implements Listener {
         }
     }
 
+    /** Prevents fluid pickup in build-locked worlds. */
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onBucketFill(@NotNull PlayerBucketFillEvent event) {
         if (denied(event.getPlayer())) {
@@ -74,6 +74,7 @@ public class WorldProtectionListener implements Listener {
         }
     }
 
+    /** Prevents fluid placement in build-locked worlds. */
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onBucketEmpty(@NotNull PlayerBucketEmptyEvent event) {
         if (denied(event.getPlayer())) {
@@ -81,45 +82,49 @@ public class WorldProtectionListener implements Listener {
         }
     }
 
+    /** Applies the configured interaction profile for build-locked worlds. */
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onInteract(@NotNull PlayerInteractEvent event) {
+        Player player = event.getPlayer();
+        if (!denied(player)) {
+            return;
+        }
         Action action = event.getAction();
-        // Left-click is NOT cancelled here — BlockBreakEvent already prevents
-        // actual breaking in locked worlds, and cancelling LEFT_CLICK_BLOCK
-        // blocks third-party plugins (e.g. AdvancedCrates preview).
+        BuildLockInteractionMode mode = mv.buildLockInteractionMode(player.getWorld());
+        if (isModifierItem(event.getMaterial())) {
+            event.setCancelled(true);
+            return;
+        }
+        if (action == Action.PHYSICAL) {
+            event.setCancelled(mode != BuildLockInteractionMode.OPEN);
+            return;
+        }
         if (action != Action.RIGHT_CLICK_BLOCK) {
             return;
         }
-        // Genuine "use" — opening a crate / container / door / button — stays
-        // allowed. But item-driven modification with no place/break event of its
-        // own (fire, spawn eggs, bonemeal, tilling, entity placement) is blocked
-        // on non-interactable targets.
+        if (mode == BuildLockInteractionMode.LOCKED) {
+            event.setCancelled(true);
+            return;
+        }
         var block = event.getClickedBlock();
-        // Decorated pots (deco "vases") swallow the held item on right-click even
-        // though isInteractable() is false and the item isn't a "modifier" — so a
-        // plain right-click (e.g. holding a Trident) silently deposits it into the
-        // pot, unrecoverable without breaking the block. Always block that in a
-        // locked world.
-        if (block != null && block.getType() == Material.DECORATED_POT && denied(event.getPlayer())) {
+        if (block == null) {
+            return;
+        }
+        Material target = block.getType();
+        if (target == Material.DECORATED_POT || isBlockedContainer(target)) {
             event.setCancelled(true);
             return;
         }
-        // Storage + utility blocks (chests, furnaces, grindstone, anvil, …) are
-        // otherwise "genuine use" and would be allowed; in a locked world (spawn)
-        // players shouldn't open/use them. Doors, buttons, and non-vanilla crate
-        // blocks are NOT in this set, so navigation + AdvancedCrates still work.
-        if (block != null && isBlockedContainer(block.getType()) && denied(event.getPlayer())) {
+        if (mode == BuildLockInteractionMode.SAFE && isSafeBlockedInteraction(target)) {
             event.setCancelled(true);
             return;
         }
-        if (block != null && block.getType().isInteractable()) {
+        if (target.isInteractable()) {
             return;
-        }
-        if (isModifierItem(event.getMaterial()) && denied(event.getPlayer())) {
-            event.setCancelled(true);
         }
     }
 
+    /** Prevents armor stand edits in build-locked worlds. */
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onArmorStand(@NotNull PlayerArmorStandManipulateEvent event) {
         if (denied(event.getPlayer())) {
@@ -127,6 +132,7 @@ public class WorldProtectionListener implements Listener {
         }
     }
 
+    /** Prevents hanging entity removal in build-locked worlds. */
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onHangingBreak(@NotNull HangingBreakByEntityEvent event) {
         Player player = playerFrom(event.getRemover());
@@ -135,6 +141,7 @@ public class WorldProtectionListener implements Listener {
         }
     }
 
+    /** Prevents hanging entity placement in build-locked worlds. */
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onHangingPlace(@NotNull HangingPlaceEvent event) {
         Player player = event.getPlayer();
@@ -143,6 +150,7 @@ public class WorldProtectionListener implements Listener {
         }
     }
 
+    /** Prevents entity damage initiated by denied players in build-locked worlds. */
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onEntityDamage(@NotNull EntityDamageByEntityEvent event) {
         Player player = playerFrom(event.getDamager());
@@ -151,38 +159,60 @@ public class WorldProtectionListener implements Listener {
         }
     }
 
-    // ── Helpers ─────────────────────────────────────────────────────────────────
+    /** Prevents thrown eggs from hatching in build-locked worlds. */
+    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+    public void onEggThrow(@NotNull PlayerEggThrowEvent event) {
+        if (denied(event.getPlayer())) {
+            event.setHatching(false);
+        }
+    }
 
-    /**
-     * True if the player must be stopped from acting in their current world:
-     * the world is build-locked AND the player is neither an operator nor in
-     * build mode. Sends a throttled denial message as a side effect.
-     */
+    /** Cancels egg and spawn-egg creature spawns in build-locked worlds. */
+    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+    public void onCreatureSpawn(@NotNull CreatureSpawnEvent event) {
+        World world = event.getLocation().getWorld();
+        CreatureSpawnEvent.SpawnReason reason = event.getSpawnReason();
+        if (world != null && mv.isBuildLocked(world)
+                && (reason == CreatureSpawnEvent.SpawnReason.EGG
+                || reason == CreatureSpawnEvent.SpawnReason.SPAWNER_EGG)) {
+            event.setCancelled(true);
+        }
+    }
+
+    /** Prevents denied players from trampling farmland in build-locked worlds. */
+    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+    public void onEntityChangeBlock(@NotNull EntityChangeBlockEvent event) {
+        if (event.getBlock().getType() == Material.FARMLAND
+                && event.getEntity() instanceof Player player && denied(player)) {
+            event.setCancelled(true);
+        }
+    }
+
+    /** Prevents bone meal fertilization by denied players in build-locked worlds. */
+    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+    public void onFertilize(@NotNull BlockFertilizeEvent event) {
+        Player player = event.getPlayer();
+        if (player != null && denied(player)) {
+            event.setCancelled(true);
+        }
+    }
+
+    /** Prevents denied players from editing signs in build-locked worlds. */
+    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+    public void onSignChange(@NotNull SignChangeEvent event) {
+        if (denied(event.getPlayer())) {
+            event.setCancelled(true);
+        }
+    }
+
     private boolean denied(@NotNull Player player) {
         World world = player.getWorld();
         if (!mv.isBuildLocked(world)) {
             return false;
         }
-        if (player.isOp() || buildMode.isEnabled(player.getUniqueId())) {
-            return false;
-        }
-        // Locked, no bypass — cancel silently (no chat spam for staff/visitors).
-        return true;
+        return !player.isOp() && !buildMode.isEnabled(player.getUniqueId());
     }
 
-    /**
-     * Items that modify the world on right-click without firing a place/break
-     * event of their own — fire starters, spawn eggs, bonemeal, terrain tools,
-     * liquids, and entity-placement items. These are blocked even though general
-     * right-click "use" is allowed, so a locked world can't be set alight,
-     * populated with mobs, tilled, or littered with placed entities.
-     */
-    /**
-     * Storage + utility blocks blocked from use in a locked world (spawn). Doors,
-     * buttons, levers, and non-vanilla crate blocks are intentionally excluded so
-     * navigation and AdvancedCrates keep working. NOTE: a crate placed on a vanilla
-     * CHEST/BARREL will also be blocked — exclude its location if that's the case.
-     */
     private static boolean isBlockedContainer(@NotNull Material mat) {
         if (org.bukkit.Tag.SHULKER_BOXES.isTagged(mat)) {
             return true;
@@ -196,6 +226,22 @@ public class WorldProtectionListener implements Listener {
         };
     }
 
+    private static boolean isSafeBlockedInteraction(@NotNull Material mat) {
+        String name = mat.name();
+        if (name.contains("SIGN") || name.endsWith("_DOOR") || name.endsWith("_TRAPDOOR")
+                || name.endsWith("_FENCE_GATE") || name.endsWith("_BUTTON")
+                || name.endsWith("_PRESSURE_PLATE")) {
+            return true;
+        }
+        return switch (mat) {
+            case LEVER, BELL, NOTE_BLOCK, JUKEBOX, CAKE, CANDLE_CAKE, RESPAWN_ANCHOR,
+                 WHITE_BED, ORANGE_BED, MAGENTA_BED, LIGHT_BLUE_BED, YELLOW_BED, LIME_BED,
+                 PINK_BED, GRAY_BED, LIGHT_GRAY_BED, CYAN_BED, PURPLE_BED, BLUE_BED,
+                 BROWN_BED, GREEN_BED, RED_BED, BLACK_BED -> true;
+            default -> false;
+        };
+    }
+
     private static boolean isModifierItem(@Nullable Material material) {
         if (material == null) {
             return false;
@@ -203,7 +249,8 @@ public class WorldProtectionListener implements Listener {
         if (material == Material.FLINT_AND_STEEL || material == Material.FIRE_CHARGE
                 || material == Material.BONE_MEAL || material == Material.ARMOR_STAND
                 || material == Material.END_CRYSTAL || material == Material.ITEM_FRAME
-                || material == Material.GLOW_ITEM_FRAME || material == Material.PAINTING) {
+                || material == Material.GLOW_ITEM_FRAME || material == Material.PAINTING
+                || material == Material.EGG) {
             return true;
         }
         String name = material.name();
@@ -211,7 +258,6 @@ public class WorldProtectionListener implements Listener {
                 || name.endsWith("_BUCKET") || name.endsWith("_BOAT") || name.endsWith("_MINECART");
     }
 
-    /** Resolves the acting player behind an entity (direct, or a fired projectile). */
     private static @Nullable Player playerFrom(@Nullable Entity entity) {
         if (entity instanceof Player player) {
             return player;

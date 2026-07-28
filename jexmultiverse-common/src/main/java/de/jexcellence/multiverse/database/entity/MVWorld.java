@@ -4,6 +4,7 @@ import de.jexcellence.jehibernate.entity.base.LongIdEntity;
 import de.jexcellence.multiverse.api.MVWorldSnapshot;
 import de.jexcellence.multiverse.api.MVWorldType;
 import de.jexcellence.multiverse.database.converter.LocationConverter;
+import de.jexcellence.multiverse.protection.BuildLockInteractionMode;
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
@@ -88,6 +89,10 @@ public class MVWorld extends LongIdEntity {
     @Column(name = "is_build_locked", nullable = false)
     private boolean buildLocked;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "build_lock_interaction_mode", length = 16)
+    private BuildLockInteractionMode buildLockInteractionMode = BuildLockInteractionMode.SAFE;
+
     // ── Constructors ────────────────────────────────────────────────────
 
     public MVWorld() {
@@ -106,6 +111,7 @@ public class MVWorld extends LongIdEntity {
         this.roadWidthOverride = builder.roadWidthOverride;
         this.schematicName = builder.schematicName;
         this.buildLocked = builder.buildLocked;
+        this.buildLockInteractionMode = builder.buildLockInteractionMode;
     }
 
     // ── Getters & Setters ───────────────────────────────────────────────
@@ -196,6 +202,14 @@ public class MVWorld extends LongIdEntity {
 
     public void setBuildLocked(boolean buildLocked) {
         this.buildLocked = buildLocked;
+    }
+
+    public @NotNull BuildLockInteractionMode getBuildLockInteractionMode() {
+        return buildLockInteractionMode == null ? BuildLockInteractionMode.SAFE : buildLockInteractionMode;
+    }
+
+    public void setBuildLockInteractionMode(@NotNull BuildLockInteractionMode buildLockInteractionMode) {
+        this.buildLockInteractionMode = buildLockInteractionMode;
     }
 
     // ── Snapshot ─────────────────────────────────────────────────────────
@@ -291,6 +305,7 @@ public class MVWorld extends LongIdEntity {
         private Integer roadWidthOverride;
         private String schematicName;
         private boolean buildLocked;
+        private BuildLockInteractionMode buildLockInteractionMode = BuildLockInteractionMode.SAFE;
 
         private Builder() {}
 
@@ -402,6 +417,17 @@ public class MVWorld extends LongIdEntity {
          */
         public @NotNull Builder buildLocked(boolean buildLocked) {
             this.buildLocked = buildLocked;
+            return this;
+        }
+
+        /**
+         * Sets the build-lock interaction mode used while build lock is active.
+         *
+         * @param mode the interaction mode
+         * @return this builder
+         */
+        public @NotNull Builder buildLockInteractionMode(@NotNull BuildLockInteractionMode mode) {
+            this.buildLockInteractionMode = mode;
             return this;
         }
 
