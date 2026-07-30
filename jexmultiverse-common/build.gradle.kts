@@ -46,7 +46,10 @@ dependencies {
     compileOnly(libs.jackson.jsr310)
     compileOnly(libs.java.uuid)
     compileOnly(libs.xseries)
-    compileOnly(libs.worldedit.bukkit)
+    compileOnly(libs.worldedit.bukkit) {
+        exclude(group = "com.google.guava", module = "guava")
+        exclude(group = "com.google.code.gson", module = "gson")
+    }
 
     compileOnly(libs.bundles.jexcellence) {
         exclude(group = "de.jexcellence.hibernate")
