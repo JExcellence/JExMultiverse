@@ -250,7 +250,7 @@ public class WorldProtectionListener implements Listener {
                 || material == Material.BONE_MEAL || material == Material.ARMOR_STAND
                 || material == Material.END_CRYSTAL || material == Material.ITEM_FRAME
                 || material == Material.GLOW_ITEM_FRAME || material == Material.PAINTING
-                || material == Material.EGG) {
+                || material == Material.EGG || material == Material.ENDER_PEARL) {
             return true;
         }
         String name = material.name();
