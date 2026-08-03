@@ -4,7 +4,9 @@ import de.jexcellence.jextranslate.R18nManager;
 import de.jexcellence.multiverse.service.MultiverseService;
 import de.jexcellence.multiverse.service.PlotFlag;
 import de.jexcellence.multiverse.service.PlotService;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.Projectile;
 import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.event.EventHandler;
@@ -91,11 +93,19 @@ public class PlotProtectionListener implements Listener {
 
     // ── PvP ─────────────────────────────────────────────────────────────────────
 
-    /** Cancels PvP in plots where the {@link PlotFlag#PVP} flag is disabled. */
+    /**
+     * Cancels PvP in plots where the {@link PlotFlag#PVP} flag is disabled.
+     *
+     * <p>For ranged attacks (bow, trident, thrown weapons, …) {@code getDamager()}
+     * is the projectile itself, not the player who fired it, so the shooter is
+     * resolved explicitly — otherwise any ranged attack silently skipped this
+     * check entirely and bypassed plot PvP protection.
+     */
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onPvp(@NotNull EntityDamageByEntityEvent event) {
         if (!(event.getEntity() instanceof Player victim)) return;
-        if (!(event.getDamager() instanceof Player attacker)) return;
+        Player attacker = attackerFrom(event.getDamager());
+        if (attacker == null) return;
         var plot = plots.getPlotAt(victim.getLocation()).orElse(null);
         if (plot == null) return; // road or unclaimed = vanilla rules apply
         // PvP allowed when: both are owner/trusted (any PvP among friends), OR
@@ -150,6 +160,17 @@ public class PlotProtectionListener implements Listener {
             return true;
         }
         return false;
+    }
+
+    /** Resolves the attacking player from a direct hit or a projectile's shooter. */
+    private static @org.jetbrains.annotations.Nullable Player attackerFrom(@NotNull Entity damager) {
+        if (damager instanceof Player player) {
+            return player;
+        }
+        if (damager instanceof Projectile projectile && projectile.getShooter() instanceof Player shooter) {
+            return shooter;
+        }
+        return null;
     }
 
     private void warnDenied(@NotNull Player player, @NotNull String key,
