@@ -25,17 +25,17 @@ import java.util.concurrent.CompletableFuture;
  *
  * <p>Each entry is clickable:
  * <ul>
- *   <li>Left-click — teleport to the world's spawn</li>
- *   <li>Right-click — open the {@link MultiverseEditorView} for that world</li>
- *   <li>Shift-click — close (delete is intentionally restricted to /mv delete to
+ *   <li>Left-click - teleport to the world's spawn</li>
+ *   <li>Right-click - open the {@link MultiverseEditorView} for that world</li>
+ *   <li>Shift-click - close (delete is intentionally restricted to /mv delete to
  *       prevent accidental destruction from a list)</li>
  * </ul>
  *
  * <p>Required initial-data keys:
  * <ul>
- *   <li>{@code "plugin"}  — {@link JavaPlugin}</li>
- *   <li>{@code "service"} — {@link MultiverseService}</li>
- *   <li>{@code "factory"} — {@link WorldFactory}</li>
+ *   <li>{@code "plugin"}  - {@link JavaPlugin}</li>
+ *   <li>{@code "service"} - {@link MultiverseService}</li>
+ *   <li>{@code "factory"} - {@link WorldFactory}</li>
  * </ul>
  *
  * @author JExcellence

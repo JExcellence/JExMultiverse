@@ -36,7 +36,7 @@ import java.util.zip.GZIPOutputStream;
  *
  * <p>All values are big-endian as the spec requires. The root compound
  * is written with the empty name {@code ""} and the whole stream is
- * gzip-compressed — that's the {@code .dat} convention Mojang adopted
+ * gzip-compressed - that's the {@code .dat} convention Mojang adopted
  * in Alpha 1.0.6.
  *
  * @author JExcellence
@@ -56,7 +56,7 @@ public final class NbtWriter {
     }
 
     /**
-     * Writes a compound as the root of a gzipped NBT stream — the
+     * Writes a compound as the root of a gzipped NBT stream - the
      * {@code level.dat} convention.
      *
      * @param out  the destination stream. Caller is responsible for closing.
@@ -74,7 +74,7 @@ public final class NbtWriter {
     }
 
     /**
-     * Writes a compound's payload — every child tag in insertion order,
+     * Writes a compound's payload - every child tag in insertion order,
      * terminated by TAG_End. Values are dispatched by their Java type
      * to the matching NBT tag.
      */
@@ -149,7 +149,7 @@ public final class NbtWriter {
     }
 
     /**
-     * Writes an NBT string — {@code DataOutputStream#writeUTF} uses
+     * Writes an NBT string - {@code DataOutputStream#writeUTF} uses
      * modified UTF-8 which matches NBT's string encoding.
      */
     private static void writeString(@NotNull DataOutputStream dos, @NotNull String s) throws IOException {

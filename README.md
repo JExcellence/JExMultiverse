@@ -4,18 +4,18 @@ World management + plot ownership plugin for Paper servers. Custom generators (v
 
 - World CRUD with three generation types: `DEFAULT` (vanilla), `VOID` (empty), `PLOT` (grid-based plots with roads and walls)
 - Per-world plot generation overrides on `/mv create` (plot size, road width, schematic to paste at every plot)
-- Schematic import — Bukkit `.nbt` (native, no deps) + WorldEdit/FAWE `.schem`/`.schematic` (soft-dep)
-- Plot ownership — claim, unclaim, trust/untrust, deny/undeny, home, list
-- Plot merging by player facing — joins adjacent same-owner plots, fills the road, removes walls; permission-capped group size
-- 8 enforced plot flags — `pvp`, `mob-spawning`, `explosion`, `fire-spread`, `keep-inventory`, `entry`, `liquid-flow`, `ice-form-melt` — per-plot override or default
-- Owner-customisable plot border via `/plot border <material>` — visual signal that a plot is claimed (default border colour differs from unclaimed walls)
-- Per-world spawn locations + global spawn — `/spawn` resolves global → current-world MV spawn → default world
-- Inventory-Framework GUIs everywhere — `/mv edit`, `/mv list`, `/plot menu` (members + flags + home + unclaim)
+- Schematic import - Bukkit `.nbt` (native, no deps) + WorldEdit/FAWE `.schem`/`.schematic` (soft-dep)
+- Plot ownership - claim, unclaim, trust/untrust, deny/undeny, home, list
+- Plot merging by player facing - joins adjacent same-owner plots, fills the road, removes walls; permission-capped group size
+- 8 enforced plot flags - `pvp`, `mob-spawning`, `explosion`, `fire-spread`, `keep-inventory`, `entry`, `liquid-flow`, `ice-form-melt` - per-plot override or default
+- Owner-customisable plot border via `/plot border <material>` - visual signal that a plot is claimed (default border colour differs from unclaimed walls)
+- Per-world spawn locations + global spawn - `/spawn` resolves global → current-world MV spawn → default world
+- Inventory-Framework GUIs everywhere - `/mv edit`, `/mv list`, `/plot menu` (members + flags + home + unclaim)
 - MiniMessage translations with per-player locales (en_US, de_DE shipped) via JExTranslate / R18n
-- Async-first design — all I/O returns `CompletableFuture`; main-thread work is dispatched via Bukkit scheduler
+- Async-first design - all I/O returns `CompletableFuture`; main-thread work is dispatched via Bukkit scheduler
 - Free and Premium editions: Free is capped at 3 worlds with `DEFAULT`/`VOID`; Premium is unlimited and includes `PLOT`
-- Public API via `MultiverseProvider`, registered on Bukkit's `ServicesManager` — exposes plot grid coords/bounds for external plugins
-- Backed by JEHibernate 3.0.3 — H2 by default, MySQL/PostgreSQL/Oracle/SQL Server supported
+- Public API via `MultiverseProvider`, registered on Bukkit's `ServicesManager` - exposes plot grid coords/bounds for external plugins
+- Backed by JEHibernate 3.0.3 - H2 by default, MySQL/PostgreSQL/Oracle/SQL Server supported
 
 
 ## Table of Contents
@@ -47,7 +47,7 @@ World management + plot ownership plugin for Paper servers. Custom generators (v
 - Java 21+
 - Paper 1.19+ (developed against Paper API 1.21.x)
 - JExDependency runtime loader (handles library injection)
-- Optional: WorldEdit or FastAsyncWorldEdit — enables `.schem`/`.schematic` schematic loading. Bukkit `.nbt` works without it.
+- Optional: WorldEdit or FastAsyncWorldEdit - enables `.schem`/`.schematic` schematic loading. Bukkit `.nbt` works without it.
 
 
 ## Installation
@@ -61,7 +61,7 @@ World management + plot ownership plugin for Paper servers. Custom generators (v
 
 ### `config.yml`
 
-Plot-world generation defaults — applied to every plot world unless overridden at create time:
+Plot-world generation defaults - applied to every plot world unless overridden at create time:
 
 ```yaml
 plot-world:
@@ -81,7 +81,7 @@ plot-world:
 ```
 
 When a plot is claimed, JExMultiverse repaints the plot's perimeter with the
-claimed wall material — by default `MOSSY_STONE_BRICK_WALL` so it visually
+claimed wall material - by default `MOSSY_STONE_BRICK_WALL` so it visually
 differs from the surrounding unclaimed `STONE_BRICK_WALL`. Owners can
 override with `/plot border <material>` (see below). The wall stripes
 between merged plots are cleared automatically.
@@ -112,18 +112,18 @@ Hibernate properties are in `plugins/JExMultiverse/database/hibernate.properties
 | `/mv help` | Show command help |
 
 **`/mv create` arguments:**
-- `name` — world folder name (required)
-- `environment` — `NORMAL`, `NETHER`, or `THE_END` (default: `NORMAL`). Tab-completed.
-- `type` — `DEFAULT`, `VOID`, or `PLOT` (default: `DEFAULT`). Tab-completed.
-- `plot_size` — per-world plot edge length override (PLOT only)
-- `road_width` — per-world road width override (PLOT only)
-- `schematic` — schematic file name without extension, dropped into `plugins/JExMultiverse/schematics/` (PLOT only)
+- `name` - world folder name (required)
+- `environment` - `NORMAL`, `NETHER`, or `THE_END` (default: `NORMAL`). Tab-completed.
+- `type` - `DEFAULT`, `VOID`, or `PLOT` (default: `DEFAULT`). Tab-completed.
+- `plot_size` - per-world plot edge length override (PLOT only)
+- `road_width` - per-world road width override (PLOT only)
+- `schematic` - schematic file name without extension, dropped into `plugins/JExMultiverse/schematics/` (PLOT only)
 
 **`/mv edit <world>`** opens a compact 3-row GUI with:
 - Set spawn to your current location
 - Toggle global-spawn designation (auto-clears it from any other world)
 - Toggle PvP
-- Cycle time of day (live world only — not persisted)
+- Cycle time of day (live world only - not persisted)
 - Cycle weather: clear → rain → storm (live world only)
 - Cycle difficulty: peaceful → easy → normal → hard (live world only)
 - Save persisted fields to the database
@@ -195,7 +195,7 @@ Aliases: `/p`, `/plots`.
 | `jexplots.claim.unlimited` | No claim cap |
 | `jexplots.merge.<n>` | Allow merged groups up to `n` plots |
 | `jexplots.merge.unlimited` | No merge cap |
-| `jexplots.bypass.protect` | Staff bypass — ignore protection on all plots |
+| `jexplots.bypass.protect` | Staff bypass - ignore protection on all plots |
 
 
 ## Plot system
@@ -208,10 +208,10 @@ Stand on the plot you want to claim and run `/plot claim`. The claim limit is re
 
 ### Trusted / denied members
 
-- `/plot trust <player>` — let them build, break, interact, and use containers.
-- `/plot deny <player>` — store the role; full entry blocking is on the Phase 2D+ roadmap (currently surfaces in `/plot info` and the GUI but doesn't gate movement yet).
+- `/plot trust <player>` - let them build, break, interact, and use containers.
+- `/plot deny <player>` - store the role; full entry blocking is on the Phase 2D+ roadmap (currently surfaces in `/plot info` and the GUI but doesn't gate movement yet).
 
-Membership is per-plot. Merging plots A + B does not propagate trusted lists across the group — each plot keeps its own list.
+Membership is per-plot. Merging plots A + B does not propagate trusted lists across the group - each plot keeps its own list.
 
 ### Flags
 
@@ -224,9 +224,9 @@ Boolean overrides per plot. Default is the listed value when no override is set.
 | `explosion` | `false` | When `false`, blocks inside this plot survive creeper, TNT, wither, and end-crystal explosions. Other plots / terrain in the same blast still take damage. |
 | `fire-spread` | `false` | When `false`, fire won't spread or burn blocks. You can still light fires; they just don't propagate. |
 | `keep-inventory` | `false` | When `true`, players who die inside the plot keep their items + XP. Drops are cleared and dropped XP is zeroed. |
-| `entry` | `true` | When `false`, only the owner and trusted members can enter — others are pushed back when they cross the plot boundary. Denied players are always blocked regardless of this flag. |
-| `liquid-flow` | `false` | When `false`, water and lava can't flow into the plot — useful for protected builds adjacent to fluids. |
-| `ice-form-melt` | `false` | When `false`, ice and snow stay where they're placed — they neither melt in warm biomes nor form in cold ones. |
+| `entry` | `true` | When `false`, only the owner and trusted members can enter - others are pushed back when they cross the plot boundary. Denied players are always blocked regardless of this flag. |
+| `liquid-flow` | `false` | When `false`, water and lava can't flow into the plot - useful for protected builds adjacent to fluids. |
+| `ice-form-melt` | `false` | When `false`, ice and snow stay where they're placed - they neither melt in warm biomes nor form in cold ones. |
 
 CLI: `/plot flag set pvp true`, `/plot flag remove pvp`, `/plot flag list`. GUI: `/plot menu` → flags slot (4×2 grid of toggle slots).
 
@@ -241,7 +241,7 @@ from `config.yml`. Walls between merged plots stay cleared regardless.
 
 ### Merging
 
-Stand on your plot, face the adjacent plot you want to merge with, and run `/plot merge`. JExMultiverse uses `player.getFacing()` to pick the neighbor cell — no direction argument needed.
+Stand on your plot, face the adjacent plot you want to merge with, and run `/plot merge`. JExMultiverse uses `player.getFacing()` to pick the neighbor cell - no direction argument needed.
 
 What happens:
 - Both plots are tagged with a shared `mergedGroupId`.
@@ -263,11 +263,11 @@ The combined group size is capped by `jexplots.merge.<n>` (highest matching) or 
 .   .   .   .   .   .   .   .   .
 ```
 
-- **Owner head** — player skin, lore shows owner / world / grid coords / trusted+denied counts / merged Y/N.
-- **Members** — paginated player heads of trusted (green) and denied (red) members. Click an entry to remove the role.
-- **Flags** — one toggle slot per flag. Click flips the value and updates the slot in place; lore reflects effective value + (default/override).
-- **Home** — teleport to plot center, closes the menu.
-- **Unclaim** — release the plot.
+- **Owner head** - player skin, lore shows owner / world / grid coords / trusted+denied counts / merged Y/N.
+- **Members** - paginated player heads of trusted (green) and denied (red) members. Click an entry to remove the role.
+- **Flags** - one toggle slot per flag. Click flips the value and updates the slot in place; lore reflects effective value + (default/override).
+- **Home** - teleport to plot center, closes the menu.
+- **Unclaim** - release the plot.
 
 Adding members stays as `/plot trust <player>` and `/plot deny <player>` because the offline-player tab completion is smoother on the command line.
 
@@ -276,10 +276,10 @@ Adding members stays as `/plot trust <player>` and `/plot deny <player>` because
 
 Drop schematic files into `plugins/JExMultiverse/schematics/`:
 
-- `<name>.nbt` — Bukkit's native structure block format. No external dependency.
-- `<name>.schem` / `<name>.schematic` — WorldEdit / FastAsyncWorldEdit clipboard formats. Loaded only if WE/FAWE is installed; the boot log says which path is active.
+- `<name>.nbt` - Bukkit's native structure block format. No external dependency.
+- `<name>.schem` / `<name>.schematic` - WorldEdit / FastAsyncWorldEdit clipboard formats. Loaded only if WE/FAWE is installed; the boot log says which path is active.
 
-Resolution order is `.nbt` → `.schem` → `.schematic`. The schematic pastes at every plot's NW corner during chunk generation, plus configurable offset (`schematic-offset-x/y/z` in `config.yml` — defaults `0,1,0` for "one block above plot surface").
+Resolution order is `.nbt` → `.schem` → `.schematic`. The schematic pastes at every plot's NW corner during chunk generation, plus configurable offset (`schematic-offset-x/y/z` in `config.yml` - defaults `0,1,0` for "one block above plot surface").
 
 ```
 /mv create village normal plot 24 5 my_house    # uses my_house.* during chunkgen
@@ -320,7 +320,7 @@ import de.jexcellence.multiverse.api.PlotBounds;
 // Obtain the provider
 MultiverseProvider mv = JExMultiverseAPI.get();
 
-// World snapshots — all return CompletableFuture
+// World snapshots - all return CompletableFuture
 mv.getWorld("my_world").thenAccept(opt -> { /* MVWorldSnapshot or empty */ });
 mv.getGlobalSpawnWorld().thenAccept(opt -> { /* ... */ });
 mv.getAllWorlds().thenAccept(list -> { /* ... */ });
@@ -329,7 +329,7 @@ mv.hasMultiverseSpawn("my_world").thenAccept(present -> { /* ... */ });
 // Teleport using the spawn-resolution chain
 mv.spawn(player).thenAccept(success -> { /* ... */ });
 
-// Plot grid lookups (synchronous — listener-safe)
+// Plot grid lookups (synchronous - listener-safe)
 mv.plotAt(player.getLocation()).ifPresent(coord -> {
     // coord.world(), coord.gridX(), coord.gridZ()
 });
@@ -338,20 +338,20 @@ mv.plotBounds("city", 3, 5).ifPresent(b -> {
 });
 if (mv.isRoadOrBorder(loc)) { /* loc is on a plot road */ }
 
-// Plot ownership lookups (synchronous — listener-safe)
+// Plot ownership lookups (synchronous - listener-safe)
 mv.plotOwnership(loc).ifPresent(o -> {
     // o.ownerUuid(), o.ownerName(), o.mergedGroupId(), o.claimedAt()
 });
 
-// Protection check — true if the player can build here under JExMultiverse
+// Protection check - true if the player can build here under JExMultiverse
 // plot rules (owner / trusted / bypass / unclaimed).
 boolean allowed = mv.canBuild(player, loc);
 
-// Effective flag value at a location — empty if no plot is claimed there.
+// Effective flag value at a location - empty if no plot is claimed there.
 mv.getPlotFlag(loc, "pvp").ifPresent(pvpEnabled -> { /* ... */ });
 ```
 
-The plot-grid + ownership API is intended for external plugins that want to integrate with JExMultiverse plot worlds — claim systems, plot-merging tools, region overlays, anti-grief integrations, etc. It exposes stable `(world, gridX, gridZ)` identifiers, exact bounds, ownership snapshots, and effective flag values without forcing consumers to know the underlying generation parameters or schema.
+The plot-grid + ownership API is intended for external plugins that want to integrate with JExMultiverse plot worlds - claim systems, plot-merging tools, region overlays, anti-grief integrations, etc. It exposes stable `(world, gridX, gridZ)` identifiers, exact bounds, ownership snapshots, and effective flag values without forcing consumers to know the underlying generation parameters or schema.
 
 `MVWorldSnapshot`, `PlotCoord`, `PlotBounds`, and `PlotOwnership` are all Java 21 records.
 
@@ -384,7 +384,7 @@ Artifacts:
 
 ## Credits
 
-- Author: JExcellence — https://jexcellence.de
+- Author: JExcellence - https://jexcellence.de
 - Runtime dependency injection: JExDependency
 - ORM layer: JEHibernate (Hibernate 7.x)
 - GUI framework: InventoryFramework

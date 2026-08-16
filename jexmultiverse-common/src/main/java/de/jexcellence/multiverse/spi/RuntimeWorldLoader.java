@@ -18,7 +18,7 @@ import java.util.concurrent.CompletableFuture;
  *
  * <p>The Folia implementation lives in the {@code jexmultiverse-folia-nms}
  * module and is wired via {@link java.util.ServiceLoader}. Common code
- * never references the implementation type — it discovers an
+ * never references the implementation type - it discovers an
  * implementation through this interface and degrades gracefully (pending
  * restart) when none is present.
  *
@@ -50,7 +50,7 @@ public interface RuntimeWorldLoader {
     /**
      * Returns a backendId.
      *
-     * @return a short identifier for logging — e.g. {@code "folia-nms"}
+     * @return a short identifier for logging - e.g. {@code "folia-nms"}
      */
     @NotNull String backendId();
 }

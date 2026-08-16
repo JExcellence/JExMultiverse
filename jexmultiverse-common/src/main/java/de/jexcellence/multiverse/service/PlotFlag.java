@@ -90,7 +90,7 @@ public enum PlotFlag {
         return Optional.empty();
     }
 
-    /** Lower-case keys, sorted alphabetically — handy for tab completion. */
+    /** Lower-case keys, sorted alphabetically - handy for tab completion. */
     public static @NotNull List<String> allKeys() {
         return Arrays.stream(values()).map(PlotFlag::key).sorted().toList();
     }

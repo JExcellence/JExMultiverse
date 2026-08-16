@@ -13,9 +13,9 @@ import java.util.Locale;
  *
  * <p>Used by {@code JExMultiverseFree#getDefaultWorldGenerator} and the
  * matching Premium hook. The plugin main classes can't carry state at
- * the moment of this call — Bukkit invokes {@code
+ * the moment of this call - Bukkit invokes {@code
  * getDefaultWorldGenerator} during world load (server startup), which
- * runs <em>before</em> {@code onEnable} — so resolution has to be
+ * runs <em>before</em> {@code onEnable} - so resolution has to be
  * stateless and side-effect-free. Generators that need configuration
  * (PlotChunkGenerator) are handled separately via the runtime
  * {@code WorldFactory} path; only the void generator is registered here
@@ -42,7 +42,7 @@ public final class GeneratorRegistry {
         if (id == null || id.isBlank()) return null;
         return switch (id.toLowerCase(Locale.ROOT)) {
             case "void" -> new VoidChunkGenerator();
-            // "plot" is intentionally NOT registered here — PlotChunkGenerator
+            // "plot" is intentionally NOT registered here - PlotChunkGenerator
             // needs the loaded PlotWorldConfig, which isn't available during
             // bukkit.yml world loading. Plot worlds always go through the
             // runtime MultiverseService.createWorld path.

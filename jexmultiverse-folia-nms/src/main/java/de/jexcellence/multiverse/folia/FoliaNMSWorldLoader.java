@@ -67,7 +67,7 @@ public final class FoliaNMSWorldLoader implements RuntimeWorldLoader {
         final File levelDat = new File(worldDir, "level.dat");
         if (!levelDat.isFile()) {
             throw new IOException("level.dat not found for world: " + worldName
-                    + " — write skeleton before invoking the runtime loader");
+                    + " - write skeleton before invoking the runtime loader");
         }
 
         // Short-circuit if Bukkit already knows the world
@@ -81,16 +81,16 @@ public final class FoliaNMSWorldLoader implements RuntimeWorldLoader {
             try {
                 // Resolve the chunk generator for this world
                 final ChunkGenerator generator = resolveGenerator(worldName);
-                
+
                 // Register the world via NMS
                 final World loaded = FoliaNMSRegistration.register(worldName, environment, generator);
                 result.complete(loaded);
             } catch (final UnsupportedOperationException ex) {
-                // NMS methods not available — this is expected on some Folia versions
+                // NMS methods not available - this is expected on some Folia versions
                 result.completeExceptionally(new IOException(
                         "Folia NMS world loading not available: " + ex.getMessage(), ex));
             } catch (final ReflectiveOperationException ex) {
-                // Reflection failed — NMS structure changed
+                // Reflection failed - NMS structure changed
                 result.completeExceptionally(new IOException(
                         "NMS reflection failed for world '" + worldName + "': " + ex.getMessage(), ex));
             } catch (final Throwable ex) {
@@ -147,7 +147,7 @@ public final class FoliaNMSWorldLoader implements RuntimeWorldLoader {
                 if (plugins.length > 0) {
                     owner = plugins[0];
                 } else {
-                    // No plugins loaded — run inline as last resort
+                    // No plugins loaded - run inline as last resort
                     task.run();
                     return;
                 }
@@ -157,7 +157,7 @@ public final class FoliaNMSWorldLoader implements RuntimeWorldLoader {
                     .getMethod("execute", org.bukkit.plugin.Plugin.class, Runnable.class);
             execute.invoke(scheduler, owner, task);
         } catch (final NoSuchMethodException notFolia) {
-            // Not Folia — fall back to inline execution
+            // Not Folia - fall back to inline execution
             task.run();
         } catch (final Throwable ex) {
             throw new NmsWorldLoadException("Failed to schedule world load on global region", ex);
@@ -205,7 +205,7 @@ public final class FoliaNMSWorldLoader implements RuntimeWorldLoader {
                                         World.@NotNull Environment environment,
                                         @Nullable ChunkGenerator generator) throws Exception {
             if (!isFolia()) {
-                // Paper/Spigot — use the normal API path
+                // Paper/Spigot - use the normal API path
                 final var creator = new org.bukkit.WorldCreator(worldName)
                         .environment(environment);
                 if (generator != null) {
@@ -249,7 +249,7 @@ public final class FoliaNMSWorldLoader implements RuntimeWorldLoader {
                 getServerMethod = server.getClass().getMethod("getServer");
             } catch (final NoSuchMethodException ex) {
                 throw new NmsWorldLoadException(
-                        "CraftServer.getServer() not found — incompatible server build", ex);
+                        "CraftServer.getServer() not found - incompatible server build", ex);
             }
             final Object minecraftServer = getServerMethod.invoke(server);
 
@@ -271,7 +271,7 @@ public final class FoliaNMSWorldLoader implements RuntimeWorldLoader {
             try {
                 return createCompanionWorld(minecraftServer, worldName, generator);
             } catch (final Exception ex) {
-                // Companion creation failed — fall through to standard loading
+                // Companion creation failed - fall through to standard loading
                 return null;
             }
         }
@@ -320,7 +320,7 @@ public final class FoliaNMSWorldLoader implements RuntimeWorldLoader {
             // Get the parent ServerLevel via CraftWorld.getHandle()
             final Method getHandleMethod = findMethod(defaultWorld.getClass(), "getHandle");
             if (getHandleMethod == null) {
-                throw new NoSuchMethodException("CraftWorld.getHandle() not found — cannot access NMS ServerLevel");
+                throw new NoSuchMethodException("CraftWorld.getHandle() not found - cannot access NMS ServerLevel");
             }
             final Object parentLevel = getHandleMethod.invoke(defaultWorld);
             if (parentLevel == null) {
@@ -330,7 +330,7 @@ public final class FoliaNMSWorldLoader implements RuntimeWorldLoader {
             // Try to find and invoke companion world creation method
             // Possible method names: createCompanionWorld, addCompanionWorld, createCompanion
             final String[] companionMethodNames = {"createCompanionWorld", "addCompanionWorld", "createCompanion"};
-            
+
             Exception lastException = null;
             for (final String methodName : companionMethodNames) {
                 try {
@@ -393,7 +393,7 @@ public final class FoliaNMSWorldLoader implements RuntimeWorldLoader {
                 for (final Method m : c.getDeclaredMethods()) {
                     if (signatureMatches(m, name, params)) {
                         if (!java.lang.reflect.Modifier.isPublic(m.getModifiers())) {
-                            m.setAccessible(true); // NOSONAR java:S3011 — NMS reflection requires access to non-public members
+                            m.setAccessible(true); // NOSONAR java:S3011 - NMS reflection requires access to non-public members
                         }
                         return m;
                     }

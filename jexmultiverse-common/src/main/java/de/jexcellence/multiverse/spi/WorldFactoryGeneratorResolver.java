@@ -49,12 +49,12 @@ public class WorldFactoryGeneratorResolver {
             // Look up the MVWorld entity
             final var mvWorldOpt = repository.findByIdentifier(worldName);
             if (mvWorldOpt.isEmpty()) {
-                // World not in database yet — return null for default generation
+                // World not in database yet - return null for default generation
                 return null;
             }
 
             final MVWorld mvWorld = mvWorldOpt.get();
-            
+
             // Use WorldFactory to get the generator for this world type
             return worldFactory.getGeneratorForType(
                     mvWorld.getType(),

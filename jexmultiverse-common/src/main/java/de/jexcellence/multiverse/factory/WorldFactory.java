@@ -33,7 +33,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * Factory responsible for creating, loading, caching, unloading, and deleting
  * Bukkit worlds managed by JExMultiverse.
  *
- * <p>Uses constructor injection — no static singleton.
+ * <p>Uses constructor injection - no static singleton.
  *
  * @author JExcellence
  * @since 3.0.0
@@ -180,7 +180,7 @@ public class WorldFactory {
     }
 
     /**
-     * Returns the effective plot size for the given MVWorld — its override if
+     * Returns the effective plot size for the given MVWorld - its override if
      * set, else the global config value. Defined regardless of world type;
      * callers should already know the world is PLOT.
      */
@@ -233,7 +233,7 @@ public class WorldFactory {
             // Each world creation runs on the appropriate platform
             // thread (main on Paper, global region on Folia) and signals
             // its CompletableFuture when done. Bukkit.getScheduler()
-            // throws UOE on Folia — PlatformScheduler.runSync targets
+            // throws UOE on Folia - PlatformScheduler.runSync targets
             // GlobalRegionScheduler there.
             logger.info("Loading {} world(s) from database...", worlds.size());
             var futures = new java.util.ArrayList<CompletableFuture<Void>>(worlds.size());

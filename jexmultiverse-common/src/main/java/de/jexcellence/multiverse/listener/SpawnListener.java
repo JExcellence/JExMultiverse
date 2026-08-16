@@ -59,7 +59,7 @@ public class SpawnListener implements Listener {
     public void onPlayerSpawnLocation(@NotNull PlayerSpawnLocationEvent event) {
         var player = event.getPlayer();
 
-        // A personal (bed / respawn-anchor) spawn always wins — never yank a
+        // A personal (bed / respawn-anchor) spawn always wins - never yank a
         // player off it on join.
         if (hasBedSpawn(player)) {
             return;
@@ -149,7 +149,7 @@ public class SpawnListener implements Listener {
      * Resolves an {@link MVWorld}'s stored spawn into a usable {@link Location},
      * re-attaching the world handle: a Location loaded from the DB often has a
      * {@code null} world (the world wasn't loaded at deserialization), and
-     * {@code setSpawnLocation} silently ignores a world-less location — which is
+     * {@code setSpawnLocation} silently ignores a world-less location - which is
      * why the global spawn wasn't applied on join. Mirrors the service resolver.
      */
     private @Nullable Location liveSpawnLocation(@NotNull MVWorld mv) {

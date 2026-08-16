@@ -13,7 +13,7 @@ import java.util.Set;
  *
  * <p>Used at claim / unclaim / {@code /plot border} time to swap the
  * perimeter wall material. Edge cells that face a merged-group neighbour are
- * skipped — those walls are intentionally absent so the merged group reads
+ * skipped - those walls are intentionally absent so the merged group reads
  * as one continuous space.
  *
  * @author JExcellence
@@ -50,7 +50,7 @@ public final class PlotWallOps {
         int x0 = plot.getGridX() * interval;
         int z0 = plot.getGridZ() * interval;
 
-        // Walls sit on the ROAD-side column adjacent to the plot — one block
+        // Walls sit on the ROAD-side column adjacent to the plot - one block
         // outside the plot interior. Plot at gridX,gridZ has road-side wall
         // columns at:
         //   north: z = z0 - 1

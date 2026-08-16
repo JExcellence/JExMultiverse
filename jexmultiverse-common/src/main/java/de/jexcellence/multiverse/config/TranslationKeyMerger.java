@@ -17,7 +17,7 @@ import java.util.logging.Level;
  *
  * <p>The R18nManager extraction step only writes to disk when a translation
  * file does not yet exist, so admins who upgrade between versions never see
- * the new keys — old YAML stays put while the JAR ships additions. This
+ * the new keys - old YAML stays put while the JAR ships additions. This
  * merger compares deep-leaf keys between the two and appends any missing
  * leaves into the disk file, preserving any customisations the admin has
  * already made.
@@ -48,7 +48,7 @@ public final class TranslationKeyMerger {
             try {
                 plugin.saveResource(resourcePath, false);
             } catch (IllegalArgumentException missing) {
-                // Resource not in JAR — nothing to do.
+                // Resource not in JAR - nothing to do.
             }
             return;
         }
@@ -66,7 +66,7 @@ public final class TranslationKeyMerger {
 
         var added = 0;
         for (var key : jarYaml.getKeys(true)) {
-            // Skip section nodes — only merge leaves so we don't clobber
+            // Skip section nodes - only merge leaves so we don't clobber
             // partial customisations under a section the admin has edited.
             if (!(jarYaml.get(key) instanceof ConfigurationSection) && !diskYaml.contains(key)) {
                 diskYaml.set(key, jarYaml.get(key));

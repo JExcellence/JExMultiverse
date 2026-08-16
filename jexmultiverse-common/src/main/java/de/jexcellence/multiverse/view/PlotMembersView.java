@@ -31,7 +31,7 @@ import java.util.concurrent.CompletableFuture;
  * role.
  *
  * <p>Adding members is delegated to the existing {@code /plot trust} and
- * {@code /plot deny} commands — that's tab-complete-friendly and avoids
+ * {@code /plot deny} commands - that's tab-complete-friendly and avoids
  * needing an anvil-input view here.
  *
  * @author JExcellence

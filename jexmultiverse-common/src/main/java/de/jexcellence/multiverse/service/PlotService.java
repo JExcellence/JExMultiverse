@@ -113,7 +113,7 @@ public class PlotService {
                         flagsByPlot.computeIfAbsent(f.getPlotId(), k -> new ConcurrentHashMap<>())
                                 .put(f.getFlagKey(), "true".equalsIgnoreCase(f.getFlagValue()));
                     }
-                    logger.info("Plot cache loaded — {} plots, {} member entries, {} flag overrides",
+                    logger.info("Plot cache loaded - {} plots, {} member entries, {} flag overrides",
                             allPlots.size(), allMembers.size(), allFlags.size());
                 });
             });
@@ -140,7 +140,7 @@ public class PlotService {
 
     // ── Flag accessors (listener-safe) ──────────────────────────────────────────
 
-    /** Returns the effective boolean value of a flag — override if set, else default. */
+    /** Returns the effective boolean value of a flag - override if set, else default. */
     public boolean getFlag(@NotNull Plot plot, @NotNull PlotFlag flag) {
         var stored = flagsByPlot.get(plot.getId());
         if (stored != null) {
@@ -167,7 +167,7 @@ public class PlotService {
      * Persists a flag override. Returns true on success.
      *
      * <p>For an existing override we delete the old row and create a new one
-     * (rather than {@code updateAsync} on a detached entity) — fewer paths
+     * (rather than {@code updateAsync} on a detached entity) - fewer paths
      * for "session is closed" / stale-entity errors to surface.
      */
     public @NotNull CompletableFuture<Boolean> setFlag(@NotNull Plot plot,
@@ -228,7 +228,7 @@ public class PlotService {
     }
 
     /**
-     * Returns whether a player can build on the plot — owner, trusted, or
+     * Returns whether a player can build on the plot - owner, trusted, or
      * holds the {@code jexplots.bypass.protect} permission.
      */
     public boolean canBuild(@NotNull Player player, @NotNull Plot plot) {
@@ -279,7 +279,7 @@ public class PlotService {
                     int n = Integer.parseInt(perm.substring("jexplots.claim.".length()));
                     if (n > max) max = n;
                 } catch (NumberFormatException ignored) {
-                    // Not a numeric permission suffix — skip
+                    // Not a numeric permission suffix - skip
                 }
             }
         }
@@ -408,8 +408,8 @@ public class PlotService {
     }
 
     /**
-     * Deletes every DB row associated with a plot — members, flag overrides,
-     * the plot itself — and removes the plot from the in-memory caches.
+     * Deletes every DB row associated with a plot - members, flag overrides,
+     * the plot itself - and removes the plot from the in-memory caches.
      * Does NOT touch the world (no wall repaint).
      *
      * <p>Used as the shared core for {@link #unclaim(Plot)} (which adds wall
@@ -449,7 +449,7 @@ public class PlotService {
                                                          @NotNull MemberRole role) {
         var uuid = target.getUniqueId();
         var name = target.getName() != null ? target.getName() : uuid.toString().substring(0, 8);
-        // Same pattern as setFlag — delete-then-create instead of update on a
+        // Same pattern as setFlag - delete-then-create instead of update on a
         // detached entity, avoiding a class of Hibernate session lifecycle
         // errors that surface as "LogicalConnectionManagedImpl is closed".
         return members.findByPlotAndMemberAsync(plot.getId(), uuid).thenCompose(existing -> {
@@ -503,7 +503,7 @@ public class PlotService {
         logger.info("Cascade-deleting {} plot row(s) for world '{}'", doomed.size(), worldName);
         CompletableFuture<Void> chain = CompletableFuture.completedFuture(null);
         for (var plot : doomed) {
-            // purgePlotRows skips wall ops — the world is about to be deleted
+            // purgePlotRows skips wall ops - the world is about to be deleted
             // so there's no point trying to repaint anything in it.
             chain = chain.thenCompose(v -> purgePlotRows(plot).thenApply(ok -> null));
             uncachePlot(plot);
@@ -528,7 +528,7 @@ public class PlotService {
                     int n = Integer.parseInt(perm.substring("jexplots.merge.".length()));
                     if (n > max) max = n;
                 } catch (NumberFormatException ignored) {
-                    // Not a numeric permission suffix — skip
+                    // Not a numeric permission suffix - skip
                 }
             }
         }
@@ -561,7 +561,7 @@ public class PlotService {
     }
 
     /**
-     * Result of a merge attempt — either {@code OK} or one of the typed
+     * Result of a merge attempt - either {@code OK} or one of the typed
      * failure reasons so the handler can render a specific error message.
      */
     public enum MergeResult { OK, NO_NEIGHBOR, DIFFERENT_OWNER, LIMIT_REACHED, NOT_ADJACENT, FAILED }

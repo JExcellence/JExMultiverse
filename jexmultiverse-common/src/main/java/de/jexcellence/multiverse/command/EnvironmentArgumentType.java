@@ -14,7 +14,7 @@ import java.util.Map;
  * {@link World.Environment#CUSTOM} filtered out.
  *
  * <p>{@code CUSTOM} represents datapack-defined dimensions that cannot be created
- * via the {@link org.bukkit.WorldCreator} API — Paper throws
+ * via the {@link org.bukkit.WorldCreator} API - Paper throws
  * {@code IllegalArgumentException("Illegal dimension (CUSTOM)")} from
  * {@code CraftServer#createWorld}. Filtering it from tab completion and parse
  * acceptance keeps the create flow clean.

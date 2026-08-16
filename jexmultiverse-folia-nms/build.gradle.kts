@@ -11,7 +11,7 @@ dependencies {
     compileOnly(project(":JExMultiverse:jexmultiverse-common"))
     compileOnly(project(":JExMultiverse:jexmultiverse-api"))
 
-    // Paper API — for World, Environment, CraftWorld access. We do NOT
+    // Paper API - for World, Environment, CraftWorld access. We do NOT
     // use paperweight-userdev: reflection against well-known NMS
     // signatures (MinecraftServer#addLevel, ServerLevel ctor) keeps the
     // build fast and the module portable across Folia patch versions

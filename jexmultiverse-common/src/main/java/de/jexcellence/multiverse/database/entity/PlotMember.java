@@ -15,7 +15,7 @@ import java.util.UUID;
 
 /**
  * Membership entry on a {@link Plot}. The combination of {@code (plot_id,
- * member_uuid)} is unique — a player has at most one role per plot.
+ * member_uuid)} is unique - a player has at most one role per plot.
  *
  * @author JExcellence
  * @since 3.2.0

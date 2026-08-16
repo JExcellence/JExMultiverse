@@ -61,7 +61,7 @@ public class MultiverseService implements MultiverseProvider {
     /**
      * Set once the runtime loader has logged a failure for the current
      * session. Subsequent per-world failures are demoted to {@code debug}
-     * to keep the log clean — the operator already knows runtime load
+     * to keep the log clean - the operator already knows runtime load
      * doesn't work on this server build.
      */
     private volatile boolean runtimeLoadFailureLogged;
@@ -192,7 +192,7 @@ public class MultiverseService implements MultiverseProvider {
                 isPlot ? schematicName : null,
                 isPlot ? null : schematicName);
 
-        // On Folia, Bukkit.createWorld throws UOE — route through the NMS-based
+        // On Folia, Bukkit.createWorld throws UOE - route through the NMS-based
         // ensureViaNms path (same code path used by ensureWorld).
         if (ServerDetector.detect() instanceof ServerType.Folia) {
             return createViaFolia(spec);
@@ -227,7 +227,7 @@ public class MultiverseService implements MultiverseProvider {
     private @NotNull CompletableFuture<Optional<MVWorld>> createViaFolia(@NotNull CreationSpec spec) {
         if (spec.effectivePlotSize() != null || spec.effectiveRoadWidth() != null
                 || spec.effectiveSchematic() != null) {
-            logger.warn("[worlds] PLOT overrides (size/road/schematic) not yet supported on Folia — creating '{}' with defaults",
+            logger.warn("[worlds] PLOT overrides (size/road/schematic) not yet supported on Folia - creating '{}' with defaults",
                     spec.name());
         }
         return ensureViaNms(spec.name(), spec.environment(), spec.type()).thenCompose(snapOpt -> {
@@ -282,7 +282,7 @@ public class MultiverseService implements MultiverseProvider {
         if (existing.isPresent()) {
             var adopted = existing.get();
             worldFactory.cacheWorld(adopted);
-            logger.info("World '{}' already persisted — adopted existing row", spec.name());
+            logger.info("World '{}' already persisted - adopted existing row", spec.name());
             future.complete(Optional.of(adopted));
             return;
         }
@@ -310,7 +310,7 @@ public class MultiverseService implements MultiverseProvider {
 
     /**
      * Pastes a one-shot schematic at the spawn of a freshly created non-PLOT
-     * world (hub/spawn builds). Must run on the main thread — it is called from
+     * world (hub/spawn builds). Must run on the main thread - it is called from
      * inside the world-creation scheduler task. A missing schematic is logged
      * and skipped; the world is still created, just empty.
      *
@@ -323,7 +323,7 @@ public class MultiverseService implements MultiverseProvider {
         var schematics = worldFactory.schematics();
         var loaded = schematics.load(schematicName);
         if (loaded.isEmpty()) {
-            logger.warn("[worlds] schematic '{}' not found in {} — created '{}' without a build (.schem needs WorldEdit/FAWE; only .nbt loads otherwise)",
+            logger.warn("[worlds] schematic '{}' not found in {} - created '{}' without a build (.schem needs WorldEdit/FAWE; only .nbt loads otherwise)",
                     schematicName, schematics.directory().getAbsolutePath(), world.getName());
             return;
         }
@@ -347,7 +347,7 @@ public class MultiverseService implements MultiverseProvider {
         //   1. Cascade-delete the plot rows in this world (otherwise they're
         //      orphaned + the protection listener gets confused on restart).
         //   2. Delete the MVWorld DB row WHILE the Bukkit world is still
-        //      loaded — the LocationConverter on spawn_location can resolve
+        //      loaded - the LocationConverter on spawn_location can resolve
         //      the world UUID, so Hibernate doesn't surface
         //      "LogicalConnectionManagedImpl is closed" trying to materialise
         //      a Location with a null World.
@@ -435,7 +435,7 @@ public class MultiverseService implements MultiverseProvider {
                     var target = opt.orElse(changes);
                     // spawnLocation is NOT NULL in the schema. Only overwrite
                     // when the editor actually carried a fresh value, otherwise
-                    // keep whatever Hibernate just loaded — preserves DB state
+                    // keep whatever Hibernate just loaded - preserves DB state
                     // and prevents not-null constraint violations.
                     if (changes.getSpawnLocation() != null) {
                         target.setSpawnLocation(changes.getSpawnLocation());
@@ -507,7 +507,7 @@ public class MultiverseService implements MultiverseProvider {
 
     /**
      * Synchronous, cache-only check of whether a Bukkit world is build-locked.
-     * Safe to call from the hot path of block / interaction event handlers —
+     * Safe to call from the hot path of block / interaction event handlers -
      * unmanaged worlds (not in the cache) are never locked.
      *
      * @param world the Bukkit world
@@ -593,20 +593,20 @@ public class MultiverseService implements MultiverseProvider {
      */
     public @NotNull CompletableFuture<@Nullable Location> getSpawnLocation(@NotNull Player player) {
         return getGlobalSpawnWorldEntity().thenApply(opt -> {
-            // Priority 1 — global spawn from any world flagged isGlobalizedSpawn.
+            // Priority 1 - global spawn from any world flagged isGlobalizedSpawn.
             if (opt.isPresent()) {
                 var loc = liveSpawnLocation(opt.get());
                 if (loc != null) return loc;
             }
 
-            // Priority 2 — current world's JExMultiverse-set spawn.
+            // Priority 2 - current world's JExMultiverse-set spawn.
             var cached = worldFactory.getCachedWorld(player.getWorld().getName());
             if (cached.isPresent()) {
                 var loc = liveSpawnLocation(cached.get());
                 if (loc != null) return loc;
             }
 
-            // Final fallback — Bukkit default world spawn (only when no MV
+            // Final fallback - Bukkit default world spawn (only when no MV
             // configuration applies). Returns null if even that's missing so
             // the caller can show a clear "no spawn configured" message.
             var bukkitWorlds = Bukkit.getWorlds();
@@ -768,7 +768,7 @@ public class MultiverseService implements MultiverseProvider {
         // Adopt any loaded world that JExMultiverse doesn't yet have a row for.
         // This catches:
         //   * Bukkit auto-companions (<world>_nether, <world>_the_end) that the
-        //     server boots automatically — we skip them so they're not treated
+        //     server boots automatically - we skip them so they're not treated
         //     as standalone managed worlds.
         //   * Worlds the operator created manually (e.g. via server.properties
         //     or a previous plugin install).
@@ -800,12 +800,12 @@ public class MultiverseService implements MultiverseProvider {
                 adoptionFutures.add(adoptionFuture);
             }
         }
-        
+
         if (adoptionFutures.isEmpty()) {
             logger.info("[startup] No companion worlds found to adopt");
             return CompletableFuture.completedFuture(null);
         }
-        
+
         return CompletableFuture.allOf(adoptionFutures.toArray(new CompletableFuture[0]))
                 .thenRun(() -> logger.info("[startup] Companion world adoption complete"));
     }
@@ -821,7 +821,7 @@ public class MultiverseService implements MultiverseProvider {
 
     @Override
     public boolean canBuild(@NotNull Player player, @NotNull Location location) {
-        if (plotService == null) return true; // plots not initialized — fail open
+        if (plotService == null) return true; // plots not initialized - fail open
         var plot = plotService.getPlotAt(location).orElse(null);
         if (plot == null) return true; // unclaimed / road / non-plot world
         return plotService.canBuild(player, plot);
@@ -854,14 +854,14 @@ public class MultiverseService implements MultiverseProvider {
         // path and ensureViaBukkitYml bypassed them entirely. We re-evaluate
         // here so every code path enforces the same rules.
         // Existing-but-not-cached worlds (Bukkit.getWorld != null) are still
-        // adopted further down — they were created via some other path and
+        // adopted further down - they were created via some other path and
         // adopting them is not a "new" creation.
         if (Bukkit.getWorld(name) == null && !isWorldTypeAvailable(type)) {
-            logger.warn("[worlds] world type '{}' not available in current edition — rejecting '{}'", type, name);
+            logger.warn("[worlds] world type '{}' not available in current edition - rejecting '{}'", type, name);
             return CompletableFuture.completedFuture(Optional.empty());
         }
         if (Bukkit.getWorld(name) == null && isAtWorldLimit()) {
-            logger.warn("[worlds] world limit reached ({}/{}) — rejecting '{}'",
+            logger.warn("[worlds] world limit reached ({}/{}) - rejecting '{}'",
                     getWorldCount(), getMaxWorlds(), name);
             return CompletableFuture.completedFuture(Optional.empty());
         }
@@ -902,7 +902,7 @@ public class MultiverseService implements MultiverseProvider {
      * first so the storage layer has a valid world directory to read from.
      *
      * <p>On loader failure, returns {@link Optional#empty()} with a clear
-     * error log. There is intentionally no bukkit.yml/restart fallback —
+     * error log. There is intentionally no bukkit.yml/restart fallback -
      * if Folia runtime world creation doesn't work, the operator needs to
      * see the failure, not silently end up in a half-broken pending-restart
      * state.
@@ -913,13 +913,13 @@ public class MultiverseService implements MultiverseProvider {
             @NotNull MVWorldType type) {
         final Optional<RuntimeWorldLoader> backend = RuntimeWorldLoaderResolver.resolve(logger);
         if (backend.isEmpty()) {
-            logger.error("[worlds] no RuntimeWorldLoader available — cannot create '{}' on Folia. " +
+            logger.error("[worlds] no RuntimeWorldLoader available - cannot create '{}' on Folia. " +
                     "The folia-nms module must be on the classpath.", name);
             return CompletableFuture.completedFuture(Optional.empty());
         }
 
         // Step 1: write the on-disk skeleton so the NMS storage source can
-        // open the directory. Idempotent — re-runs are safe.
+        // open the directory. Idempotent - re-runs are safe.
         try {
             final java.io.File worldContainer = Bukkit.getWorldContainer();
             final java.io.File worldDir = new java.io.File(worldContainer, name);
@@ -934,7 +934,7 @@ public class MultiverseService implements MultiverseProvider {
         }
 
         // Step 2: declare the generator in bukkit.yml so the override applies
-        // when the loaded world's chunks are generated. This is config-only —
+        // when the loaded world's chunks are generated. This is config-only -
         // doesn't trigger any restart-required path.
         try {
             BukkitYmlWriter.declare(name, GeneratorRegistry.voidGeneratorRef(), logger);
@@ -962,7 +962,7 @@ public class MultiverseService implements MultiverseProvider {
                 .exceptionally(ex -> {
                     if (!runtimeLoadFailureLogged) {
                         runtimeLoadFailureLogged = true;
-                        logger.error("[worlds] runtime load failed via {} backend: {} — world '{}' not created",
+                        logger.error("[worlds] runtime load failed via {} backend: {} - world '{}' not created",
                                 loader.backendId(), rootMessage(ex), name);
                     } else {
                         logger.debug("[worlds] runtime load failed for '{}': {}", name, rootMessage(ex));
@@ -992,16 +992,16 @@ public class MultiverseService implements MultiverseProvider {
             @NotNull World bukkitWorld,
             @NotNull MVWorldType type) {
         final String worldName = bukkitWorld.getName();
-        
+
         // First check if this world already exists in the database
         return repository.findByIdentifierAsync(worldName).thenCompose(existing -> {
             if (existing.isPresent()) {
                 // World already in database - cache it and return
                 worldFactory.cacheWorld(existing.get());
-                logger.info("[worlds] '{}' already persisted — reusing existing record", worldName);
+                logger.info("[worlds] '{}' already persisted - reusing existing record", worldName);
                 return CompletableFuture.completedFuture(Optional.of(existing.get().toSnapshot()));
             }
-            
+
             // World not in database - create new record
             final var spawn = worldFactory.getDefaultSpawnForType(bukkitWorld, type);
             final var mvWorld = MVWorld.builder()
@@ -1059,7 +1059,7 @@ public class MultiverseService implements MultiverseProvider {
     public @NotNull CompletableFuture<Boolean> spawn(@NotNull Player player) {
         return getSpawnLocation(player).thenApply(location -> {
             if (location == null) return false;
-            // Player teleport touches entity state — Folia requires the
+            // Player teleport touches entity state - Folia requires the
             // player's region thread. runAtEntity collapses to main on
             // Paper. Bukkit.getScheduler() would throw UOE on Folia.
             scheduler.runAtEntity(player, () -> player.teleportAsync(location));

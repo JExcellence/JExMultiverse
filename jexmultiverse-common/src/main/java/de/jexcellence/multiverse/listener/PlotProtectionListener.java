@@ -98,7 +98,7 @@ public class PlotProtectionListener implements Listener {
      *
      * <p>For ranged attacks (bow, trident, thrown weapons, …) {@code getDamager()}
      * is the projectile itself, not the player who fired it, so the shooter is
-     * resolved explicitly — otherwise any ranged attack silently skipped this
+     * resolved explicitly - otherwise any ranged attack silently skipped this
      * check entirely and bypassed plot PvP protection.
      */
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)

@@ -55,7 +55,7 @@ public class PlotFlagListener implements Listener {
     /** Blocks hostile mob natural spawning in plots with {@link PlotFlag#MOB_SPAWNING} disabled. */
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onCreatureSpawn(@NotNull CreatureSpawnEvent event) {
-        // Only gate hostile mobs — peaceful mobs and ambient critters stay vanilla.
+        // Only gate hostile mobs - peaceful mobs and ambient critters stay vanilla.
         if (!isHostile(event.getEntity())) return;
         // Don't gate spawner / spawn-egg / breeding actions; those are
         // intentional player actions handled elsewhere by build protection.

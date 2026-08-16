@@ -109,7 +109,7 @@ public abstract class JExMultiverse {
         // Merge any new translation keys from the JAR into existing on-disk
         // YAML files BEFORE R18n loads. R18nManager only extracts when a
         // file is missing, so plugin upgrades that ship new keys never reach
-        // disk otherwise — admins keep seeing "missing key" placeholders.
+        // disk otherwise - admins keep seeing "missing key" placeholders.
         TranslationKeyMerger.mergeAll(plugin,
                 "translations/en_US.yml",
                 "translations/de_DE.yml");
@@ -127,20 +127,20 @@ public abstract class JExMultiverse {
         // platform.initialize() completes synchronously or completes on
         // main during plugin enable), .join() would deadlock waiting for
         // main-thread tasks the same blocked main thread is supposed to
-        // run — and we'd never reach registerCommands(), so the entire
+        // run - and we'd never reach registerCommands(), so the entire
         // /mv + /plot tree would silently never register.
         platform.initialize()
                 .thenRunAsync(() -> {
                     Thread.currentThread().setContextClassLoader(dependencyClassLoader);
-                    logger.info("[init] step 1/5 — database");
+                    logger.info("[init] step 1/5 - database");
                     initializeDatabase();
-                    logger.info("[init] step 2/5 — services + world cache");
+                    logger.info("[init] step 2/5 - services + world cache");
                     initializeServices();
-                    logger.info("[init] step 3/5 — views");
+                    logger.info("[init] step 3/5 - views");
                     registerViews();
-                    logger.info("[init] step 4/5 — commands");
+                    logger.info("[init] step 4/5 - commands");
                     registerCommands();
-                    logger.info("[init] step 5/5 — listeners");
+                    logger.info("[init] step 5/5 - listeners");
                     registerListeners();
                     logger.info("JExMultiverse {} Edition enabled", edition);
                 })
@@ -187,7 +187,7 @@ public abstract class JExMultiverse {
      * <p>Also removes bukkit.yml entries for NETHER and THE_END worlds that
      * were incorrectly declared as top-level worlds. On Folia, these are
      * auto-created as companion worlds of the overworld and must NOT be
-     * declared separately — doing so causes UUID collisions.
+     * declared separately - doing so causes UUID collisions.
      *
      * <p>Must run in onLoad() BEFORE Bukkit's world-loading phase.
      */
@@ -348,7 +348,7 @@ public abstract class JExMultiverse {
 
         var factory = new CommandFactory(plugin, this);
 
-        // Shared argument type registry — defaults + the plugin-specific types.
+        // Shared argument type registry - defaults + the plugin-specific types.
         var registry = ArgumentTypeRegistry.defaults()
                 .register(WorldArgumentType.of(worldFactory))
                 .register(EnvironmentArgumentType.create())
@@ -356,7 +356,7 @@ public abstract class JExMultiverse {
                 .register(PlotFlagArgumentType.create())
                 .register(WallMaterialArgumentType.create());
 
-        // Shared i18n bridge — all framework & plugin keys route through R18nManager.
+        // Shared i18n bridge - all framework & plugin keys route through R18nManager.
         var messages = new R18nCommandMessages();
 
         // Register each YAML tree against its handler map.

@@ -31,7 +31,7 @@ public final class JExMultiverseAPI {
                 Bukkit.getServicesManager().getRegistration(MultiverseProvider.class);
         if (registration == null) {
             throw new IllegalStateException(
-                    "JExMultiverse is not loaded — MultiverseProvider is not registered");
+                    "JExMultiverse is not loaded - MultiverseProvider is not registered");
         }
         return registration.getProvider();
     }

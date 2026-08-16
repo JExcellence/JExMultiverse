@@ -23,7 +23,7 @@ import org.jetbrains.annotations.NotNull;
 import java.util.Map;
 
 /**
- * /plot command tree handler — claim, unclaim, info, trust, untrust, deny,
+ * /plot command tree handler - claim, unclaim, info, trust, untrust, deny,
  * undeny, home, list. Phase 2A scope.
  *
  * <p>Flags + merging arrive in Phase 2B/2C and add their own handler entries.

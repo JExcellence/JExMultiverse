@@ -57,7 +57,7 @@ public final class SelectionWandListener implements Listener {
                 .with("y", String.valueOf(at.getBlockY()))
                 .with("z", String.valueOf(at.getBlockZ()))
                 .with("count", selections.selection(player.getUniqueId())
-                        .map(s -> String.valueOf(s.blockCount())).orElse("—"))
+                        .map(s -> String.valueOf(s.blockCount())).orElse("-"))
                 .send(player);
     }
 }

@@ -48,7 +48,7 @@ public final class JExMultiverseFreeImpl extends AbstractPluginDelegate<JExMulti
     @Override
     public void onEnable() {
         if (this.multiverse == null) {
-            LOGGER.severe("Cannot enable — JExMultiverse Free failed during onLoad.");
+            LOGGER.severe("Cannot enable - JExMultiverse Free failed during onLoad.");
             getPlugin().getServer().getPluginManager().disablePlugin(getPlugin());
             return;
         }

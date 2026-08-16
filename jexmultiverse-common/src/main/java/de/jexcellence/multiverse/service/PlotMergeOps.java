@@ -17,7 +17,7 @@ import java.util.List;
  * each other. Unmerge restores the road surface (stone + road-material cap)
  * and re-places the wall stripes.
  *
- * <p>All block writes use {@code setType(material, false)} to skip physics —
+ * <p>All block writes use {@code setType(material, false)} to skip physics -
  * we don't want lighting / fluid updates triggering cascades during a
  * potentially-large fill.
  *
@@ -44,7 +44,7 @@ public final class PlotMergeOps {
     /**
      * Applies the visual merge between two adjacent plots. Fills the road
      * slice with plot terrain AND clears the entire wall layer above the
-     * slice — covers both walls (now on road-edge columns) in one pass.
+     * slice - covers both walls (now on road-edge columns) in one pass.
      */
     public static void applyMerge(@NotNull World world, @NotNull Plot a, @NotNull Plot b,
                                    int plotSize, int roadWidth, @NotNull PlotWorldConfig config) {
@@ -122,7 +122,7 @@ public final class PlotMergeOps {
     }
 
     /**
-     * Restores wall stripes on the two outer edges of the road slice — the
+     * Restores wall stripes on the two outer edges of the road slice - the
      * columns adjacent to each plot. Replaces the old plot-edge-column logic
      * now that walls live on road-edge columns.
      */

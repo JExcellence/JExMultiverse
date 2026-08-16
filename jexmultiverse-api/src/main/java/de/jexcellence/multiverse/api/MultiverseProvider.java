@@ -31,7 +31,7 @@ public interface MultiverseProvider {
      * Idempotently ensures a managed world exists. If the world is
      * already registered in JExMultiverse, this is a no-op that returns
      * the existing snapshot. If it is not registered, the world is
-     * created, persisted, and loaded — matching the behaviour of
+     * created, persisted, and loaded - matching the behaviour of
      * {@code /mv create} but invokable programmatically.
      *
      * <p>Use case: sister plugins that need their own world (JExOneblock
@@ -115,7 +115,7 @@ public interface MultiverseProvider {
     /**
      * Returns the world-space bounds of a plot grid cell, or empty if the
      * given world isn't a {@link MVWorldType#PLOT} world. Coordinates with
-     * no actual claim still return valid bounds — this is a pure geometry
+     * no actual claim still return valid bounds - this is a pure geometry
      * lookup against the world's plot/road grid.
      *
      * @param worldIdentifier the JExMultiverse world identifier
@@ -155,7 +155,7 @@ public interface MultiverseProvider {
      * holds {@code jexplots.bypass.protect}, or the location isn't on a
      * claimed plot at all.
      *
-     * <p>Listener-safe — synchronous read against the in-memory plot cache.
+     * <p>Listener-safe - synchronous read against the in-memory plot cache.
      *
      * @since 3.2.0
      */

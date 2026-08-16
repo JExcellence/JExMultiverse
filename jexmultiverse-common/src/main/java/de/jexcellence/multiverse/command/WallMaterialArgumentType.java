@@ -14,7 +14,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * Argument type accepting any Bukkit {@link Material} that's a real block
  * (excluding AIR / TECHNICAL legacy entries). Tab completion returns the
  * curated "popular wall material" list when the partial is empty, and the
- * full block-material catalog filtered by partial otherwise — so players
+ * full block-material catalog filtered by partial otherwise - so players
  * can type any block name.
  *
  * <p>YAML schema id: {@code wall_material}.
@@ -25,7 +25,7 @@ import java.util.concurrent.atomic.AtomicReference;
 public final class WallMaterialArgumentType {
 
     /**
-     * Suggested suggestions when the player hasn't typed anything yet —
+     * Suggested suggestions when the player hasn't typed anything yet -
      * common wall / fence / decorative blocks.
      */
     private static final List<String> CURATED = List.of(
@@ -60,7 +60,7 @@ public final class WallMaterialArgumentType {
     /**
      * Lazy-built lower-case list of every Bukkit block material name. Built
      * once at first access; ~600 entries. Filtered by partial string at tab
-     * time — sub-millisecond on modern hardware.
+     * time - sub-millisecond on modern hardware.
      */
     private static final AtomicReference<List<String>> allBlocksRef = new AtomicReference<>();
 

@@ -32,7 +32,7 @@ public final class RuntimeWorldLoaderResolver {
      * which backend was selected (or that none was found).
      *
      * <p>The first implementation registered in {@code META-INF/services}
-     * wins. We don't expect multiple — Folia is the only platform that
+     * wins. We don't expect multiple - Folia is the only platform that
      * needs an NMS loader today.
      *
      * @param logger structured logger for diagnostics; may be {@code null}
@@ -40,7 +40,7 @@ public final class RuntimeWorldLoaderResolver {
      */
     public static @NotNull Optional<RuntimeWorldLoader> resolve(@Nullable JExLogger logger) {
         try {
-            // Use this class's classloader explicitly — Bukkit's plugin
+            // Use this class's classloader explicitly - Bukkit's plugin
             // classloader is the one that holds the shaded folia-nms
             // implementation. The thread context classloader can be the
             // server's classloader in some lifecycle phases and would
@@ -52,7 +52,7 @@ public final class RuntimeWorldLoaderResolver {
             if (logger != null) {
                 loader.ifPresentOrElse(
                         impl -> logger.debug("[worlds] runtime loader backend: {}", impl.backendId()),
-                        () -> logger.debug("[worlds] no runtime loader backend on classpath — restart-only mode"));
+                        () -> logger.debug("[worlds] no runtime loader backend on classpath - restart-only mode"));
             }
             return loader;
         } catch (final Throwable ex) {

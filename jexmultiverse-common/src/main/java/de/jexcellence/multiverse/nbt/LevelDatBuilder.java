@@ -19,7 +19,7 @@ import java.util.Map;
  * scan and load it like any other world directory. Once loaded, the
  * world's chunk generator is overridden by
  * {@code JExMultiverse#getDefaultWorldGenerator} (driven from
- * {@code bukkit.yml}) — so the level.dat's own {@code generator}
+ * {@code bukkit.yml}) - so the level.dat's own {@code generator}
  * config matters only enough to be syntactically valid; the runtime
  * generator is ours.
  *
@@ -34,7 +34,7 @@ import java.util.Map;
  *     Int    GameType             // 0 = survival
  *     Byte   hardcore             // 0
  *     Byte   allowCommands        // 1
- *     Byte   initialized          // 0 — server initialises on first load
+ *     Byte   initialized          // 0 - server initialises on first load
  *     Int    version              // 19133 (Anvil)
  *     Compound Version { Id, Name, Series, Snapshot }
  *     Compound WorldGenSettings {
@@ -52,7 +52,7 @@ import java.util.Map;
  * }</pre>
  *
  * <p>Every dimension goes through the {@code minecraft:flat} void
- * generator (zero layers) — the server still computes a valid empty
+ * generator (zero layers) - the server still computes a valid empty
  * world even if our plugin's chunk generator override is somehow not
  * applied yet. The dimensions compound carries all three so Folia can
  * locate "the nether-side" / "the end-side" companion worlds it
@@ -76,7 +76,7 @@ public final class LevelDatBuilder {
     /**
      * Creates the world skeleton on disk: {@code <root>/<name>/level.dat}
      * plus an empty {@code session.lock}. Safe to call when the
-     * directory exists — re-writes the level.dat (idempotent).
+     * directory exists - re-writes the level.dat (idempotent).
      *
      * @param worldName   the world identifier (also the folder name)
      * @param environment the world environment, drives which dimension
@@ -87,7 +87,7 @@ public final class LevelDatBuilder {
         // Bukkit.getWorldContainer() respects server.properties' world
         // container override (rare, but operators do remap it). Falls
         // back to JVM CWD when Bukkit hasn't initialised yet (e.g. in
-        // tests) — matches the default container in practice.
+        // tests) - matches the default container in practice.
         File container;
         try {
             container = Bukkit.getWorldContainer();
@@ -104,7 +104,7 @@ public final class LevelDatBuilder {
             throw new IOException("Failed to create world directory " + worldDir);
         }
         // session.lock is required by Mojang's world-storage layer to
-        // detect concurrent access. Empty file is fine — the lock
+        // detect concurrent access. Empty file is fine - the lock
         // mechanism uses file-channel locking, not contents.
         final File sessionLock = new File(worldDir, "session.lock");
         if (!sessionLock.exists() && !sessionLock.createNewFile()) {
@@ -193,7 +193,7 @@ public final class LevelDatBuilder {
         data.put("Version", versionTag);
         data.put("WorldGenSettings", worldGenSettings);
         // Note: the per-world environment isn't carried as a top-level
-        // tag — Bukkit derives it from the dimension stem the world's
+        // tag - Bukkit derives it from the dimension stem the world's
         // primary level uses. {@code environment} is currently unused
         // here, but kept in the signature so a future schema (e.g.
         // dimension overrides) can branch on it without breaking the
@@ -206,7 +206,7 @@ public final class LevelDatBuilder {
 
     /**
      * One dimension's {@code type} + {@code generator} compound. We
-     * intentionally use the empty-layers flat generator everywhere —
+     * intentionally use the empty-layers flat generator everywhere -
      * the actual chunk generation at runtime is replaced by our
      * plugin's {@link org.bukkit.generator.ChunkGenerator}.
      */
@@ -230,7 +230,7 @@ public final class LevelDatBuilder {
     /**
      * Reads the current MC data version from {@link Bukkit#getUnsafe()}.
      * Falls back to 4438 (1.21.4) when the unsafe accessor isn't
-     * available — extremely unlikely on Paper/Folia 1.21.x.
+     * available - extremely unlikely on Paper/Folia 1.21.x.
      */
     @SuppressWarnings("deprecation")
     private static int currentDataVersion() {

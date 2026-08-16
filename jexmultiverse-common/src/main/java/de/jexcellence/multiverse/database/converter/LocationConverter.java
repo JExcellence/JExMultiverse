@@ -60,7 +60,7 @@ public class LocationConverter implements AttributeConverter<Location, String> {
             final JsonNode node = MAPPER.readTree(json);
             final String worldUuidStr = node.has(FIELD_WORLD_UUID) ? node.get(FIELD_WORLD_UUID).asText() : null;
             final String worldName = node.has(FIELD_WORLD_NAME) ? node.get(FIELD_WORLD_NAME).asText() : null;
-            // The world is frequently NOT loaded yet at deserialization time —
+            // The world is frequently NOT loaded yet at deserialization time -
             // MVWorld rows are hydrated before their worlds are loaded into Bukkit.
             // Preserve the coordinates with a (possibly null) world rather than
             // discarding the whole location: consumers (SpawnListener /
@@ -86,7 +86,7 @@ public class LocationConverter implements AttributeConverter<Location, String> {
             try {
                 world = Bukkit.getWorld(UUID.fromString(worldUuidStr));
             } catch (IllegalArgumentException ignored) {
-                // UUID string was malformed — fall through to name-based lookup
+                // UUID string was malformed - fall through to name-based lookup
             }
         }
         if (world == null && worldName != null && !worldName.isBlank()) {

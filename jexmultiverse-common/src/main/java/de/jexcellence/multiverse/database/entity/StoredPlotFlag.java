@@ -11,9 +11,9 @@ import org.jetbrains.annotations.NotNull;
 /**
  * Persistent override of a {@link de.jexcellence.multiverse.service.PlotFlag}
  * on a single {@link Plot}. The combination of {@code (plot_id, flag_key)} is
- * unique — at most one row per (plot, flag).
+ * unique - at most one row per (plot, flag).
  *
- * <p>Rows are created lazily — flags whose value matches the default are not
+ * <p>Rows are created lazily - flags whose value matches the default are not
  * persisted. Removing an override is equivalent to "reset to default".
  *
  * @author JExcellence

@@ -11,7 +11,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Tracks which players currently have <b>build mode</b> enabled — a per-session,
+ * Tracks which players currently have <b>build mode</b> enabled - a per-session,
  * in-memory toggle that lets staff bypass {@code WorldProtectionListener} inside
  * a build-locked world. Build mode is intentionally <em>not</em> persisted: it
  * resets on relog so a forgotten toggle can never leave a locked world editable.

@@ -18,7 +18,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * constructor invocation (16+ params) with a single
  * {@code MinecraftServer#createLevel(LevelStem, WorldLoadingInfo,
  * LevelStorageAccess, PrimaryLevelData)} call that does all the heavy
- * lifting internally — including reading
+ * lifting internally - including reading
  * {@code CraftServer#getGenerator(name)} for the chunk generator override.
  *
  * <p>Our job here is:
@@ -48,7 +48,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 final class FoliaNmsWorldFactory {
 
-    /** Cached reflection bindings — populated lazily, then immutable. */
+    /** Cached reflection bindings - populated lazily, then immutable. */
     private static final ConcurrentHashMap<String, Object> BINDINGS = new ConcurrentHashMap<>();
 
     private static final String NMS_REGISTRIES  = "net.minecraft.core.registries.Registries";
@@ -200,7 +200,7 @@ final class FoliaNmsWorldFactory {
             final Class<?> cServerLevel = cls("net.minecraft.server.level.ServerLevel");
             cFeatureHooks.getMethod("tickEntityManager", cServerLevel).invoke(null, serverLevel);
         } catch (final NoSuchMethodException ignored) {
-            // Paper without Folia patches — tickEntityManager doesn't exist, fine.
+            // Paper without Folia patches - tickEntityManager doesn't exist, fine.
         } catch (final Throwable t) {
             java.util.logging.Logger.getLogger(FoliaNmsWorldFactory.class.getName())
                     .warning("[JExMultiverse] [folia-nms] FeatureHooks.tickEntityManager skipped: " + t.getMessage());
@@ -360,7 +360,7 @@ final class FoliaNmsWorldFactory {
     /** Only calls {@code setAccessible(true)} when the member is not already accessible. */
     private static void makeAccessible(@NotNull java.lang.reflect.AccessibleObject member) {
         if (!java.lang.reflect.Modifier.isPublic(((java.lang.reflect.Member) member).getModifiers())) {
-            member.setAccessible(true); // NOSONAR java:S3011 — NMS reflection requires access to non-public members
+            member.setAccessible(true); // NOSONAR java:S3011 - NMS reflection requires access to non-public members
         }
     }
 
@@ -368,7 +368,7 @@ final class FoliaNmsWorldFactory {
      * Looks up a value in a {@code Registry} by {@code ResourceKey}. Tries
      * the standard {@code getValue(ResourceKey)} first, then falls back to
      * walking declared methods looking for a single-arg method whose
-     * parameter type is assignable from {@code ResourceKey} — this catches
+     * parameter type is assignable from {@code ResourceKey} - this catches
      * Paper-internal renames (e.g. {@code getValueOrThrow}, {@code get},
      * {@code getOrThrow}) and erasure quirks where {@code getMethod} can't
      * resolve the generic-parameter override.
@@ -380,7 +380,7 @@ final class FoliaNmsWorldFactory {
         try {
             return registry.getClass().getMethod("getValue", cResourceKey).invoke(registry, resourceKey);
         } catch (final NoSuchMethodException ignored) {
-            // No public getValue(ResourceKey) — fall through to the name-based search.
+            // No public getValue(ResourceKey) - fall through to the name-based search.
         }
 
         // Try common alternatives by name, walking supertypes then interfaces.
@@ -446,7 +446,7 @@ final class FoliaNmsWorldFactory {
         return result;
     }
 
-    /** RegistryAccess#lookupOrThrow(ResourceKey<Registry<X>>) — found by name+arity. */
+    /** RegistryAccess#lookupOrThrow(ResourceKey<Registry<X>>) - found by name+arity. */
     private static Object invokeLookupOrThrow(@NotNull Object registryAccess,
                                                 @NotNull Object registryKey) throws Exception {
         for (final Method m : registryAccess.getClass().getMethods()) {

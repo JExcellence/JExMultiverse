@@ -37,14 +37,14 @@ import java.util.concurrent.CompletableFuture;
  *
  * <p>Supports seven paths:
  * <ul>
- *   <li>{@code /multiverse}                           — show help</li>
- *   <li>{@code /multiverse create <name> [env] [type]} — create a world</li>
- *   <li>{@code /multiverse delete <world>}             — delete a world</li>
- *   <li>{@code /multiverse edit <world>}               — open editor GUI</li>
- *   <li>{@code /multiverse teleport <world>}           — teleport to world</li>
- *   <li>{@code /multiverse load <world>}               — load from database</li>
- *   <li>{@code /multiverse list}                       — list all worlds</li>
- *   <li>{@code /multiverse help}                       — usage printout</li>
+ *   <li>{@code /multiverse}                           - show help</li>
+ *   <li>{@code /multiverse create <name> [env] [type]} - create a world</li>
+ *   <li>{@code /multiverse delete <world>}             - delete a world</li>
+ *   <li>{@code /multiverse edit <world>}               - open editor GUI</li>
+ *   <li>{@code /multiverse teleport <world>}           - teleport to world</li>
+ *   <li>{@code /multiverse load <world>}               - load from database</li>
+ *   <li>{@code /multiverse list}                       - list all worlds</li>
+ *   <li>{@code /multiverse help}                       - usage printout</li>
  * </ul>
  *
  * @author JExcellence
@@ -375,7 +375,7 @@ public final class MultiverseHandler {
         var sender = ctx.sender();
         var worlds = worldFactory.getAllCachedWorlds();
 
-        // Players: open the paginated GUI even when empty — pagination handles
+        // Players: open the paginated GUI even when empty - pagination handles
         // the empty state gracefully and the user can see they have 0 worlds.
         // Console: print the text view.
         var playerOpt = ctx.asPlayer();
@@ -799,7 +799,7 @@ public final class MultiverseHandler {
                 .with("y", String.valueOf(at.getBlockY()))
                 .with("z", String.valueOf(at.getBlockZ()))
                 .with(KEY_COUNT, selections.selection(player.getUniqueId())
-                        .map(s -> String.valueOf(s.blockCount())).orElse("—"))
+                        .map(s -> String.valueOf(s.blockCount())).orElse("-"))
                 .send(player);
     }
 

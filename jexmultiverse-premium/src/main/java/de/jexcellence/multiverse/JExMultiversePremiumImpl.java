@@ -48,7 +48,7 @@ public final class JExMultiversePremiumImpl extends AbstractPluginDelegate<JExMu
     @Override
     public void onEnable() {
         if (this.multiverse == null) {
-            LOGGER.severe("Cannot enable — JExMultiverse Premium failed during onLoad.");
+            LOGGER.severe("Cannot enable - JExMultiverse Premium failed during onLoad.");
             getPlugin().getServer().getPluginManager().disablePlugin(getPlugin());
             return;
         }

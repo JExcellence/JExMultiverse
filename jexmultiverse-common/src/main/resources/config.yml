@@ -2,7 +2,7 @@
 # JExMultiverse Configuration
 # =============================================================================
 # Settings for plot-world generation. Applied to every world created with
-# /mv create <name> <env> PLOT. Existing plot worlds keep their layout — only
+# /mv create <name> <env> PLOT. Existing plot worlds keep their layout - only
 # newly created ones use the current config.
 #
 # To customize, edit this file and create a new plot world. Tweaks won't
@@ -34,7 +34,7 @@ plot-world:
   # border via /plot border. Visual signal that the plot is owned.
   wall-material-claimed: MOSSY_STONE_BRICK_WALL
 
-  # Backwards-compatibility alias — older configs only had `wall-material`.
+  # Backwards-compatibility alias - older configs only had `wall-material`.
   # If wall-material-unclaimed is missing it falls back to this.
   wall-material: STONE_BRICK_WALL
 

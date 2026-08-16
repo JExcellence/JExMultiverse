@@ -13,9 +13,9 @@ import java.util.Map;
  *
  * <p>On Folia, runtime world creation via {@code Bukkit.createWorld} is
  * patched off ({@link UnsupportedOperationException} unconditional) and
- * the maintainer-blessed alternative — per
+ * the maintainer-blessed alternative - per
  * <a href="https://github.com/PaperMC/Folia/issues/396">Folia issue
- * #396</a> — is to declare worlds in {@code bukkit.yml}, which Folia
+ * #396</a> - is to declare worlds in {@code bukkit.yml}, which Folia
  * loads at server startup using the same code path it uses for the
  * default world (NOT the Bukkit API call that throws).
  *
@@ -27,7 +27,7 @@ import java.util.Map;
  * }</pre>
  *
  * to the existing file, preserving any other worlds + top-level keys
- * already declared by the operator. Safe to call multiple times — if
+ * already declared by the operator. Safe to call multiple times - if
  * the world is already declared with the same generator, this is a
  * no-op.
  *
@@ -36,7 +36,7 @@ import java.util.Map;
  */
 public final class BukkitYmlWriter {
 
-    /** Filename in the server root — same on Paper, Spigot, and Folia. */
+    /** Filename in the server root - same on Paper, Spigot, and Folia. */
     private static final String FILENAME = "bukkit.yml";
 
     private BukkitYmlWriter() {
@@ -86,7 +86,7 @@ public final class BukkitYmlWriter {
 
         cfg.set(generatorKey, generator);
         cfg.save(file);
-        logger.info("[worlds] declared '{}' in bukkit.yml (generator={}) — will load on next server start",
+        logger.info("[worlds] declared '{}' in bukkit.yml (generator={}) - will load on next server start",
                 worldName, generator);
         return new Result(true, false);
     }

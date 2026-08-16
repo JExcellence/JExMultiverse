@@ -55,7 +55,7 @@ public final class FoliaRuntimeWorldLoader implements RuntimeWorldLoader {
      *       the reflective ServerLevel construction + {@code addLevel}.</li>
      * </ol>
      *
-     * <p>On Paper (no Folia patch) we still go through the same path —
+     * <p>On Paper (no Folia patch) we still go through the same path -
      * the global-region scheduler degrades to {@code Bukkit.getScheduler()}
      * via the runtime probe.
      */
@@ -66,7 +66,7 @@ public final class FoliaRuntimeWorldLoader implements RuntimeWorldLoader {
         final File worldDir = new File(Bukkit.getWorldContainer(), worldName).getAbsoluteFile();
         if (!new File(worldDir, "level.dat").isFile()) {
             throw new IOException("level.dat missing for world '" + worldName
-                    + "' — caller must write the skeleton before invoking the loader");
+                    + "' - caller must write the skeleton before invoking the loader");
         }
         final World already = Bukkit.getWorld(worldName);
         if (already != null) {
@@ -122,7 +122,7 @@ public final class FoliaRuntimeWorldLoader implements RuntimeWorldLoader {
                     .getMethod("execute", org.bukkit.plugin.Plugin.class, Runnable.class);
             execute.invoke(scheduler, owner, task);
         } catch (final NoSuchMethodException notFolia) {
-            // Not Folia — the caller decides whether they need region-thread
+            // Not Folia - the caller decides whether they need region-thread
             // affinity for the underlying createWorld. We just inline.
             task.run();
         } catch (final Throwable ex) {

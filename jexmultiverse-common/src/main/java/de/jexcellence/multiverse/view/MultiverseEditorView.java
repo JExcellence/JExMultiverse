@@ -31,13 +31,13 @@ import java.util.Map;
  * </pre>
  *
  * <ul>
- *   <li>S — set spawn to player's location (only when player is in this world)</li>
- *   <li>G — toggle global spawn (auto-disables it on any other world)</li>
- *   <li>P — toggle PvP (persisted on save)</li>
- *   <li>T — cycle time of day (live world; not persisted)</li>
- *   <li>W — cycle weather: clear → rain → storm (live world; not persisted)</li>
- *   <li>D — cycle difficulty: peaceful → easy → normal → hard (live world; not persisted)</li>
- *   <li>V — save persisted fields to database and close</li>
+ *   <li>S - set spawn to player's location (only when player is in this world)</li>
+ *   <li>G - toggle global spawn (auto-disables it on any other world)</li>
+ *   <li>P - toggle PvP (persisted on save)</li>
+ *   <li>T - cycle time of day (live world; not persisted)</li>
+ *   <li>W - cycle weather: clear → rain → storm (live world; not persisted)</li>
+ *   <li>D - cycle difficulty: peaceful → easy → normal → hard (live world; not persisted)</li>
+ *   <li>V - save persisted fields to database and close</li>
  * </ul>
  *
  * <p>Clicks are explicitly cancelled and slot icons/lore are re-rendered in
@@ -135,7 +135,7 @@ public class MultiverseEditorView extends BaseView {
 
     private ItemStack timeItem(Player player, MVWorld world) {
         var bukkit = Bukkit.getWorld(world.getIdentifier());
-        var phase = bukkit == null ? "—" : timePhase(bukkit.getTime());
+        var phase = bukkit == null ? "-" : timePhase(bukkit.getTime());
         return createItem(
                 Material.CLOCK,
                 i18n("time.name", player).withPlaceholder(KEY_VALUE, phase).build().component(),
@@ -145,7 +145,7 @@ public class MultiverseEditorView extends BaseView {
 
     private ItemStack weatherItem(Player player, MVWorld world) {
         var bukkit = Bukkit.getWorld(world.getIdentifier());
-        var phase = bukkit == null ? "—" : weatherPhase(bukkit);
+        var phase = bukkit == null ? "-" : weatherPhase(bukkit);
         Material stormIcon = bukkit != null && bukkit.isThundering()
                 ? Material.LIGHTNING_ROD : Material.WATER_BUCKET;
         var icon = bukkit != null && bukkit.hasStorm() ? stormIcon : Material.SUNFLOWER;
@@ -158,7 +158,7 @@ public class MultiverseEditorView extends BaseView {
 
     private ItemStack difficultyItem(Player player, MVWorld world) {
         var bukkit = Bukkit.getWorld(world.getIdentifier());
-        var diff = bukkit == null ? "—" : bukkit.getDifficulty().name().toLowerCase();
+        var diff = bukkit == null ? "-" : bukkit.getDifficulty().name().toLowerCase();
         return createItem(
                 Material.CREEPER_HEAD,
                 i18n("difficulty.name", player).withPlaceholder(KEY_VALUE, diff).build().component(),

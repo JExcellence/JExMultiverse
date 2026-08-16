@@ -1,4 +1,4 @@
-# JExCommand 2.0 tree — /multiverse (admin)
+# JExCommand 2.0 tree - /multiverse (admin)
 # World management tooling for JExMultiverse.
 
 name: multiverse
@@ -150,7 +150,7 @@ subcommands:
       - { name: world, type: world, required: false, description: "Target world (defaults to your current world)" }
 
   - name: build
-    description: "Toggle personal build mode — bypass build-locked worlds"
+    description: "Toggle personal build mode - bypass build-locked worlds"
     permission: "jexmultiverse.command.build"
     senders: [player]
 
