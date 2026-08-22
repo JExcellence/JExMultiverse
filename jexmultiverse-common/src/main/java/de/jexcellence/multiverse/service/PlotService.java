@@ -215,6 +215,62 @@ public class PlotService {
                 .map(coord -> byCoord.get(coord));
     }
 
+    /**
+     * Returns whether the given location is in a managed PLOT world.
+     *
+     * <p>Allocation-free fast path for hot listeners; see
+     * {@link MultiverseService#isPlotWorld(String)}.
+     *
+     * @param location the location to test
+     * @return {@code true} if the location's world is a managed PLOT world
+     */
+    public boolean isPlotWorld(@NotNull Location location) {
+        var world = location.getWorld();
+        return world != null && multiverseService.isPlotWorld(world.getName());
+    }
+
+    /**
+     * Returns whether the player holds the plot-protection bypass permission.
+     *
+     * <p>Exposed so a caller resolving several plot checks in one event can look the
+     * permission up once instead of paying for it inside each of
+     * {@link #canBuild(Player, Plot)} and {@link #isDenied(Player, Plot)}.
+     *
+     * @param player the player
+     * @return {@code true} if the player bypasses plot protection
+     */
+    public boolean hasProtectBypass(@NotNull Player player) {
+        return player.hasPermission(BYPASS_PERM);
+    }
+
+    /**
+     * Build check for a caller that has already resolved the bypass permission.
+     *
+     * @param player the player
+     * @param plot   the plot
+     * @param bypass the pre-resolved result of {@link #hasProtectBypass(Player)}
+     * @return {@code true} if the player may build on the plot
+     */
+    public boolean canBuild(@NotNull Player player, @NotNull Plot plot, boolean bypass) {
+        if (bypass) return true;
+        if (plot.isOwner(player.getUniqueId())) return true;
+        return roleOf(plot, player.getUniqueId()).orElse(null) == MemberRole.TRUSTED;
+    }
+
+    /**
+     * Deny check for a caller that has already resolved the bypass permission.
+     *
+     * @param player the player
+     * @param plot   the plot
+     * @param bypass the pre-resolved result of {@link #hasProtectBypass(Player)}
+     * @return {@code true} if the player is denied from the plot
+     */
+    public boolean isDenied(@NotNull Player player, @NotNull Plot plot, boolean bypass) {
+        if (bypass) return false;
+        if (plot.isOwner(player.getUniqueId())) return false;
+        return roleOf(plot, player.getUniqueId()).orElse(null) == MemberRole.DENIED;
+    }
+
     /** Returns the plot at the given grid coordinates, or empty if unclaimed. */
     public @NotNull Optional<Plot> getPlot(@NotNull String worldName, int gridX, int gridZ) {
         return Optional.ofNullable(byCoord.get(new PlotCoord(worldName, gridX, gridZ)));
@@ -232,16 +288,12 @@ public class PlotService {
      * holds the {@code jexplots.bypass.protect} permission.
      */
     public boolean canBuild(@NotNull Player player, @NotNull Plot plot) {
-        if (player.hasPermission(BYPASS_PERM)) return true;
-        if (plot.isOwner(player.getUniqueId())) return true;
-        return roleOf(plot, player.getUniqueId()).orElse(null) == MemberRole.TRUSTED;
+        return canBuild(player, plot, hasProtectBypass(player));
     }
 
     /** Returns whether a player is denied from a plot. */
     public boolean isDenied(@NotNull Player player, @NotNull Plot plot) {
-        if (player.hasPermission(BYPASS_PERM)) return false;
-        if (plot.isOwner(player.getUniqueId())) return false;
-        return roleOf(plot, player.getUniqueId()).orElse(null) == MemberRole.DENIED;
+        return isDenied(player, plot, hasProtectBypass(player));
     }
 
     /** Returns plots owned by a player. */

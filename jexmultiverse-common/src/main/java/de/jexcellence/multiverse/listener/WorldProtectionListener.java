@@ -29,6 +29,10 @@ import org.bukkit.event.player.PlayerInteractEvent;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Collections;
+import java.util.EnumSet;
+import java.util.Set;
+
 /**
  * Build-lock protection for managed worlds. Build actions are always denied in a
  * locked world unless the player is operator or in /mv build; block interactions
@@ -222,20 +226,43 @@ public class WorldProtectionListener implements Listener {
         };
     }
 
-    private static boolean isSafeBlockedInteraction(@NotNull Material mat) {
-        String name = mat.name();
-        if (name.contains("SIGN") || name.endsWith("_DOOR") || name.endsWith("_TRAPDOOR")
-                || name.endsWith("_FENCE_GATE") || name.endsWith("_BUTTON")
-                || name.endsWith("_PRESSURE_PLATE")) {
-            return true;
+    /**
+     * Materials denied under the SAFE build-lock profile.
+     *
+     * <p>Computed once at class-load rather than matching on {@code Material.name()}
+     * per interaction: this runs on every right-click in a build-locked world, and
+     * the name-suffix form allocated a string and walked it five times.
+     */
+    private static final Set<Material> SAFE_BLOCKED = buildSafeBlockedSet();
+
+    /**
+     * Builds the SAFE-profile deny set from the material name patterns plus the
+     * explicit extras that do not follow a naming convention.
+     *
+     * @return an immutable set of denied materials
+     */
+    private static @NotNull Set<Material> buildSafeBlockedSet() {
+        var denied = EnumSet.noneOf(Material.class);
+        for (var material : Material.values()) {
+            var name = material.name();
+            if (name.contains("SIGN") || name.endsWith("_DOOR") || name.endsWith("_TRAPDOOR")
+                    || name.endsWith("_FENCE_GATE") || name.endsWith("_BUTTON")
+                    || name.endsWith("_PRESSURE_PLATE") || name.endsWith("_BED")) {
+                denied.add(material);
+            }
         }
-        return switch (mat) {
-            case LEVER, BELL, NOTE_BLOCK, JUKEBOX, CAKE, CANDLE_CAKE, RESPAWN_ANCHOR,
-                 WHITE_BED, ORANGE_BED, MAGENTA_BED, LIGHT_BLUE_BED, YELLOW_BED, LIME_BED,
-                 PINK_BED, GRAY_BED, LIGHT_GRAY_BED, CYAN_BED, PURPLE_BED, BLUE_BED,
-                 BROWN_BED, GREEN_BED, RED_BED, BLACK_BED -> true;
-            default -> false;
-        };
+        denied.add(Material.LEVER);
+        denied.add(Material.BELL);
+        denied.add(Material.NOTE_BLOCK);
+        denied.add(Material.JUKEBOX);
+        denied.add(Material.CAKE);
+        denied.add(Material.CANDLE_CAKE);
+        denied.add(Material.RESPAWN_ANCHOR);
+        return Collections.unmodifiableSet(denied);
+    }
+
+    private static boolean isSafeBlockedInteraction(@NotNull Material mat) {
+        return SAFE_BLOCKED.contains(mat);
     }
 
     private static boolean isModifierItem(@Nullable Material material) {

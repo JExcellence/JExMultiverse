@@ -415,7 +415,7 @@ public abstract class JExMultiverse {
     private void registerListeners() {
         var pm = Bukkit.getPluginManager();
         pm.registerEvents(new SpawnListener(worldFactory, logger), plugin);
-        pm.registerEvents(new PlotProtectionListener(plotService, multiverseService, plugin), plugin);
+        pm.registerEvents(new PlotProtectionListener(plotService, multiverseService), plugin);
         pm.registerEvents(new PlotFlagListener(plotService), plugin);
         pm.registerEvents(new SelectionWandListener(selectionService), plugin);
         pm.registerEvents(multiverseService.buildMode(), plugin);

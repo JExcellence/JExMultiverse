@@ -1009,6 +1009,22 @@ public class MultiverseService implements MultiverseProvider {
 
     // ── Plot grid API ───────────────────────────────────────────────────────────
 
+    /**
+     * Returns whether the named world is a managed {@link MVWorldType#PLOT} world.
+     *
+     * <p>Cache lookup plus an enum comparison, with no allocation. Exists so hot-path
+     * listeners can bail out before {@link #plotAt(Location)} allocates a
+     * {@link PlotCoord} and an {@link Optional} - on most servers most movement
+     * happens in worlds that are not plot worlds at all.
+     *
+     * @param worldName the Bukkit world name
+     * @return {@code true} if the world is a managed PLOT world
+     */
+    public boolean isPlotWorld(@NotNull String worldName) {
+        var cached = worldFactory.getCachedWorld(worldName);
+        return cached.isPresent() && cached.get().getType() == MVWorldType.PLOT;
+    }
+
     @Override
     public @NotNull Optional<PlotCoord> plotAt(@NotNull Location location) {
         var w = location.getWorld();

@@ -8,8 +8,6 @@ import org.bukkit.Location;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Projectile;
-import org.bukkit.metadata.FixedMetadataValue;
-import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
@@ -19,10 +17,13 @@ import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.player.PlayerBucketEmptyEvent;
 import org.bukkit.event.player.PlayerBucketFillEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Gates block / interaction events in PLOT worlds against plot ownership +
@@ -36,17 +37,23 @@ import java.util.Map;
  */
 public class PlotProtectionListener implements Listener {
 
-    private static final String WARN_KEY = "jexplots.last_warn";
+    /** Minimum gap between protection-denied warnings sent to the same player. */
+    private static final long WARN_COOLDOWN_MS = 1000L;
+
+    /**
+     * Per-player timestamp of the last denial warning.
+     *
+     * <p>Replaces Bukkit metadata, which keyed a {@code List<MetadataValue>} per
+     * plugin per player and was never cleaned up. Entries are dropped on quit.
+     */
+    private final Map<UUID, Long> lastWarn = new ConcurrentHashMap<>();
 
     private final PlotService plots;
     private final MultiverseService mv;
-    private final JavaPlugin plugin;
 
-    public PlotProtectionListener(@NotNull PlotService plots, @NotNull MultiverseService mv,
-                                   @NotNull JavaPlugin plugin) {
+    public PlotProtectionListener(@NotNull PlotService plots, @NotNull MultiverseService mv) {
         this.plots = plots;
         this.mv = mv;
-        this.plugin = plugin;
     }
 
     // ── Block place / break ─────────────────────────────────────────────────────
@@ -179,13 +186,18 @@ public class PlotProtectionListener implements Listener {
 
     private void warnDenied(@NotNull Player player, @NotNull String key,
                              @NotNull Map<String, Object> placeholders) {
-        var meta = player.getMetadata(WARN_KEY);
         long now = System.currentTimeMillis();
-        long last = meta.isEmpty() ? 0L : meta.get(0).asLong();
-        if (now - last < 1000L) return;
-        player.setMetadata(WARN_KEY, new FixedMetadataValue(plugin, now));
+        var last = lastWarn.get(player.getUniqueId());
+        if (last != null && now - last < WARN_COOLDOWN_MS) return;
+        lastWarn.put(player.getUniqueId(), now);
         var builder = R18nManager.getInstance().msg(key).prefix();
         placeholders.forEach((k, v) -> builder.with(k, String.valueOf(v)));
         builder.send(player);
+    }
+
+    /** Drops the rate-limit entry so the map cannot grow without bound. */
+    @EventHandler
+    public void onQuit(@NotNull PlayerQuitEvent event) {
+        lastWarn.remove(event.getPlayer().getUniqueId());
     }
 }

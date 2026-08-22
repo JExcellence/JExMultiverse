@@ -86,6 +86,9 @@ public class PlotFlagListener implements Listener {
     /** Strips blocks inside no-explosion plots from entity explosion block lists. */
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onEntityExplode(@NotNull EntityExplodeEvent event) {
+        // One world check for the whole blast instead of one per block: a large
+        // chain explosion can carry thousands of blocks.
+        if (!plots.isPlotWorld(event.getLocation())) return;
         event.blockList().removeIf(block -> {
             var plot = plots.getPlotAt(block.getLocation()).orElse(null);
             return plot != null && !plots.getFlag(plot, PlotFlag.EXPLOSION);
@@ -95,6 +98,7 @@ public class PlotFlagListener implements Listener {
     /** Strips blocks inside no-explosion plots from block explosion block lists. */
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onBlockExplode(@NotNull BlockExplodeEvent event) {
+        if (!plots.isPlotWorld(event.getBlock().getLocation())) return;
         event.blockList().removeIf(block -> {
             var plot = plots.getPlotAt(block.getLocation()).orElse(null);
             return plot != null && !plots.getFlag(plot, PlotFlag.EXPLOSION);
@@ -127,7 +131,14 @@ public class PlotFlagListener implements Listener {
 
     // ── Keep inventory ──────────────────────────────────────────────────────────
 
-    /** Applies keep-inventory on death for plots with {@link PlotFlag#KEEP_INVENTORY} enabled. */
+    /**
+     * Applies keep-inventory on death for plots with {@link PlotFlag#KEEP_INVENTORY} enabled.
+     *
+     * <p>Deliberately {@code NORMAL} without {@code ignoreCancelled}, unlike every
+     * other handler here: {@link PlayerDeathEvent} is not {@code Cancellable}, so
+     * {@code ignoreCancelled = true} would be meaningless. Do not "harmonise" this
+     * with its siblings.
+     */
     @EventHandler(priority = EventPriority.NORMAL)
     public void onPlayerDeath(@NotNull PlayerDeathEvent event) {
         var plot = plots.getPlotAt(event.getEntity().getLocation()).orElse(null);
@@ -145,7 +156,12 @@ public class PlotFlagListener implements Listener {
     /** Cancels liquid flow into plots with {@link PlotFlag#LIQUID_FLOW} disabled. */
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
     public void onLiquidFlow(@NotNull BlockFromToEvent event) {
-        var plot = plots.getPlotAt(event.getToBlock().getLocation()).orElse(null);
+        // BlockFromToEvent fires for every flowing fluid tick server-wide, so bail
+        // out on the allocation-free world check before touching the plot grid.
+        var target = event.getToBlock().getLocation();
+        if (!plots.isPlotWorld(target)) return;
+
+        var plot = plots.getPlotAt(target).orElse(null);
         if (plot == null) return;
         if (!plots.getFlag(plot, PlotFlag.LIQUID_FLOW)) {
             event.setCancelled(true);
@@ -193,12 +209,20 @@ public class PlotFlagListener implements Listener {
         var from = event.getFrom();
         if (to.getBlockX() == from.getBlockX() && to.getBlockZ() == from.getBlockZ()) return;
 
+        // Cheapest possible guard first. On most servers the overwhelming majority of
+        // movement happens outside plot worlds, and this exits before getPlotAt
+        // allocates a PlotCoord and two Optionals.
+        if (!plots.isPlotWorld(to)) return;
+
         var plot = plots.getPlotAt(to).orElse(null);
         if (plot == null) return;
 
+        // Resolved once: canBuild and isDenied would otherwise each hit the
+        // permission provider, giving two lookups per block-boundary crossing.
         var player = event.getPlayer();
-        if (plots.canBuild(player, plot)) return; // owner / trusted / bypass
-        if (plots.isDenied(player, plot)) {
+        var bypass = plots.hasProtectBypass(player);
+        if (plots.canBuild(player, plot, bypass)) return; // owner / trusted / bypass
+        if (plots.isDenied(player, plot, bypass)) {
             event.setTo(from);
             return;
         }
