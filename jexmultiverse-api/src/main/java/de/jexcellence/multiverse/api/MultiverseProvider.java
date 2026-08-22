@@ -96,6 +96,19 @@ public interface MultiverseProvider {
      */
     @NotNull CompletableFuture<Boolean> setSpawn(@NotNull String worldName, @NotNull Location location);
 
+    /**
+     * Returns whether the given Bukkit world is managed by JExMultiverse.
+     *
+     * <p>Synchronous cache lookup with no database access, so this is safe to call
+     * from a main-thread event handler on a hot path. Prefer it over
+     * {@link #getWorld(String)} when all you need is a yes or no.
+     *
+     * @param worldName the Bukkit world name
+     * @return {@code true} if the world is managed
+     * @since 3.7.0
+     */
+    boolean isManaged(@NotNull String worldName);
+
     // ── Plot grid (PLOT-type worlds only) ──────────────────────────────────────
 
     /**

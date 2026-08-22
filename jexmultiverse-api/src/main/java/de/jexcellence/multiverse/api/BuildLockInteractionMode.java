@@ -1,4 +1,4 @@
-package de.jexcellence.multiverse.protection;
+package de.jexcellence.multiverse.api;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;

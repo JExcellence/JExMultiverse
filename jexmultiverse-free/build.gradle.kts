@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "de.jexcellence.multiverse"
-version = "3.0.0"
+version = "3.7.0"
 
 dependenciesYml {
     usePaperDependencies()

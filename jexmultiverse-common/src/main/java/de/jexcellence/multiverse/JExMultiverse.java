@@ -12,6 +12,9 @@ import de.jexcellence.jexplatform.schematic.edit.SelectionBorderService;
 import de.jexcellence.jexplatform.schematic.edit.SelectionService;
 import de.jexcellence.jexplatform.utility.workload.WorkloadExecutor;
 import de.jexcellence.multiverse.api.MultiverseProvider;
+import de.jexcellence.multiverse.api.event.MVWorldsReadyEvent;
+import de.jexcellence.multiverse.database.entity.MVWorld;
+import de.jexcellence.multiverse.event.EventDispatch;
 import de.jexcellence.multiverse.command.EnvironmentArgumentType;
 import de.jexcellence.multiverse.command.MultiverseHandler;
 import de.jexcellence.multiverse.command.PlotArgumentType;
@@ -112,6 +115,12 @@ public abstract class JExMultiverse {
     public void onEnable() {
         logger.info("Enabling JExMultiverse {} Edition...", edition);
 
+        // Suppress world lifecycle events until step 5. Worlds are loaded and adopted
+        // in step 2, before our listeners exist and before other plugins are
+        // necessarily enabled, so those events would reach nobody. Reset explicitly
+        // rather than relying on static init, so a plugin reload starts clean.
+        EventDispatch.bootstrapStart();
+
         // Merge any new translation keys from the JAR into existing on-disk
         // YAML files BEFORE R18n loads. R18nManager only extracts when a
         // file is missing, so plugin upgrades that ship new keys never reach
@@ -148,6 +157,7 @@ public abstract class JExMultiverse {
                     registerCommands();
                     logger.info("[init] step 5/5 - listeners");
                     registerListeners();
+                    announceWorldsReady();
                     logger.info("JExMultiverse {} Edition enabled", edition);
                 })
                 .exceptionally(ex -> {
@@ -381,6 +391,25 @@ public abstract class JExMultiverse {
 
         // Still let JExCommand auto-register any listener classes under the plugin package.
         factory.registerAllCommandsAndListeners();
+    }
+
+    /**
+     * Opens event dispatch and announces the managed world set.
+     *
+     * <p>Runs as the last step of enable. Everything before this point loaded worlds
+     * with no listeners attached, so consumers get one {@code MVWorldsReadyEvent}
+     * carrying the full set instead of a burst of per-world events nobody could have
+     * received. Also lets consumers reconcile worlds that vanished while the server
+     * was offline.
+     */
+    private void announceWorldsReady() {
+        EventDispatch.bootstrapComplete();
+        var snapshots = worldFactory.getAllCachedWorlds().stream()
+                .map(MVWorld::toSnapshot)
+                .toList();
+        platform.scheduler().runSync(() ->
+                Bukkit.getPluginManager().callEvent(new MVWorldsReadyEvent(snapshots)));
+        logger.info("[init] announced {} managed world(s) to listeners", snapshots.size());
     }
 
     private void registerListeners() {

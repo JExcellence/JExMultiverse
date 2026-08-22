@@ -5,7 +5,12 @@ import de.jexcellence.jexplatform.scheduler.PlatformScheduler;
 import de.jexcellence.multiverse.api.MVWorldType;
 import de.jexcellence.multiverse.config.PlotWorldConfig;
 import de.jexcellence.multiverse.database.entity.MVWorld;
+import de.jexcellence.multiverse.api.event.MVWorldLoadEvent;
+import de.jexcellence.multiverse.api.event.MVWorldLoadedEvent;
+import de.jexcellence.multiverse.api.event.MVWorldUnloadEvent;
+import de.jexcellence.multiverse.api.event.MVWorldUnloadedEvent;
 import de.jexcellence.multiverse.database.repository.MVWorldRepository;
+import de.jexcellence.multiverse.event.EventDispatch;
 import de.jexcellence.multiverse.generator.plot.PlotChunkGenerator;
 import de.jexcellence.multiverse.generator.void_world.VoidChunkGenerator;
 import de.jexcellence.multiverse.service.SchematicService;
@@ -270,7 +275,13 @@ public class WorldFactory {
         if (existing != null) {
             cacheWorld(mvWorld);
             logger.debug("World '{}' already loaded in Bukkit", mvWorld.getIdentifier());
+            EventDispatch.fire(new MVWorldLoadedEvent(mvWorld.toSnapshot()), scheduler);
             return existing;
+        }
+
+        if (EventDispatch.fireSync(new MVWorldLoadEvent(mvWorld.toSnapshot()))) {
+            logger.debug("Load of world '{}' cancelled by a listener", mvWorld.getIdentifier());
+            return null;
         }
 
         var world = createBukkitWorld(mvWorld.getIdentifier(), mvWorld.getEnvironment(), mvWorld.getType(),
@@ -278,6 +289,7 @@ public class WorldFactory {
         if (world != null) {
             cacheWorld(mvWorld);
             logger.info("Loaded world '{}'", mvWorld.getIdentifier());
+            EventDispatch.fire(new MVWorldLoadedEvent(mvWorld.toSnapshot()), scheduler);
         } else {
             logger.warn("Failed to load world '{}'", mvWorld.getIdentifier());
         }
@@ -294,10 +306,37 @@ public class WorldFactory {
      * @return {@code true} if the world was unloaded
      */
     public boolean unloadWorld(@NotNull String identifier, boolean save) {
+        return unloadWorld(identifier, save, true);
+    }
+
+    /**
+     * Unloads a world, optionally without raising the unload events.
+     *
+     * <p>Deletion passes {@code fireEvents = false}. By the time the delete flow
+     * reaches the unload the database row is already gone, so honouring a cancelled
+     * {@link MVWorldUnloadEvent} there would leave the world half-deleted. Deletion
+     * is vetoed through {@code MVWorldDeleteEvent} instead, and reported through
+     * {@code MVWorldDeletedEvent}.
+     *
+     * @param identifier the world identifier
+     * @param save       whether to save chunks before unloading
+     * @param fireEvents whether to raise the unload events
+     * @return {@code true} if the world was unloaded or was not loaded to begin with
+     */
+    public boolean unloadWorld(@NotNull String identifier, boolean save, boolean fireEvents) {
         var world = Bukkit.getWorld(identifier);
         if (world == null) {
             invalidateCache(identifier);
             return true;
+        }
+
+        // Snapshot before the cache entry is invalidated, so the post-event can still
+        // describe what was unloaded. Null when the world has no managed row.
+        var snapshot = getCachedWorld(identifier).map(MVWorld::toSnapshot).orElse(null);
+
+        if (fireEvents && EventDispatch.fireSync(new MVWorldUnloadEvent(identifier, snapshot, save))) {
+            logger.debug("Unload of world '{}' cancelled by a listener", identifier);
+            return false;
         }
 
         var defaultWorld = Bukkit.getWorlds().getFirst();
@@ -309,6 +348,9 @@ public class WorldFactory {
         if (success) {
             invalidateCache(identifier);
             logger.info("Unloaded world '{}'", identifier);
+            if (fireEvents) {
+                EventDispatch.fire(new MVWorldUnloadedEvent(identifier, snapshot, save), scheduler);
+            }
         } else {
             logger.warn("Failed to unload world '{}'", identifier);
         }

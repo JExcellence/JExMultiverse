@@ -1,5 +1,5 @@
 name: JExMultiverse
-version: '3.0.0'
+version: '3.7.0'
 main: de.jexcellence.multiverse.JExMultiversePremium
 description: World management system (Premium Edition)
 api-version: '1.19'

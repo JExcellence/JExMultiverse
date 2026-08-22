@@ -3,7 +3,7 @@ plugins {
 }
 
 group = "de.jexcellence.multiverse"
-version = "3.0.0"
+version = "3.7.0"
 description = "JExMultiverse Folia NMS - Runtime world loader for Folia (NMS, reflection-based, isolated)"
 
 dependencies {

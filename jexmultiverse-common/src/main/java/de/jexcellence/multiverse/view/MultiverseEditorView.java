@@ -3,7 +3,7 @@ package de.jexcellence.multiverse.view;
 import de.jexcellence.jexplatform.view.BaseView;
 import de.jexcellence.jextranslate.R18nManager;
 import de.jexcellence.multiverse.database.entity.MVWorld;
-import de.jexcellence.multiverse.protection.BuildLockInteractionMode;
+import de.jexcellence.multiverse.api.BuildLockInteractionMode;
 import de.jexcellence.multiverse.service.MultiverseService;
 import me.devnatan.inventoryframework.context.RenderContext;
 import me.devnatan.inventoryframework.context.SlotClickContext;

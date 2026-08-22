@@ -10,9 +10,14 @@ import de.jexcellence.multiverse.api.MultiverseProvider;
 import de.jexcellence.multiverse.api.PlotBounds;
 import de.jexcellence.multiverse.api.PlotCoord;
 import de.jexcellence.multiverse.api.PlotOwnership;
+import de.jexcellence.multiverse.api.BuildLockInteractionMode;
+import de.jexcellence.multiverse.api.event.MVWorldCreateEvent;
+import de.jexcellence.multiverse.api.event.MVWorldCreatedEvent;
+import de.jexcellence.multiverse.api.event.MVWorldDeleteEvent;
+import de.jexcellence.multiverse.api.event.MVWorldDeletedEvent;
 import de.jexcellence.multiverse.database.entity.MVWorld;
-import de.jexcellence.multiverse.protection.BuildLockInteractionMode;
 import de.jexcellence.multiverse.database.repository.MVWorldRepository;
+import de.jexcellence.multiverse.event.EventDispatch;
 import de.jexcellence.multiverse.factory.BukkitYmlWriter;
 import de.jexcellence.multiverse.factory.WorldFactory;
 import de.jexcellence.multiverse.generator.GeneratorRegistry;
@@ -205,6 +210,13 @@ public class MultiverseService implements MultiverseProvider {
             return CompletableFuture.completedFuture(Optional.empty());
         }
 
+        // Fired inline on the caller thread, before anything is written to disk or
+        // the database. Reached from command handlers and GUI views, both main-thread.
+        if (EventDispatch.fireSync(new MVWorldCreateEvent(name, environment, type))) {
+            logger.debug("Creation of world '{}' cancelled by a listener", name);
+            return CompletableFuture.completedFuture(Optional.empty());
+        }
+
         // Overrides only apply to PLOT worlds; clear them otherwise so the
         // entity faithfully represents how the world was generated. Non-PLOT
         // worlds (hub/spawn builds) paste the schematic once at spawn after
@@ -325,6 +337,7 @@ public class MultiverseService implements MultiverseProvider {
         repository.saveWorld(mvWorld).thenAccept(saved -> {
             worldFactory.cacheWorld(saved);
             logger.info("Created and persisted world '{}'", spec.name());
+            EventDispatch.fire(new MVWorldCreatedEvent(saved.toSnapshot()), scheduler);
             future.complete(Optional.of(saved));
         }).exceptionally(ex -> {
             logger.error("Failed to persist world '{}'", spec.name(), ex);
@@ -380,6 +393,15 @@ public class MultiverseService implements MultiverseProvider {
         //   4. THEN walk the world folder and delete the files.
         var future = new CompletableFuture<Boolean>();
 
+        // Snapshot up front: by the time the post-event fires the row is gone, and a
+        // listener still wants to know what was deleted. Also the last point at which
+        // a listener can veto, before plots cascade.
+        final var snapshot = worldFactory.getCachedWorld(identifier).map(MVWorld::toSnapshot).orElse(null);
+        if (snapshot != null && EventDispatch.fireSync(new MVWorldDeleteEvent(snapshot))) {
+            logger.debug("Deletion of world '{}' cancelled by a listener", identifier);
+            return CompletableFuture.completedFuture(false);
+        }
+
         cascadeDeletePlots(identifier)
                 .thenCompose(v -> repository.deleteByIdentifier(identifier))
                 .thenAccept(dbDeleted -> scheduler.runSync(() -> {
@@ -387,7 +409,9 @@ public class MultiverseService implements MultiverseProvider {
                         future.complete(false);
                         return;
                     }
-                    var unloaded = worldFactory.unloadWorld(identifier, false);
+                    // fireEvents = false: the row is already gone, so a cancelled
+                    // unload here would leave the world half-deleted.
+                    var unloaded = worldFactory.unloadWorld(identifier, false, false);
                     if (!unloaded) {
                         logger.warn("Deleted DB row for '{}' but failed to unload Bukkit world. " +
                                 "Restart the server to fully release the world.", identifier);
@@ -398,6 +422,9 @@ public class MultiverseService implements MultiverseProvider {
                     worldFactory.deleteWorldFiles(identifier).thenAccept(filesDeleted -> {
                         worldFactory.invalidateCache(identifier);
                         logger.info("Deleted world '{}' (db + bukkit + files)", identifier);
+                        if (snapshot != null) {
+                            EventDispatch.fire(new MVWorldDeletedEvent(snapshot), scheduler);
+                        }
                         future.complete(filesDeleted);
                     });
                 }))
@@ -468,6 +495,12 @@ public class MultiverseService implements MultiverseProvider {
                     target.setGlobalizedSpawn(changes.isGlobalizedSpawn());
                     target.setPvpEnabled(changes.isPvpEnabled());
                     target.setEnterPermission(changes.getEnterPermission());
+                    // Build-lock state was missing here, so the editor's lock and
+                    // interaction-mode toggles were silently discarded on save: the
+                    // fresh entity kept its old values and was then re-cached over
+                    // the edited one.
+                    target.setBuildLocked(changes.isBuildLocked());
+                    target.setBuildLockInteractionMode(changes.getBuildLockInteractionMode());
                     return repository.saveWorld(target);
                 })
                 .thenApply(saved -> {
@@ -706,6 +739,11 @@ public class MultiverseService implements MultiverseProvider {
     public @NotNull CompletableFuture<Boolean> hasMultiverseSpawn(@NotNull String worldName) {
         return getWorldEntity(worldName).thenApply(opt ->
                 opt.isPresent() && opt.get().getSpawnLocation() != null);
+    }
+
+    @Override
+    public boolean isManaged(@NotNull String worldName) {
+        return worldFactory.getCachedWorld(worldName).isPresent();
     }
 
     // ── Plot grid API ───────────────────────────────────────────────────────────
@@ -1038,6 +1076,9 @@ public class MultiverseService implements MultiverseProvider {
             repository.saveWorld(mvWorld).thenAccept(saved -> {
                 worldFactory.cacheWorld(saved);
                 logger.info("[worlds] adopted runtime-loaded world '{}' into JExMultiverse", worldName);
+                // Convergence point: the Folia NMS path and startup adoption both land
+                // here, so this single fire covers every non-Paper creation route.
+                EventDispatch.fire(new MVWorldCreatedEvent(saved.toSnapshot()), scheduler);
                 future.complete(Optional.of(saved.toSnapshot()));
             }).exceptionally(ex -> {
                 // Persist failure is non-fatal here: the world IS loaded,

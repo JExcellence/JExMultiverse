@@ -1,6 +1,6 @@
 package de.jexcellence.multiverse.listener;
 
-import de.jexcellence.multiverse.protection.BuildLockInteractionMode;
+import de.jexcellence.multiverse.api.BuildLockInteractionMode;
 import de.jexcellence.multiverse.service.BuildModeService;
 import de.jexcellence.multiverse.service.MultiverseService;
 import org.bukkit.Material;

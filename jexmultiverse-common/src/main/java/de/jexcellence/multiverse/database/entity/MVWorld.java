@@ -4,7 +4,7 @@ import de.jexcellence.jehibernate.entity.base.LongIdEntity;
 import de.jexcellence.multiverse.api.MVWorldSnapshot;
 import de.jexcellence.multiverse.api.MVWorldType;
 import de.jexcellence.multiverse.database.converter.LocationConverter;
-import de.jexcellence.multiverse.protection.BuildLockInteractionMode;
+import de.jexcellence.multiverse.api.BuildLockInteractionMode;
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
@@ -232,7 +232,12 @@ public class MVWorld extends LongIdEntity {
                 spawnLocation != null ? spawnLocation.getPitch() : 0,
                 globalizedSpawn,
                 pvpEnabled,
-                enterPermission
+                enterPermission,
+                buildLocked,
+                getBuildLockInteractionMode(),
+                plotSizeOverride,
+                roadWidthOverride,
+                schematicName
         );
     }
 
