@@ -2,6 +2,8 @@ package de.jexcellence.multiverse.api;
 
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Map;
+
 /**
  * Immutable snapshot of a managed world's state, safe to expose via the public API.
  *
@@ -25,6 +27,12 @@ import org.jetbrains.annotations.Nullable;
  * @param plotSizeOverride         per-world plot size (PLOT only), or {@code null} for the config default
  * @param roadWidthOverride        per-world road width (PLOT only), or {@code null} for the config default
  * @param schematicName            per-world plot schematic name without extension, or {@code null}
+ * @param gameRules                gamerules managed for this world, empty when none are
+ * @param fixedTime                pinned time of day in ticks, or {@code null} when time runs normally
+ * @param weatherLocked            whether weather is pinned
+ * @param weatherType              pinned weather ({@code CLEAR}, {@code RAIN}, {@code THUNDER}), or {@code null}
+ * @param difficulty               per-world difficulty name, or {@code null} for the server default
+ * @param keepSpawnLoaded          whether the spawn chunks stay resident
  * @author JExcellence
  * @since 3.0.0
  */
@@ -45,6 +53,20 @@ public record MVWorldSnapshot(
         BuildLockInteractionMode buildLockInteractionMode,
         @Nullable Integer plotSizeOverride,
         @Nullable Integer roadWidthOverride,
-        @Nullable String schematicName
+        @Nullable String schematicName,
+        Map<String, String> gameRules,
+        @Nullable Long fixedTime,
+        boolean weatherLocked,
+        @Nullable String weatherType,
+        @Nullable String difficulty,
+        boolean keepSpawnLoaded
 ) {
+
+    /**
+     * Canonical constructor, defensively copying the gamerule map so the snapshot
+     * stays immutable even if the caller mutates theirs afterwards.
+     */
+    public MVWorldSnapshot {
+        gameRules = gameRules == null ? Map.of() : Map.copyOf(gameRules);
+    }
 }

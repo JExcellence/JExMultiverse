@@ -11,6 +11,8 @@ import de.jexcellence.multiverse.api.PlotBounds;
 import de.jexcellence.multiverse.api.PlotCoord;
 import de.jexcellence.multiverse.api.PlotOwnership;
 import de.jexcellence.multiverse.api.BuildLockInteractionMode;
+import de.jexcellence.multiverse.api.event.MVGlobalSpawnChangedEvent;
+import de.jexcellence.multiverse.api.event.MVSpawnChangedEvent;
 import de.jexcellence.multiverse.api.event.MVWorldCloneEvent;
 import de.jexcellence.multiverse.api.event.MVWorldClonedEvent;
 import de.jexcellence.multiverse.api.event.MVWorldCreateEvent;
@@ -19,6 +21,7 @@ import de.jexcellence.multiverse.api.event.MVWorldDeleteEvent;
 import de.jexcellence.multiverse.api.event.MVWorldDeletedEvent;
 import de.jexcellence.multiverse.api.event.MVWorldResetCompletedEvent;
 import de.jexcellence.multiverse.api.event.MVWorldResetEvent;
+import de.jexcellence.multiverse.api.event.MVWorldUpdatedEvent;
 import de.jexcellence.multiverse.database.entity.MVWorld;
 import de.jexcellence.multiverse.database.repository.MVWorldRepository;
 import de.jexcellence.multiverse.event.EventDispatch;
@@ -546,6 +549,9 @@ public class MultiverseService implements MultiverseProvider {
                 return;
             }
             worldFactory.cacheWorld(mvWorld);
+            // The row survived the reset, so its gamerules, time, weather and
+            // difficulty have to be reapplied to the freshly generated world.
+            worldFactory.applyWorldSettings(world, mvWorld);
             var spawn = mvWorld.getSpawnLocation();
             if (spawn != null) {
                 world.setSpawnLocation(spawn.getBlockX(), spawn.getBlockY(), spawn.getBlockZ());
@@ -735,11 +741,21 @@ public class MultiverseService implements MultiverseProvider {
                     // the edited one.
                     target.setBuildLocked(changes.isBuildLocked());
                     target.setBuildLockInteractionMode(changes.getBuildLockInteractionMode());
+                    // Per-world runtime settings. Same reasoning as the build-lock
+                    // fields above: anything the editor can change has to be copied
+                    // here or it silently reverts on save.
+                    target.setGameRules(changes.getGameRules());
+                    target.setFixedTime(changes.getFixedTime());
+                    target.setWeatherLocked(changes.isWeatherLocked());
+                    target.setWeatherType(changes.getWeatherType());
+                    target.setDifficulty(changes.getDifficulty());
+                    target.setKeepSpawnLoaded(changes.isKeepSpawnLoaded());
                     return repository.saveWorld(target);
                 })
                 .thenApply(saved -> {
                     worldFactory.cacheWorld(saved);
                     logger.debug("Updated world '{}'", saved.getIdentifier());
+                    EventDispatch.fire(new MVWorldUpdatedEvent(saved.toSnapshot()), scheduler);
                     return saved;
                 });
     }
@@ -762,6 +778,7 @@ public class MultiverseService implements MultiverseProvider {
             world.setSpawnLocation(location);
             return repository.saveWorld(world).thenApply(saved -> {
                 worldFactory.cacheWorld(saved);
+                EventDispatch.fire(new MVSpawnChangedEvent(saved.toSnapshot(), location), scheduler);
                 return true;
             });
         });
@@ -778,11 +795,21 @@ public class MultiverseService implements MultiverseProvider {
         return getWorldEntity(identifier).thenCompose(opt -> {
             if (opt.isEmpty()) return CompletableFuture.completedFuture(false);
             var world = opt.get();
+            // Capture the outgoing holder before clearGlobalSpawnExcept wipes the
+            // flag; afterwards there is no way to tell which world had it.
+            final String previous = worldFactory.getAllCachedWorlds().stream()
+                    .filter(MVWorld::isGlobalizedSpawn)
+                    .map(MVWorld::getIdentifier)
+                    .filter(name -> !name.equals(identifier))
+                    .findFirst()
+                    .orElse(null);
             return repository.clearGlobalSpawnExcept(identifier).thenCompose(v -> {
                 world.setGlobalizedSpawn(true);
                 return repository.saveWorld(world).thenApply(saved -> {
                     worldFactory.cacheWorld(saved);
                     worldFactory.refreshCache();
+                    EventDispatch.fire(
+                            new MVGlobalSpawnChangedEvent(saved.toSnapshot(), previous), scheduler);
                     return true;
                 });
             });

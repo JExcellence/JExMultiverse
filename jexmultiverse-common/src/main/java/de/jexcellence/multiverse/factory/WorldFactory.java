@@ -15,7 +15,11 @@ import de.jexcellence.multiverse.generator.plot.PlotChunkGenerator;
 import de.jexcellence.multiverse.generator.void_world.VoidChunkGenerator;
 import de.jexcellence.multiverse.service.SchematicService;
 import org.bukkit.Bukkit;
+import org.bukkit.Difficulty;
+import org.bukkit.GameRule;
 import org.bukkit.Location;
+import org.bukkit.NamespacedKey;
+import org.bukkit.Registry;
 import org.bukkit.World;
 import org.bukkit.WorldCreator;
 import org.bukkit.generator.ChunkGenerator;
@@ -31,6 +35,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -147,7 +152,9 @@ public class WorldFactory {
 
             var world = creator.createWorld();
             if (world != null) {
-                world.setKeepSpawnInMemory(false);
+                // Default to not holding spawn chunks resident. A managed world with
+                // keepSpawnLoaded set overrides this in applyWorldSettings.
+                setIntRule(world, "spawnChunkRadius", 0);
                 logger.info("Created Bukkit world '{}' (env={}, type={}, plot-override={}/{}, schematic={})",
                         name, environment, type, plotSizeOverride, roadWidthOverride, schematicName);
             }
@@ -297,6 +304,7 @@ public class WorldFactory {
                 mvWorld.getPlotSizeOverride(), mvWorld.getRoadWidthOverride(), mvWorld.getSchematicName());
         if (world != null) {
             cacheWorld(mvWorld);
+            applyWorldSettings(world, mvWorld);
             logger.info("Loaded world '{}'", mvWorld.getIdentifier());
             EventDispatch.fire(new MVWorldLoadedEvent(mvWorld.toSnapshot()), scheduler);
         } else {
@@ -364,6 +372,202 @@ public class WorldFactory {
             logger.warn("Failed to unload world '{}'", identifier);
         }
         return success;
+    }
+
+    // ── Per-world runtime settings ──────────────────────────────────────────────
+
+    /**
+     * Applies a managed world's persisted runtime settings to the live Bukkit world.
+     *
+     * <p>Every setting is optional and skipped when unset, so a world that has never
+     * been configured behaves exactly as before. Must run on the main thread.
+     *
+     * @param world   the live Bukkit world
+     * @param mvWorld the managed row carrying the settings
+     */
+    public void applyWorldSettings(@NotNull World world, @NotNull MVWorld mvWorld) {
+        // spawnChunkRadius is the modern replacement for the deprecated
+        // setKeepSpawnInMemory. 0 keeps nothing resident; 2 is the vanilla default.
+        setIntRule(world, "spawnChunkRadius", mvWorld.isKeepSpawnLoaded() ? 2 : 0);
+        applyGameRules(world, mvWorld);
+        applyDifficulty(world, mvWorld);
+        applyTime(world, mvWorld);
+        applyWeather(world, mvWorld);
+    }
+
+    /**
+     * Sets a boolean gamerule by name, resolved through the registry.
+     *
+     * <p>Avoids the deprecated {@code GameRule} constants; a missing rule is logged
+     * rather than thrown, since the server build decides which rules exist.
+     *
+     * @param world the live Bukkit world
+     * @param name  the vanilla gamerule name
+     * @param value the value to set
+     */
+    @SuppressWarnings("unchecked")
+    private void setBooleanRule(@NotNull World world, @NotNull String name, boolean value) {
+        var rule = resolveGameRule(name);
+        if (rule == null || rule.getType() != Boolean.class) {
+            logger.warn("Gamerule '{}' unavailable on this server build - skipping", name);
+            return;
+        }
+        world.setGameRule((GameRule<Boolean>) rule, value);
+    }
+
+    /**
+     * Sets an integer gamerule by name, resolved through the registry.
+     *
+     * @param world the live Bukkit world
+     * @param name  the vanilla gamerule name
+     * @param value the value to set
+     */
+    @SuppressWarnings("unchecked")
+    private void setIntRule(@NotNull World world, @NotNull String name, int value) {
+        var rule = resolveGameRule(name);
+        if (rule == null || rule.getType() != Integer.class) {
+            logger.warn("Gamerule '{}' unavailable on this server build - skipping", name);
+            return;
+        }
+        world.setGameRule((GameRule<Integer>) rule, value);
+    }
+
+    /**
+     * Resolves a gamerule by name through the registry.
+     *
+     * <p>Uses {@code Registry.GAME_RULE} rather than the deprecated
+     * {@code GameRule.getByName} and the deprecated constants. Accepts both the
+     * vanilla camelCase name and a namespaced key.
+     *
+     * @param name the gamerule name
+     * @return the gamerule, or {@code null} if the server does not know it
+     */
+    private static @Nullable GameRule<?> resolveGameRule(@NotNull String name) {
+        var key = name.indexOf(':') >= 0
+                ? NamespacedKey.fromString(name)
+                : NamespacedKey.minecraft(name.toLowerCase(Locale.ROOT));
+        return key == null ? null : Registry.GAME_RULE.get(key);
+    }
+
+    /**
+     * Applies the managed gamerules, skipping any the server does not recognise or
+     * whose value does not parse for the rule's type.
+     *
+     * @param world   the live Bukkit world
+     * @param mvWorld the managed row
+     */
+    private void applyGameRules(@NotNull World world, @NotNull MVWorld mvWorld) {
+        mvWorld.getGameRules().forEach((name, value) -> {
+            var rule = resolveGameRule(name);
+            if (rule == null) {
+                logger.warn("Unknown gamerule '{}' configured for world '{}' - skipping",
+                        name, mvWorld.getIdentifier());
+                return;
+            }
+            if (!applyGameRule(world, rule, value)) {
+                logger.warn("Rejected gamerule value '{}={}' for world '{}'",
+                        name, value, mvWorld.getIdentifier());
+            }
+        });
+    }
+
+    /**
+     * Applies one gamerule, converting the stored string to the rule's value type.
+     *
+     * <p>Gamerules are either {@code Boolean} or {@code Integer}; anything else is
+     * refused rather than guessed at.
+     *
+     * @param world the live Bukkit world
+     * @param rule  the resolved gamerule
+     * @param value the stored string value
+     * @return {@code true} if the rule was applied
+     */
+    @SuppressWarnings("unchecked")
+    private boolean applyGameRule(@NotNull World world, @NotNull GameRule<?> rule, @NotNull String value) {
+        var type = rule.getType();
+        if (type == Boolean.class) {
+            return world.setGameRule((GameRule<Boolean>) rule, Boolean.parseBoolean(value));
+        }
+        if (type == Integer.class) {
+            try {
+                return world.setGameRule((GameRule<Integer>) rule, Integer.valueOf(value.trim()));
+            } catch (NumberFormatException e) {
+                return false;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Applies the per-world difficulty, if one is configured.
+     *
+     * @param world   the live Bukkit world
+     * @param mvWorld the managed row
+     */
+    private void applyDifficulty(@NotNull World world, @NotNull MVWorld mvWorld) {
+        var configured = mvWorld.getDifficulty();
+        if (configured == null || configured.isBlank()) {
+            return;
+        }
+        try {
+            world.setDifficulty(Difficulty.valueOf(configured.trim().toUpperCase(Locale.ROOT)));
+        } catch (IllegalArgumentException e) {
+            logger.warn("Unknown difficulty '{}' for world '{}' - keeping server default",
+                    configured, mvWorld.getIdentifier());
+        }
+    }
+
+    /**
+     * Pins the world's clock when a fixed time is configured.
+     *
+     * <p>Also disables {@code doDaylightCycle}, otherwise the time would drift away
+     * from the pinned value between ticks of the holding task.
+     *
+     * @param world   the live Bukkit world
+     * @param mvWorld the managed row
+     */
+    private void applyTime(@NotNull World world, @NotNull MVWorld mvWorld) {
+        var fixed = mvWorld.getFixedTime();
+        if (fixed == null) {
+            return;
+        }
+        setBooleanRule(world, "doDaylightCycle", false);
+        world.setTime(fixed);
+    }
+
+    /**
+     * Pins the world's weather when weather is locked.
+     *
+     * <p>Also disables {@code doWeatherCycle} so the pinned state holds without a
+     * repeating task.
+     *
+     * @param world   the live Bukkit world
+     * @param mvWorld the managed row
+     */
+    private void applyWeather(@NotNull World world, @NotNull MVWorld mvWorld) {
+        if (!mvWorld.isWeatherLocked()) {
+            return;
+        }
+        setBooleanRule(world, "doWeatherCycle", false);
+        var type = mvWorld.getWeatherType() == null
+                ? "CLEAR"
+                : mvWorld.getWeatherType().trim().toUpperCase(Locale.ROOT);
+        switch (type) {
+            case "RAIN" -> {
+                world.setStorm(true);
+                world.setThundering(false);
+            }
+            case "THUNDER" -> {
+                world.setStorm(true);
+                world.setThundering(true);
+            }
+            case "CLEAR" -> {
+                world.setStorm(false);
+                world.setThundering(false);
+            }
+            default -> logger.warn("Unknown weather type '{}' for world '{}' - leaving weather as-is",
+                    type, mvWorld.getIdentifier());
+        }
     }
 
     // ── World copy / deletion ───────────────────────────────────────────────────

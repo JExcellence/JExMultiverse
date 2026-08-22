@@ -17,7 +17,11 @@ import org.bukkit.World;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Objects;
+import java.util.StringJoiner;
 
 /**
  * Persistent entity representing a managed multiverse world.
@@ -92,6 +96,54 @@ public class MVWorld extends LongIdEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "build_lock_interaction_mode", length = 16)
     private BuildLockInteractionMode buildLockInteractionMode = BuildLockInteractionMode.SAFE;
+
+    // ── Per-world runtime settings ──────────────────────────────────────
+    //
+    // Every column below is nullable and uses a wrapper type. Hibernate's
+    // ddl-auto=update cannot add a NOT NULL column to a table that already has
+    // rows, so a primitive here would break every existing installation on
+    // upgrade. Null uniformly means "leave vanilla alone" rather than a default
+    // value we would then have to keep in sync.
+
+    /**
+     * Gamerules to apply on load, serialised as {@code KEY=VALUE} pairs joined by
+     * {@code ;}. Null or blank means no gamerules are managed for this world.
+     */
+    @Column(name = "game_rules", columnDefinition = "LONGTEXT")
+    private String gameRules;
+
+    /**
+     * Fixed time of day in ticks. When set, the world's time is held here and
+     * {@code doDaylightCycle} is disabled on load. Null means time runs normally.
+     */
+    @Column(name = "fixed_time")
+    private Long fixedTime;
+
+    /**
+     * Whether weather is pinned to {@link #weatherType}. Null is treated as false.
+     */
+    @Column(name = "weather_locked")
+    private Boolean weatherLocked;
+
+    /**
+     * Pinned weather when {@link #weatherLocked} is set: {@code CLEAR}, {@code RAIN}
+     * or {@code THUNDER}. Ignored while weather is unlocked.
+     */
+    @Column(name = "weather_type", length = 16)
+    private String weatherType;
+
+    /**
+     * Per-world difficulty name. Null means the world keeps the server default.
+     */
+    @Column(name = "difficulty", length = 16)
+    private String difficulty;
+
+    /**
+     * Whether the spawn chunks stay loaded. Null is treated as false, matching the
+     * {@code setKeepSpawnInMemory(false)} that world creation has always applied.
+     */
+    @Column(name = "keep_spawn_loaded")
+    private Boolean keepSpawnLoaded;
 
     // ── Constructors ────────────────────────────────────────────────────
 
@@ -212,6 +264,132 @@ public class MVWorld extends LongIdEntity {
         this.buildLockInteractionMode = buildLockInteractionMode;
     }
 
+    // ── Per-world runtime settings accessors ─────────────────────────────
+
+    /**
+     * Returns the managed gamerules for this world.
+     *
+     * @return an immutable map of gamerule name to value, empty when none are managed
+     */
+    public @NotNull Map<String, String> getGameRules() {
+        if (gameRules == null || gameRules.isBlank()) {
+            return Map.of();
+        }
+        var parsed = new LinkedHashMap<String, String>();
+        for (var pair : gameRules.split(";")) {
+            var eq = pair.indexOf('=');
+            if (eq > 0) {
+                parsed.put(pair.substring(0, eq).trim(), pair.substring(eq + 1).trim());
+            }
+        }
+        return Collections.unmodifiableMap(parsed);
+    }
+
+    /**
+     * Replaces the managed gamerules for this world.
+     *
+     * @param rules gamerule name to value; an empty map clears them
+     */
+    public void setGameRules(@NotNull Map<String, String> rules) {
+        if (rules.isEmpty()) {
+            this.gameRules = null;
+            return;
+        }
+        var joiner = new StringJoiner(";");
+        rules.forEach((key, value) -> joiner.add(key + "=" + value));
+        this.gameRules = joiner.toString();
+    }
+
+    /**
+     * Returns the fixed time of day in ticks, if the world's clock is pinned.
+     *
+     * @return the pinned tick value, or {@code null} when time runs normally
+     */
+    public @Nullable Long getFixedTime() {
+        return fixedTime;
+    }
+
+    /**
+     * Pins or releases this world's time of day.
+     *
+     * @param fixedTime tick value to hold, or {@code null} to let time run
+     */
+    public void setFixedTime(@Nullable Long fixedTime) {
+        this.fixedTime = fixedTime;
+    }
+
+    /**
+     * Returns whether weather is pinned for this world.
+     *
+     * @return {@code true} if weather is locked
+     */
+    public boolean isWeatherLocked() {
+        return Boolean.TRUE.equals(weatherLocked);
+    }
+
+    /**
+     * Sets whether weather is pinned for this world.
+     *
+     * @param weatherLocked whether to pin the weather
+     */
+    public void setWeatherLocked(boolean weatherLocked) {
+        this.weatherLocked = weatherLocked;
+    }
+
+    /**
+     * Returns the pinned weather type.
+     *
+     * @return {@code CLEAR}, {@code RAIN}, {@code THUNDER}, or {@code null} if unset
+     */
+    public @Nullable String getWeatherType() {
+        return weatherType;
+    }
+
+    /**
+     * Sets the pinned weather type.
+     *
+     * @param weatherType {@code CLEAR}, {@code RAIN}, {@code THUNDER}, or {@code null}
+     */
+    public void setWeatherType(@Nullable String weatherType) {
+        this.weatherType = weatherType;
+    }
+
+    /**
+     * Returns the per-world difficulty name.
+     *
+     * @return the difficulty name, or {@code null} to use the server default
+     */
+    public @Nullable String getDifficulty() {
+        return difficulty;
+    }
+
+    /**
+     * Sets the per-world difficulty name.
+     *
+     * @param difficulty the difficulty name, or {@code null} for the server default
+     */
+    public void setDifficulty(@Nullable String difficulty) {
+        this.difficulty = difficulty;
+    }
+
+    /**
+     * Returns whether the spawn chunks stay loaded.
+     *
+     * @return {@code true} if spawn chunks are kept in memory
+     */
+    public boolean isKeepSpawnLoaded() {
+        return Boolean.TRUE.equals(keepSpawnLoaded);
+    }
+
+    /**
+     * Sets whether the spawn chunks stay loaded.
+     *
+     * @param keepSpawnLoaded whether to keep spawn chunks in memory
+     */
+    public void setKeepSpawnLoaded(boolean keepSpawnLoaded) {
+        this.keepSpawnLoaded = keepSpawnLoaded;
+    }
+
     // ── Snapshot ─────────────────────────────────────────────────────────
 
     /**
@@ -237,7 +415,13 @@ public class MVWorld extends LongIdEntity {
                 getBuildLockInteractionMode(),
                 plotSizeOverride,
                 roadWidthOverride,
-                schematicName
+                schematicName,
+                getGameRules(),
+                fixedTime,
+                isWeatherLocked(),
+                weatherType,
+                difficulty,
+                isKeepSpawnLoaded()
         );
     }
 
