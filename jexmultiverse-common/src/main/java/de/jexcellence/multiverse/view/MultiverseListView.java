@@ -108,7 +108,8 @@ public class MultiverseListView extends PaginatedView<MVWorld> {
                 click.openForPlayer(MultiverseEditorView.class, Map.of(
                         "plugin",  plugin,
                         "world",   entry,
-                        "service", service
+                        "service", service,
+                        "factory", factory
                 ));
                 return;
             }

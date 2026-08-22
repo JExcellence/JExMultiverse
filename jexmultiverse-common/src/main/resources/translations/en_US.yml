@@ -105,6 +105,65 @@ multiverse:
 
 multiverse_editor_ui:
   title: "<gradient:#ff7f50:#ff4500>Edit World</gradient> <dark_gray>({world_name})</dark_gray>"
+  info:
+    name: "<gradient:#ff7f50:#ff4500>{world_name}</gradient>"
+    lore:
+      - ""
+      - "<gray>Type:</gray> <gradient:#ffa500:#ff6347>{type}</gradient>"
+      - "<gray>Environment:</gray> <gradient:#ffa500:#ff6347>{environment}</gradient>"
+      - "<gray>Loaded:</gray> <gradient:#ffa500:#ff6347>{loaded}</gradient>"
+      - "<gray>Managed gamerules:</gray> <gradient:#ffa500:#ff6347>{game_rules}</gradient>"
+      - ""
+      - "<gray>Changes are staged until you press Save.</gray>"
+      - "<gray>Global spawn is the exception - it</gray>"
+      - "<gray>applies immediately.</gray>"
+  keep_spawn:
+    name: "<gradient:#ff7f50:#ff4500>Keep Spawn Loaded</gradient> <dark_gray>({value})</dark_gray>"
+    lore:
+      - ""
+      - "<gray>Status:</gray> <gradient:#ffa500:#ff6347>{value}</gradient>"
+      - ""
+      - "<gray>Holds the spawn chunks in memory.</gray>"
+      - "<gray>Costs RAM - only worth it for worlds</gray>"
+      - "<gray>with redstone or farms at spawn.</gray>"
+      - ""
+      - "<gradient:#ff7f50:#ff4500>Click</gradient> <gray>to toggle</gray>"
+    toggled: "<gradient:#32cd32:#228b22>Keep Spawn:</gradient> <white>Spawn chunks in <gradient:#ff7f50:#ff4500>{world_name}</gradient> are now <gradient:#ffa500:#ff6347>{value}</gradient>.</white>"
+  time_lock:
+    name: "<gradient:#ff7f50:#ff4500>Pin Time</gradient> <dark_gray>({value})</dark_gray>"
+    lore:
+      - ""
+      - "<gray>Pinned to:</gray> <gradient:#ffa500:#ff6347>{value}</gradient>"
+      - ""
+      - "<gray>Freezes the clock at the current time and</gray>"
+      - "<gray>keeps it there across restarts. Also</gray>"
+      - "<gray>disables the daylight cycle.</gray>"
+      - ""
+      - "<gradient:#ff7f50:#ff4500>Click</gradient> <gray>to pin or release</gray>"
+    toggled: "<gradient:#32cd32:#228b22>Time Pin:</gradient> <white>Time in <gradient:#ff7f50:#ff4500>{world_name}</gradient> is now <gradient:#ffa500:#ff6347>{value}</gradient>.</white>"
+  weather_lock:
+    name: "<gradient:#ff7f50:#ff4500>Pin Weather</gradient> <dark_gray>({value})</dark_gray>"
+    lore:
+      - ""
+      - "<gray>Pinned to:</gray> <gradient:#ffa500:#ff6347>{value}</gradient>"
+      - ""
+      - "<gray>Holds the current weather and keeps it</gray>"
+      - "<gray>across restarts. Also disables the</gray>"
+      - "<gray>weather cycle.</gray>"
+      - ""
+      - "<gradient:#ff7f50:#ff4500>Click</gradient> <gray>to pin or release</gray>"
+    toggled: "<gradient:#32cd32:#228b22>Weather Pin:</gradient> <white>Weather in <gradient:#ff7f50:#ff4500>{world_name}</gradient> is now <gradient:#ffa500:#ff6347>{value}</gradient>.</white>"
+  game_rules:
+    name: "<gradient:#ff7f50:#ff4500>Gamerules</gradient> <dark_gray>({value} managed)</dark_gray>"
+    lore:
+      - ""
+      - "<gray>Managed:</gray> <gradient:#ffa500:#ff6347>{value}</gradient>"
+      - ""
+      - "<gray>Per-world gamerules, re-applied every</gray>"
+      - "<gray>time the world loads.</gray>"
+      - ""
+      - "<gradient:#ff7f50:#ff4500>Click</gradient> <gray>to open</gray>"
+  not_loaded: "<gradient:#dc143c:#b22222>Error:</gradient> <white>World <gradient:#ff7f50:#ff4500>{world_name}</gradient> is not loaded, so live settings cannot be changed.</white>"
   spawn:
     name: "<gradient:#ff7f50:#ff4500>Set Spawn Point</gradient>"
     lore:
@@ -143,8 +202,8 @@ multiverse_editor_ui:
       - ""
       - "<gray>Current:</gray> <gradient:#ffa500:#ff6347>{value}</gradient>"
       - ""
-      - "<gray>Cycles morning → noon → evening → night.</gray>"
-      - "<gray>Live world only - not persisted.</gray>"
+      - "<gray>Cycles morning, noon, evening, night.</gray>"
+      - "<gray>Use Pin Time to keep it across restarts.</gray>"
       - ""
       - "<gradient:#ff7f50:#ff4500>Click</gradient> <gray>to advance</gray>"
     updated: "<gradient:#32cd32:#228b22>Time:</gradient> <white>Time in <gradient:#ff7f50:#ff4500>{world_name}</gradient> set to <gradient:#ffa500:#ff6347>{value}</gradient>.</white>"
@@ -154,8 +213,8 @@ multiverse_editor_ui:
       - ""
       - "<gray>Current:</gray> <gradient:#ffa500:#ff6347>{value}</gradient>"
       - ""
-      - "<gray>Cycles clear → rain → storm.</gray>"
-      - "<gray>Live world only - not persisted.</gray>"
+      - "<gray>Cycles clear, rain, storm.</gray>"
+      - "<gray>Use Pin Weather to keep it across restarts.</gray>"
       - ""
       - "<gradient:#ff7f50:#ff4500>Click</gradient> <gray>to advance</gray>"
     updated: "<gradient:#32cd32:#228b22>Weather:</gradient> <white>Weather in <gradient:#ff7f50:#ff4500>{world_name}</gradient> set to <gradient:#ffa500:#ff6347>{value}</gradient>.</white>"
@@ -165,8 +224,8 @@ multiverse_editor_ui:
       - ""
       - "<gray>Current:</gray> <gradient:#ffa500:#ff6347>{value}</gradient>"
       - ""
-      - "<gray>Cycles peaceful → easy → normal → hard.</gray>"
-      - "<gray>Live world only - not persisted.</gray>"
+      - "<gray>Cycles peaceful, easy, normal, hard,</gray>"
+      - "<gray>then unmanaged (server default).</gray>"
       - ""
       - "<gradient:#ff7f50:#ff4500>Click</gradient> <gray>to advance</gray>"
     updated: "<gradient:#32cd32:#228b22>Difficulty:</gradient> <white>Difficulty in <gradient:#ff7f50:#ff4500>{world_name}</gradient> set to <gradient:#ffa500:#ff6347>{value}</gradient>.</white>"
@@ -202,6 +261,27 @@ multiverse_editor_ui:
       - "<gradient:#32cd32:#228b22>Click</gradient> <gray>to save</gray>"
     success: "<gradient:#32cd32:#228b22>Saved:</gradient> <white>Changes to <gradient:#ff7f50:#ff4500>{world_name}</gradient> saved.</white>"
     failed: "<gradient:#dc143c:#b22222>Save Failed:</gradient> <white>Failed to save <gradient:#ff7f50:#ff4500>{world_name}</gradient>: <gray>{error}</gray></white>"
+
+multiverse_gamerules_ui:
+  title: "<gradient:#ff7f50:#ff4500>Gamerules</gradient> <dark_gray>({world_name})</dark_gray>"
+  entry:
+    name: "<gradient:#ffa500:#ff6347>{rule}</gradient>"
+    lore:
+      - ""
+      - "<gray>Managed:</gray> <gradient:#ffa500:#ff6347>{value}</gradient>"
+      - "<gray>Live value:</gray> <gradient:#ffa500:#ff6347>{effective}</gradient>"
+      - ""
+      - "<gray>Unmanaged means JExMultiverse leaves</gray>"
+      - "<gray>this rule alone. A managed value is</gray>"
+      - "<gray>re-applied every time the world loads.</gray>"
+      - ""
+      - "<gradient:#ff7f50:#ff4500>Left-click</gradient> <gray>unmanaged -> true -> false</gray>"
+      - "<gradient:#ff7f50:#ff4500>Right-click</gradient> <gray>back to unmanaged</gray>"
+  updated: "<gradient:#32cd32:#228b22>Gamerule:</gradient> <white><gradient:#ffa500:#ff6347>{rule}</gradient> is now <gradient:#ffa500:#ff6347>{value}</gradient>. Press Save in the editor to keep it.</white>"
+  previous: "<gray>Previous page</gray>"
+  next: "<gray>Next page</gray>"
+  page: "<dark_gray>Page {current}/{total}</dark_gray>"
+  loading: "<gray>Loading gamerules...</gray>"
 
 plot:
   protection:

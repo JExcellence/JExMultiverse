@@ -18,7 +18,6 @@ import org.bukkit.Bukkit;
 import org.bukkit.Difficulty;
 import org.bukkit.GameRule;
 import org.bukkit.Location;
-import org.bukkit.NamespacedKey;
 import org.bukkit.Registry;
 import org.bukkit.World;
 import org.bukkit.WorldCreator;
@@ -35,6 +34,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
@@ -433,20 +433,51 @@ public class WorldFactory {
     }
 
     /**
-     * Resolves a gamerule by name through the registry.
+     * Lazily built index of every gamerule the running server knows, keyed by its
+     * lowercased vanilla name. Populated on first use rather than in a static
+     * initialiser, because the registry is not usable until the server is up.
+     */
+    private static volatile Map<String, GameRule<?>> gameRuleIndex;
+
+    /**
+     * Returns a gamerule's vanilla name, for example {@code doDaylightCycle}.
      *
-     * <p>Uses {@code Registry.GAME_RULE} rather than the deprecated
-     * {@code GameRule.getByName} and the deprecated constants. Accepts both the
-     * vanilla camelCase name and a namespaced key.
+     * <p>This is the one place {@code GameRule#getName()} is called. It is deprecated
+     * for removal in favour of the {@code Keyed} interface, but the namespaced key
+     * format is not something we can verify against the API jar, and guessing it
+     * wrong would silently orphan every stored gamerule. When the method is finally
+     * removed, change this single helper to derive the name from {@code getKey()} and
+     * ship a migration for the stored values.
+     *
+     * @param rule the gamerule
+     * @return the vanilla gamerule name
+     */
+    @SuppressWarnings("removal")
+    public static @NotNull String gameRuleName(@NotNull GameRule<?> rule) {
+        return rule.getName();
+    }
+
+    /**
+     * Resolves a gamerule by its vanilla name, case-insensitively.
+     *
+     * <p>Goes through {@code Registry.GAME_RULE} rather than the deprecated
+     * {@code GameRule.getByName} or the deprecated per-rule constants, so the set of
+     * known rules always matches the server build.
      *
      * @param name the gamerule name
      * @return the gamerule, or {@code null} if the server does not know it
      */
-    private static @Nullable GameRule<?> resolveGameRule(@NotNull String name) {
-        var key = name.indexOf(':') >= 0
-                ? NamespacedKey.fromString(name)
-                : NamespacedKey.minecraft(name.toLowerCase(Locale.ROOT));
-        return key == null ? null : Registry.GAME_RULE.get(key);
+    public static @Nullable GameRule<?> resolveGameRule(@NotNull String name) {
+        var index = gameRuleIndex;
+        if (index == null) {
+            var built = new HashMap<String, GameRule<?>>();
+            for (var rule : Registry.GAME_RULE) {
+                built.put(gameRuleName(rule).toLowerCase(Locale.ROOT), rule);
+            }
+            index = Map.copyOf(built);
+            gameRuleIndex = index;
+        }
+        return index.get(name.toLowerCase(Locale.ROOT));
     }
 
     /**

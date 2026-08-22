@@ -394,7 +394,8 @@ public final class MultiverseHandler {
         viewFrame.open(MultiverseEditorView.class, player, Map.of(
                 "plugin", plugin,
                 KEY_WORLD, world,
-                "service", service
+                "service", service,
+                "factory", worldFactory
         ));
     }
 

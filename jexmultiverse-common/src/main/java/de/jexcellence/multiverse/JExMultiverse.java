@@ -39,6 +39,7 @@ import de.jexcellence.multiverse.listener.SpawnListener;
 import de.jexcellence.multiverse.service.MultiverseEdition;
 import de.jexcellence.multiverse.service.MultiverseService;
 import de.jexcellence.multiverse.view.MultiverseEditorView;
+import de.jexcellence.multiverse.view.MultiverseGameRulesView;
 import de.jexcellence.multiverse.view.MultiverseListView;
 import de.jexcellence.multiverse.view.PlotFlagsView;
 import de.jexcellence.multiverse.view.PlotMembersView;
@@ -333,6 +334,7 @@ public abstract class JExMultiverse {
         viewFrame = ViewFrame
                 .create(plugin)
                 .with(new MultiverseEditorView())
+                .with(new MultiverseGameRulesView())
                 .with(new MultiverseListView())
                 .with(new PlotMenuView())
                 .with(new PlotMembersView())

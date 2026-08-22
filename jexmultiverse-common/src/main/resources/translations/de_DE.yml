@@ -105,6 +105,65 @@ multiverse:
 
 multiverse_editor_ui:
   title: "<gradient:#ff7f50:#ff4500>Welt bearbeiten</gradient> <dark_gray>({world_name})</dark_gray>"
+  info:
+    name: "<gradient:#ff7f50:#ff4500>{world_name}</gradient>"
+    lore:
+      - ""
+      - "<gray>Typ:</gray> <gradient:#ffa500:#ff6347>{type}</gradient>"
+      - "<gray>Umgebung:</gray> <gradient:#ffa500:#ff6347>{environment}</gradient>"
+      - "<gray>Geladen:</gray> <gradient:#ffa500:#ff6347>{loaded}</gradient>"
+      - "<gray>Verwaltete Gamerules:</gray> <gradient:#ffa500:#ff6347>{game_rules}</gradient>"
+      - ""
+      - "<gray>Änderungen werden erst beim Speichern</gray>"
+      - "<gray>übernommen. Ausnahme: der globale Spawn</gray>"
+      - "<gray>wirkt sofort.</gray>"
+  keep_spawn:
+    name: "<gradient:#ff7f50:#ff4500>Spawn geladen halten</gradient> <dark_gray>({value})</dark_gray>"
+    lore:
+      - ""
+      - "<gray>Status:</gray> <gradient:#ffa500:#ff6347>{value}</gradient>"
+      - ""
+      - "<gray>Hält die Spawn-Chunks im Speicher.</gray>"
+      - "<gray>Kostet RAM - nur sinnvoll bei Welten mit</gray>"
+      - "<gray>Redstone oder Farmen am Spawn.</gray>"
+      - ""
+      - "<gradient:#ff7f50:#ff4500>Klicke</gradient> <gray>zum Umschalten</gray>"
+    toggled: "<gradient:#32cd32:#228b22>Spawn-Chunks:</gradient> <white>Spawn-Chunks in <gradient:#ff7f50:#ff4500>{world_name}</gradient> sind jetzt <gradient:#ffa500:#ff6347>{value}</gradient>.</white>"
+  time_lock:
+    name: "<gradient:#ff7f50:#ff4500>Zeit fixieren</gradient> <dark_gray>({value})</dark_gray>"
+    lore:
+      - ""
+      - "<gray>Fixiert auf:</gray> <gradient:#ffa500:#ff6347>{value}</gradient>"
+      - ""
+      - "<gray>Friert die Uhr auf der aktuellen Zeit ein</gray>"
+      - "<gray>und hält sie über Neustarts hinweg.</gray>"
+      - "<gray>Deaktiviert auch den Tag-Nacht-Zyklus.</gray>"
+      - ""
+      - "<gradient:#ff7f50:#ff4500>Klicke</gradient> <gray>zum Fixieren oder Lösen</gray>"
+    toggled: "<gradient:#32cd32:#228b22>Zeit-Fixierung:</gradient> <white>Zeit in <gradient:#ff7f50:#ff4500>{world_name}</gradient> ist jetzt <gradient:#ffa500:#ff6347>{value}</gradient>.</white>"
+  weather_lock:
+    name: "<gradient:#ff7f50:#ff4500>Wetter fixieren</gradient> <dark_gray>({value})</dark_gray>"
+    lore:
+      - ""
+      - "<gray>Fixiert auf:</gray> <gradient:#ffa500:#ff6347>{value}</gradient>"
+      - ""
+      - "<gray>Hält das aktuelle Wetter und behält es</gray>"
+      - "<gray>über Neustarts hinweg. Deaktiviert auch</gray>"
+      - "<gray>den Wetterzyklus.</gray>"
+      - ""
+      - "<gradient:#ff7f50:#ff4500>Klicke</gradient> <gray>zum Fixieren oder Lösen</gray>"
+    toggled: "<gradient:#32cd32:#228b22>Wetter-Fixierung:</gradient> <white>Wetter in <gradient:#ff7f50:#ff4500>{world_name}</gradient> ist jetzt <gradient:#ffa500:#ff6347>{value}</gradient>.</white>"
+  game_rules:
+    name: "<gradient:#ff7f50:#ff4500>Gamerules</gradient> <dark_gray>({value} verwaltet)</dark_gray>"
+    lore:
+      - ""
+      - "<gray>Verwaltet:</gray> <gradient:#ffa500:#ff6347>{value}</gradient>"
+      - ""
+      - "<gray>Weltspezifische Gamerules, werden bei</gray>"
+      - "<gray>jedem Laden der Welt neu gesetzt.</gray>"
+      - ""
+      - "<gradient:#ff7f50:#ff4500>Klicke</gradient> <gray>zum Öffnen</gray>"
+  not_loaded: "<gradient:#dc143c:#b22222>Fehler:</gradient> <white>Welt <gradient:#ff7f50:#ff4500>{world_name}</gradient> ist nicht geladen, Live-Einstellungen können nicht geändert werden.</white>"
   spawn:
     name: "<gradient:#ff7f50:#ff4500>Spawnpunkt setzen</gradient>"
     lore:
@@ -144,7 +203,7 @@ multiverse_editor_ui:
       - "<gray>Aktuell:</gray> <gradient:#ffa500:#ff6347>{value}</gradient>"
       - ""
       - "<gray>Wechselt Morgen → Mittag → Abend → Nacht.</gray>"
-      - "<gray>Nur Live-Welt - nicht gespeichert.</gray>"
+      - "<gray>Mit den Fixieren-Buttons dauerhaft.</gray>"
       - ""
       - "<gradient:#ff7f50:#ff4500>Klick</gradient> <gray>um weiterzuschalten</gray>"
     updated: "<gradient:#32cd32:#228b22>Zeit:</gradient> <white>Tageszeit in <gradient:#ff7f50:#ff4500>{world_name}</gradient> auf <gradient:#ffa500:#ff6347>{value}</gradient> gesetzt.</white>"
@@ -155,7 +214,7 @@ multiverse_editor_ui:
       - "<gray>Aktuell:</gray> <gradient:#ffa500:#ff6347>{value}</gradient>"
       - ""
       - "<gray>Wechselt klar → Regen → Sturm.</gray>"
-      - "<gray>Nur Live-Welt - nicht gespeichert.</gray>"
+      - "<gray>Mit den Fixieren-Buttons dauerhaft.</gray>"
       - ""
       - "<gradient:#ff7f50:#ff4500>Klick</gradient> <gray>um weiterzuschalten</gray>"
     updated: "<gradient:#32cd32:#228b22>Wetter:</gradient> <white>Wetter in <gradient:#ff7f50:#ff4500>{world_name}</gradient> auf <gradient:#ffa500:#ff6347>{value}</gradient> gesetzt.</white>"
@@ -166,7 +225,7 @@ multiverse_editor_ui:
       - "<gray>Aktuell:</gray> <gradient:#ffa500:#ff6347>{value}</gradient>"
       - ""
       - "<gray>Wechselt friedlich → einfach → normal → schwer.</gray>"
-      - "<gray>Nur Live-Welt - nicht gespeichert.</gray>"
+      - "<gray>Mit den Fixieren-Buttons dauerhaft.</gray>"
       - ""
       - "<gradient:#ff7f50:#ff4500>Klick</gradient> <gray>um weiterzuschalten</gray>"
     updated: "<gradient:#32cd32:#228b22>Schwierigkeit:</gradient> <white>Schwierigkeit in <gradient:#ff7f50:#ff4500>{world_name}</gradient> auf <gradient:#ffa500:#ff6347>{value}</gradient> gesetzt.</white>"
@@ -202,6 +261,27 @@ multiverse_editor_ui:
       - "<gradient:#32cd32:#228b22>Klick</gradient> <gray>zum Speichern</gray>"
     success: "<gradient:#32cd32:#228b22>Gespeichert:</gradient> <white>Änderungen an <gradient:#ff7f50:#ff4500>{world_name}</gradient> gespeichert.</white>"
     failed: "<gradient:#dc143c:#b22222>Speichern fehlgeschlagen:</gradient> <white>Änderungen an <gradient:#ff7f50:#ff4500>{world_name}</gradient>: <gray>{error}</gray></white>"
+
+multiverse_gamerules_ui:
+  title: "<gradient:#ff7f50:#ff4500>Gamerules</gradient> <dark_gray>({world_name})</dark_gray>"
+  entry:
+    name: "<gradient:#ffa500:#ff6347>{rule}</gradient>"
+    lore:
+      - ""
+      - "<gray>Verwaltet:</gray> <gradient:#ffa500:#ff6347>{value}</gradient>"
+      - "<gray>Live-Wert:</gray> <gradient:#ffa500:#ff6347>{effective}</gradient>"
+      - ""
+      - "<gray>Unverwaltet heisst, JExMultiverse fasst</gray>"
+      - "<gray>diese Regel nicht an. Ein verwalteter Wert</gray>"
+      - "<gray>wird bei jedem Laden neu gesetzt.</gray>"
+      - ""
+      - "<gradient:#ff7f50:#ff4500>Linksklick</gradient> <gray>unverwaltet -> true -> false</gray>"
+      - "<gradient:#ff7f50:#ff4500>Rechtsklick</gradient> <gray>zurück auf unverwaltet</gray>"
+  updated: "<gradient:#32cd32:#228b22>Gamerule:</gradient> <white><gradient:#ffa500:#ff6347>{rule}</gradient> ist jetzt <gradient:#ffa500:#ff6347>{value}</gradient>. Zum Behalten im Editor speichern.</white>"
+  previous: "<gray>Vorherige Seite</gray>"
+  next: "<gray>Nächste Seite</gray>"
+  page: "<dark_gray>Seite {current}/{total}</dark_gray>"
+  loading: "<gray>Lade Gamerules...</gray>"
 
 plot:
   protection:
