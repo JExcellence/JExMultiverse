@@ -38,6 +38,21 @@ multiverse:
   loading_world: "<gradient:#ffa500:#ff8c00>Lade:</gradient> <white>Lade Welt <gradient:#ff7f50:#ff4500>{world_name}</gradient>...</white>"
   load_success: "<gradient:#32cd32:#228b22>Geladen:</gradient> <white>Welt <gradient:#ff7f50:#ff4500>{world_name}</gradient> geladen.</white>"
   load_failed: "<gradient:#dc143c:#b22222>Fehler:</gradient> <white>Welt <gradient:#ff7f50:#ff4500>{world_name}</gradient> konnte nicht geladen werden.</white>"
+  unload:
+    not_loaded: "<gradient:#ffa500:#ff8c00>Info:</gradient> <white>Welt <gradient:#ff7f50:#ff4500>{world_name}</gradient> ist nicht geladen.</white>"
+    success: "<gradient:#32cd32:#228b22>Entladen:</gradient> <white>Welt <gradient:#ff7f50:#ff4500>{world_name}</gradient> wurde entladen. Dateien und Einstellungen bleiben erhalten.</white>"
+    failed: "<gradient:#dc143c:#b22222>Fehler:</gradient> <white>Welt <gradient:#ff7f50:#ff4500>{world_name}</gradient> konnte nicht entladen werden.</white>"
+  reset:
+    confirm_required: "<gradient:#dc143c:#b22222>Achtung:</gradient> <white>Ein Reset von <gradient:#ff7f50:#ff4500>{world_name}</gradient> zerstört jeden Block darin. Einstellungen bleiben erhalten, das Terrain nicht. Führe <gradient:#ffa500:#ff8c00>/mv reset {world_name} confirm</gradient> aus, um fortzufahren.</white>"
+    started: "<gradient:#ffa500:#ff8c00>Reset:</gradient> <white>Welt <gradient:#ff7f50:#ff4500>{world_name}</gradient> wird neu generiert. Spieler in dieser Welt werden zum Spawn bewegt.</white>"
+    completed: "<gradient:#32cd32:#228b22>Reset:</gradient> <white>Welt <gradient:#ff7f50:#ff4500>{world_name}</gradient> wurde neu generiert.</white>"
+    failed: "<gradient:#dc143c:#b22222>Fehler:</gradient> <white>Reset der Welt <gradient:#ff7f50:#ff4500>{world_name}</gradient> fehlgeschlagen. Siehe Konsole.</white>"
+  clone:
+    started: "<gradient:#ffa500:#ff8c00>Klonen:</gradient> <white><gradient:#ff7f50:#ff4500>{source}</gradient> wird nach <gradient:#ff7f50:#ff4500>{target}</gradient> kopiert. Bei großen Welten dauert das einen Moment.</white>"
+    completed: "<gradient:#32cd32:#228b22>Geklont:</gradient> <white><gradient:#ff7f50:#ff4500>{source}</gradient> wurde nach <gradient:#ff7f50:#ff4500>{target}</gradient> kopiert.</white>"
+    failed: "<gradient:#dc143c:#b22222>Fehler:</gradient> <white>Klonen von <gradient:#ff7f50:#ff4500>{source}</gradient> nach <gradient:#ff7f50:#ff4500>{target}</gradient> fehlgeschlagen. Siehe Konsole.</white>"
+    target_exists: "<gradient:#dc143c:#b22222>Fehler:</gradient> <white>Eine Welt namens <gradient:#ff7f50:#ff4500>{target}</gradient> existiert bereits.</white>"
+    plots_not_copied: "<gradient:#ffa500:#ff8c00>Hinweis:</gradient> <white>Plot-Ansprüche wurden nicht kopiert - <gradient:#ff7f50:#ff4500>{target}</gradient> startet unbeansprucht.</white>"
 
   list_empty: "<gray>Keine verwalteten Welten gefunden.</gray>"
   list_header: "<gradient:#ff7f50:#ff4500>Verwaltete Welten</gradient> <dark_gray>({count})</dark_gray>"
@@ -50,6 +65,9 @@ multiverse:
   help_edit: "<gradient:#ffa500:#ff6347>/{alias} edit <welt></gradient> <gray>- Welt-Einstellungen bearbeiten</gray>"
   help_teleport: "<gradient:#ffa500:#ff6347>/{alias} teleport <welt></gradient> <gray>- Zu einer Welt teleportieren</gray>"
   help_load: "<gradient:#ffa500:#ff6347>/{alias} load <welt></gradient> <gray>- Welt aus der Datenbank laden</gray>"
+  help_unload: "<gradient:#ffa500:#ff6347>/{alias} unload <welt> [save]</gradient> <gray>- Welt entladen, ohne sie zu löschen</gray>"
+  help_reset: "<gradient:#ffa500:#ff6347>/{alias} reset <welt> confirm</gradient> <gray>- Terrain neu generieren, Einstellungen behalten</gray>"
+  help_clone: "<gradient:#ffa500:#ff6347>/{alias} clone <welt> <ziel></gradient> <gray>- Welt unter neuem Namen kopieren</gray>"
   help_list: "<gradient:#ffa500:#ff6347>/{alias} list</gradient> <gray>- Alle Welten auflisten</gray>"
   help_footer: "<dark_gray>───────────────────────────────</dark_gray>"
 

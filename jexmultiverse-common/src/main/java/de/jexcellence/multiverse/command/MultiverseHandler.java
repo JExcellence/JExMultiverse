@@ -59,6 +59,9 @@ public final class MultiverseHandler {
     private static final String KEY_COUNT       = "count";
     private static final String KEY_ALIAS       = "alias";
 
+    /** Literal a resetting admin must type out; a flag is too easy to fire by accident. */
+    private static final String CONFIRM_LITERAL = "confirm";
+
     private static final String MSG_EDIT_WORKING      = "multiverse.edit.working";
     private static final String MSG_EDIT_NO_CLIPBOARD = "multiverse.edit.no_clipboard";
 
@@ -98,6 +101,9 @@ public final class MultiverseHandler {
                 Map.entry("multiverse.edit",           this::onEdit),
                 Map.entry("multiverse.teleport",       this::onTeleport),
                 Map.entry("multiverse.load",           this::onLoad),
+                Map.entry("multiverse.unload",         this::onUnload),
+                Map.entry("multiverse.reset",          this::onReset),
+                Map.entry("multiverse.clone",          this::onClone),
                 Map.entry("multiverse.list",           this::onList),
                 Map.entry("multiverse.help",           this::onHelp),
                 Map.entry("multiverse.applyschematic", this::onApplySchematic),
@@ -249,6 +255,101 @@ public final class MultiverseHandler {
                             .send(sender));
             return null;
         });
+    }
+
+    // ── Unload ──────────────────────────────────────────────────────────────────
+
+    private void onUnload(@NotNull CommandContext ctx) {
+        var sender = ctx.sender();
+        var world = ctx.require(KEY_WORLD, MVWorld.class);
+        var identifier = world.getIdentifier();
+        var save = ctx.get("save", Boolean.class).orElse(Boolean.TRUE);
+
+        if (!worldFactory.isWorldLoaded(identifier)) {
+            r18n().msg("multiverse.unload.not_loaded").prefix()
+                    .with(KEY_WORLD_NAME, identifier)
+                    .send(sender);
+            return;
+        }
+
+        service.unloadWorld(identifier, save).thenAccept(ok ->
+                PlatformScheduler.of(plugin).runSync(() ->
+                        r18n().msg(Boolean.TRUE.equals(ok)
+                                        ? "multiverse.unload.success"
+                                        : "multiverse.unload.failed").prefix()
+                                .with(KEY_WORLD_NAME, identifier)
+                                .send(sender)));
+    }
+
+    // ── Reset ───────────────────────────────────────────────────────────────────
+
+    private void onReset(@NotNull CommandContext ctx) {
+        var sender = ctx.sender();
+        var world = ctx.require(KEY_WORLD, MVWorld.class);
+        var identifier = world.getIdentifier();
+
+        // Destroying every block in a world on a single mistyped tab-complete is not
+        // acceptable, so the literal word is required rather than a flag.
+        if (!CONFIRM_LITERAL.equalsIgnoreCase(ctx.get("confirm", String.class).orElse(""))) {
+            r18n().msg("multiverse.reset.confirm_required").prefix()
+                    .with(KEY_WORLD_NAME, identifier)
+                    .send(sender);
+            return;
+        }
+
+        var newSeed = ctx.get("new_seed", Boolean.class).orElse(Boolean.FALSE);
+        r18n().msg("multiverse.reset.started").prefix()
+                .with(KEY_WORLD_NAME, identifier)
+                .send(sender);
+
+        service.resetWorld(identifier, newSeed).thenAccept(ok ->
+                PlatformScheduler.of(plugin).runSync(() ->
+                        r18n().msg(Boolean.TRUE.equals(ok)
+                                        ? "multiverse.reset.completed"
+                                        : "multiverse.reset.failed").prefix()
+                                .with(KEY_WORLD_NAME, identifier)
+                                .send(sender)));
+    }
+
+    // ── Clone ───────────────────────────────────────────────────────────────────
+
+    private void onClone(@NotNull CommandContext ctx) {
+        var sender = ctx.sender();
+        var world = ctx.require(KEY_WORLD, MVWorld.class);
+        var source = world.getIdentifier();
+        var target = ctx.require("target", String.class);
+
+        if (worldFactory.getCachedWorld(target).isPresent() || Bukkit.getWorld(target) != null) {
+            r18n().msg("multiverse.clone.target_exists").prefix()
+                    .with("target", target)
+                    .send(sender);
+            return;
+        }
+
+        r18n().msg("multiverse.clone.started").prefix()
+                .with("source", source)
+                .with("target", target)
+                .send(sender);
+
+        service.cloneWorld(source, target).thenAccept(opt ->
+                PlatformScheduler.of(plugin).runSync(() -> {
+                    if (opt.isEmpty()) {
+                        r18n().msg("multiverse.clone.failed").prefix()
+                                .with("source", source)
+                                .with("target", target)
+                                .send(sender);
+                        return;
+                    }
+                    r18n().msg("multiverse.clone.completed").prefix()
+                            .with("source", source)
+                            .with("target", target)
+                            .send(sender);
+                    if (world.getType() == MVWorldType.PLOT) {
+                        r18n().msg("multiverse.clone.plots_not_copied").prefix()
+                                .with("target", target)
+                                .send(sender);
+                    }
+                }));
     }
 
     // ── Delete ──────────────────────────────────────────────────────────────────
@@ -832,6 +933,15 @@ public final class MultiverseHandler {
         }
         if (hasPerm(sender, "jexmultiverse.command.load")) {
             r18n().msg("multiverse.help_load").with(KEY_ALIAS, alias).send(sender);
+        }
+        if (hasPerm(sender, "jexmultiverse.command.unload")) {
+            r18n().msg("multiverse.help_unload").with(KEY_ALIAS, alias).send(sender);
+        }
+        if (hasPerm(sender, "jexmultiverse.command.reset")) {
+            r18n().msg("multiverse.help_reset").with(KEY_ALIAS, alias).send(sender);
+        }
+        if (hasPerm(sender, "jexmultiverse.command.clone")) {
+            r18n().msg("multiverse.help_clone").with(KEY_ALIAS, alias).send(sender);
         }
         if (hasPerm(sender, "jexmultiverse.command.list")) {
             r18n().msg("multiverse.help_list").with(KEY_ALIAS, alias).send(sender);

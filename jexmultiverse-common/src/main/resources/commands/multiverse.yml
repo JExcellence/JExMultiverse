@@ -49,6 +49,31 @@ subcommands:
     argumentSchema:
       - { name: world, type: world, required: true, description: "Target world" }
 
+  - name: unload
+    description: "Unload a world without deleting it"
+    permission: "jexmultiverse.command.unload"
+    senders: [player, console]
+    argumentSchema:
+      - { name: world, type: world,   required: true,  description: "Target world" }
+      - { name: save,  type: boolean, required: false, description: "Save chunks before unloading (default true)" }
+
+  - name: reset
+    description: "Regenerate a world's terrain, keeping its settings"
+    permission: "jexmultiverse.command.reset"
+    senders: [player, console]
+    argumentSchema:
+      - { name: world,    type: world,   required: true,  description: "Target world" }
+      - { name: confirm,  type: string,  required: false, description: "Type 'confirm' to proceed - this destroys all terrain" }
+      - { name: new_seed, type: boolean, required: false, description: "Regenerate with a fresh seed" }
+
+  - name: clone
+    description: "Copy a world, terrain and settings, under a new name"
+    permission: "jexmultiverse.command.clone"
+    senders: [player, console]
+    argumentSchema:
+      - { name: world,  type: world,  required: true, description: "World to copy" }
+      - { name: target, type: string, required: true, description: "Name for the copy" }
+
   - name: list
     description: "List all managed worlds"
     permission: "jexmultiverse.command.list"

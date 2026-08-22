@@ -11,10 +11,14 @@ import de.jexcellence.multiverse.api.PlotBounds;
 import de.jexcellence.multiverse.api.PlotCoord;
 import de.jexcellence.multiverse.api.PlotOwnership;
 import de.jexcellence.multiverse.api.BuildLockInteractionMode;
+import de.jexcellence.multiverse.api.event.MVWorldCloneEvent;
+import de.jexcellence.multiverse.api.event.MVWorldClonedEvent;
 import de.jexcellence.multiverse.api.event.MVWorldCreateEvent;
 import de.jexcellence.multiverse.api.event.MVWorldCreatedEvent;
 import de.jexcellence.multiverse.api.event.MVWorldDeleteEvent;
 import de.jexcellence.multiverse.api.event.MVWorldDeletedEvent;
+import de.jexcellence.multiverse.api.event.MVWorldResetCompletedEvent;
+import de.jexcellence.multiverse.api.event.MVWorldResetEvent;
 import de.jexcellence.multiverse.database.entity.MVWorld;
 import de.jexcellence.multiverse.database.repository.MVWorldRepository;
 import de.jexcellence.multiverse.event.EventDispatch;
@@ -442,9 +446,239 @@ public class MultiverseService implements MultiverseProvider {
      * post-construction by {@link #attachPlotService(PlotService)}; called
      * before the MVWorld row itself is deleted.
      */
-    private @NotNull CompletableFuture<Void> cascadeDeletePlots(@NotNull String worldIdentifier) {
-        if (plotService == null) return CompletableFuture.completedFuture(null);
+    private @NotNull CompletableFuture<Integer> cascadeDeletePlots(@NotNull String worldIdentifier) {
+        if (plotService == null) return CompletableFuture.completedFuture(0);
         return plotService.deletePlotsInWorld(worldIdentifier);
+    }
+
+    // ── Reset ───────────────────────────────────────────────────────────────────
+
+    /**
+     * Regenerates a managed world in place, keeping its identity.
+     *
+     * <p>The database row survives with all of its settings, so the world keeps its
+     * identifier, spawn, PvP flag, enter permission and generation overrides. Only
+     * the terrain is destroyed. That is the whole point of reset as distinct from
+     * delete-then-create, and consumers of {@code MVWorldResetCompletedEvent} rely
+     * on it.
+     *
+     * <p>For a {@code PLOT} world the plot rows are purged too, since every claim
+     * would otherwise point at terrain that no longer exists.
+     *
+     * <p>Passing {@code newSeed} is currently advisory: the world is recreated
+     * through the same generator path as the original, and Bukkit assigns a fresh
+     * seed whenever the level data is gone. The flag is carried on the events so
+     * consumers can distinguish intent.
+     *
+     * @param identifier the managed world identifier
+     * @param newSeed    whether the caller intends a fresh seed
+     * @return a future completing with {@code true} if the world was regenerated
+     */
+    @Override
+    public @NotNull CompletableFuture<Boolean> resetWorld(@NotNull String identifier, boolean newSeed) {
+        var cached = worldFactory.getCachedWorld(identifier);
+        if (cached.isEmpty()) {
+            logger.warn("Cannot reset '{}': not a managed world", identifier);
+            return CompletableFuture.completedFuture(false);
+        }
+        final var mvWorld = cached.get();
+
+        if (EventDispatch.fireSync(new MVWorldResetEvent(mvWorld.toSnapshot(), newSeed))) {
+            logger.debug("Reset of world '{}' cancelled by a listener", identifier);
+            return CompletableFuture.completedFuture(false);
+        }
+
+        logger.info("Resetting world '{}' (newSeed={})", identifier, newSeed);
+        return cascadeDeletePlots(identifier)
+                .thenCompose(plotsPurged -> unloadAndWipe(identifier)
+                        .thenCompose(wiped -> Boolean.TRUE.equals(wiped)
+                                ? regenerate(mvWorld, newSeed, plotsPurged)
+                                : CompletableFuture.completedFuture(false)))
+                .exceptionally(ex -> {
+                    logger.error("Failed to reset world '{}': {}", identifier, rootMessage(ex));
+                    return false;
+                });
+    }
+
+    /**
+     * Unloads a world and deletes its folder. Extracted from
+     * {@link #resetWorld(String, boolean)} to keep that method within the cognitive
+     * complexity limit.
+     *
+     * @param identifier the world identifier
+     * @return a future completing with {@code true} once the folder is gone
+     */
+    private @NotNull CompletableFuture<Boolean> unloadAndWipe(@NotNull String identifier) {
+        var unloaded = new CompletableFuture<Boolean>();
+        // fireEvents = false: reset is announced through its own event pair, and the
+        // world is coming straight back, so an unload/load burst would be misleading.
+        scheduler.runSync(() -> unloaded.complete(worldFactory.unloadWorld(identifier, false, false)));
+        return unloaded.thenCompose(ok -> {
+            if (!Boolean.TRUE.equals(ok)) {
+                logger.error("Cannot reset '{}': world would not unload", identifier);
+                return CompletableFuture.completedFuture(false);
+            }
+            return worldFactory.deleteWorldFiles(identifier);
+        });
+    }
+
+    /**
+     * Recreates the Bukkit world for a reset and re-caches the surviving row.
+     *
+     * @param mvWorld     the surviving database row
+     * @param newSeed     whether the caller intended a fresh seed
+     * @param plotsPurged how many plot claims the reset removed
+     * @return a future completing with {@code true} if the world came back
+     */
+    private @NotNull CompletableFuture<Boolean> regenerate(@NotNull MVWorld mvWorld,
+                                                           boolean newSeed,
+                                                           int plotsPurged) {
+        var done = new CompletableFuture<Boolean>();
+        scheduler.runSync(() -> {
+            var world = worldFactory.createBukkitWorld(
+                    mvWorld.getIdentifier(), mvWorld.getEnvironment(), mvWorld.getType(),
+                    mvWorld.getPlotSizeOverride(), mvWorld.getRoadWidthOverride(),
+                    mvWorld.getSchematicName());
+            if (world == null) {
+                logger.error("Reset of '{}' wiped the world but failed to recreate it",
+                        mvWorld.getIdentifier());
+                done.complete(false);
+                return;
+            }
+            worldFactory.cacheWorld(mvWorld);
+            var spawn = mvWorld.getSpawnLocation();
+            if (spawn != null) {
+                world.setSpawnLocation(spawn.getBlockX(), spawn.getBlockY(), spawn.getBlockZ());
+            }
+            logger.info("Reset world '{}' ({} plot(s) purged)", mvWorld.getIdentifier(), plotsPurged);
+            Bukkit.getPluginManager().callEvent(
+                    new MVWorldResetCompletedEvent(mvWorld.toSnapshot(), newSeed, plotsPurged));
+            done.complete(true);
+        });
+        return done;
+    }
+
+    // ── Clone ───────────────────────────────────────────────────────────────────
+
+    /**
+     * Copies a managed world, terrain and settings, under a new identifier.
+     *
+     * <p>The clone inherits type, environment, spawn and generation overrides. It does
+     * not inherit the global-spawn flag, because only one world may hold it, and it
+     * does not inherit plot claims - a cloned {@code PLOT} world starts unclaimed.
+     *
+     * @param source the world to copy
+     * @param target the new identifier
+     * @return a future completing with the clone's snapshot, or empty on failure
+     */
+    @Override
+    public @NotNull CompletableFuture<Optional<MVWorldSnapshot>> cloneWorld(@NotNull String source,
+                                                                            @NotNull String target) {
+        var cached = worldFactory.getCachedWorld(source);
+        if (cached.isEmpty()) {
+            logger.warn("Cannot clone '{}': not a managed world", source);
+            return CompletableFuture.completedFuture(Optional.empty());
+        }
+        if (worldFactory.getCachedWorld(target).isPresent() || Bukkit.getWorld(target) != null) {
+            logger.warn("Cannot clone to '{}': a world with that name already exists", target);
+            return CompletableFuture.completedFuture(Optional.empty());
+        }
+        if (isAtWorldLimit()) {
+            logger.warn("Cannot clone '{}': world limit reached ({}/{})",
+                    source, getWorldCount(), getMaxWorlds());
+            return CompletableFuture.completedFuture(Optional.empty());
+        }
+
+        final var sourceWorld = cached.get();
+        if (EventDispatch.fireSync(new MVWorldCloneEvent(sourceWorld.toSnapshot(), target))) {
+            logger.debug("Clone of world '{}' cancelled by a listener", source);
+            return CompletableFuture.completedFuture(Optional.empty());
+        }
+
+        // Flush the source to disk first, otherwise recently modified chunks are
+        // still only in memory and the copy silently loses them.
+        var saved = new CompletableFuture<Void>();
+        scheduler.runSync(() -> {
+            var live = Bukkit.getWorld(source);
+            if (live != null) {
+                live.save();
+            }
+            saved.complete(null);
+        });
+
+        return saved
+                .thenCompose(v -> worldFactory.copyWorldFiles(source, target))
+                .thenCompose(copied -> Boolean.TRUE.equals(copied)
+                        ? persistClone(sourceWorld, target)
+                        : CompletableFuture.completedFuture(Optional.<MVWorldSnapshot>empty()))
+                .exceptionally(ex -> {
+                    logger.error("Failed to clone '{}' to '{}': {}", source, target, rootMessage(ex));
+                    return Optional.empty();
+                });
+    }
+
+    /**
+     * Persists and loads a freshly copied world folder. Extracted from
+     * {@link #cloneWorld(String, String)} to keep that method within the cognitive
+     * complexity limit.
+     *
+     * @param sourceWorld the world that was copied
+     * @param target      the clone's identifier
+     * @return a future completing with the clone's snapshot, or empty on failure
+     */
+    private @NotNull CompletableFuture<Optional<MVWorldSnapshot>> persistClone(@NotNull MVWorld sourceWorld,
+                                                                               @NotNull String target) {
+        var clone = MVWorld.builder()
+                .identifier(target)
+                .type(sourceWorld.getType())
+                .environment(sourceWorld.getEnvironment())
+                .spawnLocation(sourceWorld.getSpawnLocation())
+                // Never copied: only one world may be the global spawn.
+                .globalizedSpawn(false)
+                .pvpEnabled(sourceWorld.isPvpEnabled())
+                .plotSizeOverride(sourceWorld.getPlotSizeOverride())
+                .roadWidthOverride(sourceWorld.getRoadWidthOverride())
+                .schematicName(sourceWorld.getSchematicName())
+                .buildLocked(sourceWorld.isBuildLocked())
+                .build();
+        clone.setBuildLockInteractionMode(sourceWorld.getBuildLockInteractionMode());
+        clone.setEnterPermission(sourceWorld.getEnterPermission());
+
+        return repository.saveWorld(clone).thenCompose(persisted -> {
+            var loaded = new CompletableFuture<Optional<MVWorldSnapshot>>();
+            scheduler.runSync(() -> {
+                var world = worldFactory.loadWorld(persisted);
+                if (world == null) {
+                    logger.error("Cloned files for '{}' but the world would not load", target);
+                    loaded.complete(Optional.empty());
+                    return;
+                }
+                logger.info("Cloned world '{}' to '{}'", sourceWorld.getIdentifier(), target);
+                Bukkit.getPluginManager().callEvent(
+                        new MVWorldClonedEvent(sourceWorld.toSnapshot(), persisted.toSnapshot()));
+                loaded.complete(Optional.of(persisted.toSnapshot()));
+            });
+            return loaded;
+        });
+    }
+
+    // ── Unload ──────────────────────────────────────────────────────────────────
+
+    /**
+     * Unloads a managed world without deleting it.
+     *
+     * <p>Players in the world are moved to the default world's spawn. The world folder
+     * and database row both survive, so {@code /mv load} brings it back.
+     *
+     * @param identifier the managed world identifier
+     * @param save       whether to save chunks before unloading
+     * @return a future completing with {@code true} if the world was unloaded
+     */
+    @Override
+    public @NotNull CompletableFuture<Boolean> unloadWorld(@NotNull String identifier, boolean save) {
+        var result = new CompletableFuture<Boolean>();
+        scheduler.runSync(() -> result.complete(worldFactory.unloadWorld(identifier, save)));
+        return result;
     }
 
     /**

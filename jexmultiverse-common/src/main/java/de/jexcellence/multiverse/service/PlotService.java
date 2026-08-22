@@ -493,22 +493,23 @@ public class PlotService {
      * included). Used by {@link MultiverseService#deleteWorld(String)} so
      * deleting a world doesn't leave orphan plot rows pointing at it.
      */
-    public @NotNull CompletableFuture<Void> deletePlotsInWorld(@NotNull String worldName) {
+    public @NotNull CompletableFuture<Integer> deletePlotsInWorld(@NotNull String worldName) {
         var doomed = new ArrayList<Plot>();
         for (var p : byId.values()) {
             if (p.getWorldName().equals(worldName)) doomed.add(p);
         }
-        if (doomed.isEmpty()) return CompletableFuture.completedFuture(null);
+        if (doomed.isEmpty()) return CompletableFuture.completedFuture(0);
 
-        logger.info("Cascade-deleting {} plot row(s) for world '{}'", doomed.size(), worldName);
+        final int purged = doomed.size();
+        logger.info("Cascade-deleting {} plot row(s) for world '{}'", purged, worldName);
         CompletableFuture<Void> chain = CompletableFuture.completedFuture(null);
         for (var plot : doomed) {
-            // purgePlotRows skips wall ops - the world is about to be deleted
-            // so there's no point trying to repaint anything in it.
+            // purgePlotRows skips wall ops - the world is about to be deleted or
+            // regenerated, so there's no point trying to repaint anything in it.
             chain = chain.thenCompose(v -> purgePlotRows(plot).thenApply(ok -> null));
             uncachePlot(plot);
         }
-        return chain;
+        return chain.thenApply(v -> purged);
     }
 
     // ── Merging ─────────────────────────────────────────────────────────────────

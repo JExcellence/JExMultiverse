@@ -26,12 +26,14 @@ import org.jetbrains.annotations.Nullable;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -57,6 +59,13 @@ public class WorldFactory {
     private final SchematicService schematics;
 
     private final Map<String, MVWorld> worldCache = new ConcurrentHashMap<>();
+
+    /**
+     * Files never carried into a cloned world. {@code uid.dat} would duplicate the
+     * source world's UUID and make the server refuse to load one of the pair;
+     * {@code session.lock} is held by the running server and is recreated on load.
+     */
+    private static final Set<String> SKIPPED_ON_COPY = Set.of("uid.dat", "session.lock");
 
     public WorldFactory(@NotNull JavaPlugin plugin,
                         @NotNull MVWorldRepository repository,
@@ -357,7 +366,71 @@ public class WorldFactory {
         return success;
     }
 
-    // ── World deletion ──────────────────────────────────────────────────────────
+    // ── World copy / deletion ───────────────────────────────────────────────────
+
+    /**
+     * Copies a world folder on disk under a new name.
+     *
+     * <p>Skips {@code uid.dat} and {@code session.lock}. Copying {@code uid.dat} would
+     * give the clone the source world's UUID, which makes the server refuse to load
+     * one of them; {@code session.lock} is held by the running server and is
+     * regenerated on load anyway.
+     *
+     * <p>Runs entirely off the main thread. The caller is responsible for saving the
+     * source world first, otherwise recently changed chunks may not be on disk yet.
+     *
+     * @param sourceName the world folder to copy
+     * @param targetName the new folder name
+     * @return a future completing with {@code true} if the copy succeeded
+     */
+    public @NotNull CompletableFuture<Boolean> copyWorldFiles(@NotNull String sourceName,
+                                                              @NotNull String targetName) {
+        return CompletableFuture.supplyAsync(() -> {
+            var container = Bukkit.getWorldContainer().getAbsolutePath();
+            var source = Path.of(container, sourceName);
+            var target = Path.of(container, targetName);
+
+            if (!Files.exists(source)) {
+                logger.error("Cannot clone '{}': world folder does not exist", sourceName);
+                return false;
+            }
+            if (Files.exists(target)) {
+                logger.error("Cannot clone to '{}': target folder already exists", targetName);
+                return false;
+            }
+
+            try (var walk = Files.walk(source)) {
+                walk.forEach(path -> copyOneEntry(source, target, path));
+                logger.info("Copied world folder '{}' to '{}'", sourceName, targetName);
+                return true;
+            } catch (IOException e) {
+                logger.error("Failed to copy world folder '{}' to '{}'", sourceName, targetName, e);
+                return false;
+            }
+        });
+    }
+
+    /**
+     * Copies a single entry of a world folder, skipping the two files that must not
+     * be duplicated. Extracted to keep {@link #copyWorldFiles} within the cognitive
+     * complexity limit.
+     *
+     * @param source the source root
+     * @param target the target root
+     * @param path   the entry being copied
+     */
+    private void copyOneEntry(@NotNull Path source, @NotNull Path target, @NotNull Path path) {
+        var name = path.getFileName().toString();
+        if (SKIPPED_ON_COPY.contains(name)) {
+            return;
+        }
+        try {
+            Files.copy(path, target.resolve(source.relativize(path)),
+                    StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException e) {
+            logger.warn("Failed to copy '{}' while cloning: {}", path, e.getMessage());
+        }
+    }
 
     /**
      * Deletes the world folder from disk using {@link Files#walk}.

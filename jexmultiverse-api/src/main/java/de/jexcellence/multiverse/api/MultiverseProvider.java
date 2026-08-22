@@ -109,6 +109,48 @@ public interface MultiverseProvider {
      */
     boolean isManaged(@NotNull String worldName);
 
+    /**
+     * Regenerates a managed world in place, keeping its identity and settings.
+     *
+     * <p>Terrain is destroyed; the database row, identifier, spawn and generation
+     * overrides all survive. For a {@link MVWorldType#PLOT} world the plot claims are
+     * purged too. This is deliberately different from deleting and recreating a
+     * world, and consumers should treat the two cases differently.
+     *
+     * @param identifier the managed world identifier
+     * @param newSeed    whether the caller intends a fresh seed
+     * @return a future completing with {@code true} if the world was regenerated
+     * @since 3.7.0
+     */
+    @NotNull CompletableFuture<Boolean> resetWorld(@NotNull String identifier, boolean newSeed);
+
+    /**
+     * Copies a managed world, terrain and settings, under a new identifier.
+     *
+     * <p>The clone does not inherit the source world's global-spawn flag, because only
+     * one world may hold it, and does not inherit plot claims.
+     *
+     * @param source the world to copy
+     * @param target the new identifier
+     * @return a future completing with the clone's snapshot, or empty on failure
+     * @since 3.7.0
+     */
+    @NotNull CompletableFuture<Optional<MVWorldSnapshot>> cloneWorld(@NotNull String source,
+                                                                     @NotNull String target);
+
+    /**
+     * Unloads a managed world without deleting it.
+     *
+     * <p>Players in the world are moved to the default world's spawn. The world folder
+     * and database row survive, so the world can be loaded again later.
+     *
+     * @param identifier the managed world identifier
+     * @param save       whether to save chunks before unloading
+     * @return a future completing with {@code true} if the world was unloaded
+     * @since 3.7.0
+     */
+    @NotNull CompletableFuture<Boolean> unloadWorld(@NotNull String identifier, boolean save);
+
     // ── Plot grid (PLOT-type worlds only) ──────────────────────────────────────
 
     /**
