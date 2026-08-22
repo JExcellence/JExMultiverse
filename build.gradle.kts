@@ -27,14 +27,25 @@ tasks.register("buildAll") {
 tasks.register("publishLocal") {
     group = "publishing"
     description = "Publishes all modules to local Maven repository"
+
+    // Captured at configuration time: reading project.group/version inside doLast
+    // is unsupported with the configuration cache and silently prints "unspecified".
+    val publishedGroup = project.group.toString()
+    val publishedVersion = project.version.toString()
+
     dependsOn(
+        // The root aggregate (artifactId "jexmultiverse") is what consumers reference
+        // through libs.jexmultiverse. Omitting it here meant a version bump left the
+        // catalog pointing at an artifact that had never been published, which only
+        // surfaced as an unresolvable dependency in a downstream plugin.
+        ":JExMultiverse:publishMavenPublicationToMavenLocal",
         ":JExMultiverse:jexmultiverse-api:publishMavenPublicationToMavenLocal",
         ":JExMultiverse:jexmultiverse-common:publishMavenPublicationToMavenLocal",
         ":JExMultiverse:jexmultiverse-free:publishMavenShadowPublicationToMavenLocal",
         ":JExMultiverse:jexmultiverse-premium:publishMavenShadowPublicationToMavenLocal",
     )
     doLast {
-        println("Published ${project.group}:jexmultiverse-*:${project.version} to local Maven")
+        println("Published $publishedGroup:jexmultiverse*:$publishedVersion to local Maven")
     }
 }
 
