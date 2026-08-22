@@ -117,10 +117,6 @@ public class WorldProtectionListener implements Listener {
         }
         if (mode == BuildLockInteractionMode.SAFE && isSafeBlockedInteraction(target)) {
             event.setCancelled(true);
-            return;
-        }
-        if (target.isInteractable()) {
-            return;
         }
     }
 

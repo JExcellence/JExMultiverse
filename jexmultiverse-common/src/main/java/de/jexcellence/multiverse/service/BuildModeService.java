@@ -39,6 +39,8 @@ public final class BuildModeService implements Listener {
     }
 
     /**
+     * Returns whether the given player currently has build mode enabled.
+     *
      * @param playerId the player's UUID
      * @return whether the player currently has build mode enabled
      */

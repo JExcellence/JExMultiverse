@@ -3,7 +3,6 @@ package de.jexcellence.multiverse.listener;
 import de.jexcellence.jexplatform.logging.JExLogger;
 import de.jexcellence.multiverse.database.entity.MVWorld;
 import de.jexcellence.multiverse.factory.WorldFactory;
-import de.jexcellence.multiverse.service.MultiverseService;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -37,14 +36,11 @@ import java.util.Optional;
  */
 public class SpawnListener implements Listener {
 
-    private final MultiverseService service;
     private final WorldFactory factory;
     private final JExLogger logger;
 
-    public SpawnListener(@NotNull MultiverseService service,
-                         @NotNull WorldFactory factory,
+    public SpawnListener(@NotNull WorldFactory factory,
                          @NotNull JExLogger logger) {
-        this.service = service;
         this.factory = factory;
         this.logger = logger;
     }

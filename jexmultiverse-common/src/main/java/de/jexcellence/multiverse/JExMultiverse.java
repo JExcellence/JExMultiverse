@@ -2,19 +2,23 @@ package de.jexcellence.multiverse;
 
 import com.raindropcentral.commands.CommandFactory;
 import com.raindropcentral.commands.v2.argument.ArgumentTypeRegistry;
+import de.jexcellence.jehibernate.config.PropertyLoader;
 import de.jexcellence.jehibernate.core.JEHibernate;
 import de.jexcellence.jexplatform.JExPlatform;
 import de.jexcellence.jexplatform.logging.JExLogger;
 import de.jexcellence.jexplatform.logging.LogLevel;
 import de.jexcellence.jexplatform.schematic.edit.SchematicEditor;
+import de.jexcellence.jexplatform.schematic.edit.SelectionBorderService;
 import de.jexcellence.jexplatform.schematic.edit.SelectionService;
 import de.jexcellence.jexplatform.utility.workload.WorkloadExecutor;
 import de.jexcellence.multiverse.api.MultiverseProvider;
 import de.jexcellence.multiverse.command.EnvironmentArgumentType;
+import de.jexcellence.multiverse.command.MultiverseHandler;
 import de.jexcellence.multiverse.command.PlotArgumentType;
 import de.jexcellence.multiverse.command.PlotFlagArgumentType;
 import de.jexcellence.multiverse.command.PlotHandler;
 import de.jexcellence.multiverse.command.R18nCommandMessages;
+import de.jexcellence.multiverse.command.SpawnHandler;
 import de.jexcellence.multiverse.command.WallMaterialArgumentType;
 import de.jexcellence.multiverse.command.WorldArgumentType;
 import de.jexcellence.multiverse.config.TranslationKeyMerger;
@@ -38,7 +42,9 @@ import de.jexcellence.multiverse.view.PlotMembersView;
 import de.jexcellence.multiverse.view.PlotMenuView;
 import me.devnatan.inventoryframework.ViewFrame;
 import java.io.File;
+import java.util.ArrayList;
 import org.bukkit.Bukkit;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
@@ -196,14 +202,14 @@ public abstract class JExMultiverse {
             final File bukkitYml = new File("bukkit.yml");
             if (!bukkitYml.exists()) return;
 
-            final org.bukkit.configuration.file.YamlConfiguration config =
-                    org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(bukkitYml);
+            final YamlConfiguration config =
+                    YamlConfiguration.loadConfiguration(bukkitYml);
             final var worldsSection = config.getConfigurationSection("worlds");
             if (worldsSection == null) return;
 
             final File container = resolveWorldContainer();
             boolean configDirty = false;
-            for (final String worldName : new java.util.ArrayList<>(worldsSection.getKeys(false))) {
+            for (final String worldName : new ArrayList<>(worldsSection.getKeys(false))) {
                 final String generator = worldsSection.getString(worldName + ".generator");
                 if (generator == null || !generator.startsWith("JExMultiverse:")) continue;
 
@@ -233,8 +239,8 @@ public abstract class JExMultiverse {
         }
     }
 
-    private void deleteStaleUidDat(@org.jetbrains.annotations.NotNull File container,
-                                    @org.jetbrains.annotations.NotNull String worldName) {
+    private void deleteStaleUidDat(@NotNull File container,
+                                    @NotNull String worldName) {
         final File uidDat = new File(new File(container, worldName), "uid.dat");
         if (uidDat.exists()) {
             try {
@@ -265,7 +271,7 @@ public abstract class JExMultiverse {
 
         jeHibernate = JEHibernate.builder()
                 .configuration(config -> config.fromProperties(
-                        de.jexcellence.jehibernate.config.PropertyLoader.load(
+                        PropertyLoader.load(
                                 plugin.getDataFolder(), "database", "hibernate.properties")))
                 .scanPackages("de.jexcellence.multiverse.database")
                 .build();
@@ -342,7 +348,7 @@ public abstract class JExMultiverse {
         var schematicEditor = new SchematicEditor(logger, workloadExecutor,
                 worldFactory.schematics().platform());
         // Live particle wireframe of the pos1↔pos2 selection (toggle: /mv selection).
-        var selectionBorder = new de.jexcellence.jexplatform.schematic.edit.SelectionBorderService(
+        var selectionBorder = new SelectionBorderService(
                 selectionService, platform.scheduler());
         Bukkit.getPluginManager().registerEvents(selectionBorder, plugin);
 
@@ -361,12 +367,12 @@ public abstract class JExMultiverse {
 
         // Register each YAML tree against its handler map.
         factory.registerTree("commands/multiverse.yml",
-                new de.jexcellence.multiverse.command.MultiverseHandler(
+                new MultiverseHandler(
                         multiverseService, worldFactory, viewFrame, plugin,
                         selectionService, schematicEditor, workloadExecutor, selectionBorder).handlerMap(),
                 messages, registry);
         factory.registerTree("commands/spawn.yml",
-                new de.jexcellence.multiverse.command.SpawnHandler(
+                new SpawnHandler(
                         multiverseService, plugin).handlerMap(),
                 messages, registry);
         factory.registerTree("commands/plot.yml",
@@ -379,7 +385,7 @@ public abstract class JExMultiverse {
 
     private void registerListeners() {
         var pm = Bukkit.getPluginManager();
-        pm.registerEvents(new SpawnListener(multiverseService, worldFactory, logger), plugin);
+        pm.registerEvents(new SpawnListener(worldFactory, logger), plugin);
         pm.registerEvents(new PlotProtectionListener(plotService, multiverseService, plugin), plugin);
         pm.registerEvents(new PlotFlagListener(plotService), plugin);
         pm.registerEvents(new SelectionWandListener(selectionService), plugin);

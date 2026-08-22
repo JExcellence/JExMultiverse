@@ -202,6 +202,13 @@ public final class MultiverseHandler {
             return;
         }
 
+        if (!service.isTypeSupportedOnPlatform(worldType)) {
+            r18n().msg("multiverse.type_not_supported_on_platform").prefix()
+                    .with("type", worldType.name())
+                    .send(sender);
+            return;
+        }
+
         if (service.isAtWorldLimit()) {
             r18n().msg("multiverse.world_limit_reached").prefix()
                     .with("max", String.valueOf(service.getMaxWorlds()))

@@ -5,6 +5,7 @@ multiverse:
   invalid_environment: "<gradient:#dc143c:#b22222>Fehler:</gradient> <white>Unbekannte Umgebung <gradient:#ff7f50:#ff4500>{environment}</gradient>. Erlaubt: NORMAL, NETHER, THE_END.</white>"
   invalid_type: "<gradient:#dc143c:#b22222>Fehler:</gradient> <white>Unbekannter Welttyp <gradient:#ff7f50:#ff4500>{type}</gradient>. Erlaubt: DEFAULT, VOID, PLOT.</white>"
   type_not_available: "<gradient:#dc143c:#b22222>Fehler:</gradient> <white>Welttyp <gradient:#ff7f50:#ff4500>{type}</gradient> ist in dieser Edition nicht verfügbar.</white>"
+  type_not_supported_on_platform: "<gradient:#dc143c:#b22222>Fehler:</gradient> <white>Welttyp <gradient:#ff7f50:#ff4500>{type}</gradient> kann auf Folia nicht erstellt werden. Folia erzeugt Welten über den NMS-Loader, der keine Generatoren unterstützt - die Welt würde als Void generiert werden. Nutze stattdessen DEFAULT oder VOID.</white>"
   world_limit_reached: "<gradient:#dc143c:#b22222>Limit erreicht:</gradient> <white>Maximale Welt-Anzahl erreicht (<gradient:#ff7f50:#ff4500>{max}</gradient>).</white>"
   world_does_not_exist: "<gradient:#dc143c:#b22222>Fehler:</gradient> <white>Welt <gradient:#ff7f50:#ff4500>{world_name}</gradient> existiert nicht.</white>"
   world_already_exists: "<gradient:#dc143c:#b22222>Fehler:</gradient> <white>Welt <gradient:#ff7f50:#ff4500>{world_name}</gradient> existiert bereits.</white>"

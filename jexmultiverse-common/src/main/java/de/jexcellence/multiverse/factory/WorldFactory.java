@@ -21,6 +21,7 @@ import org.jetbrains.annotations.Nullable;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -225,25 +226,25 @@ public class WorldFactory {
                 logger.info("No persisted worlds to load");
                 return CompletableFuture.completedFuture(null);
             }
-            // Each world creation runs on the main thread (Bukkit requirement)
-            // and signals its CompletableFuture when done, so the caller can
-            // block until every world is actually in Bukkit + cached. Otherwise
-            // services that depend on the world cache (PlotService, the
-            // protection listener, etc.) start running before the worlds exist.
-            // Each world creation runs on the appropriate platform
-            // thread (main on Paper, global region on Folia) and signals
-            // its CompletableFuture when done. Bukkit.getScheduler()
-            // throws UOE on Folia - PlatformScheduler.runSync targets
-            // GlobalRegionScheduler there.
+            // Each world creation runs on the appropriate platform thread (main on
+            // Paper, global region on Folia) and signals its CompletableFuture when
+            // done, so the caller can block until every world is actually in Bukkit
+            // and cached. Otherwise services depending on the world cache
+            // (PlotService, the protection listeners) start before the worlds exist.
+            // Bukkit.getScheduler() throws UOE on Folia - PlatformScheduler.runSync
+            // targets GlobalRegionScheduler there.
             logger.info("Loading {} world(s) from database...", worlds.size());
-            var futures = new java.util.ArrayList<CompletableFuture<Void>>(worlds.size());
+            var futures = new ArrayList<CompletableFuture<Void>>(worlds.size());
             for (var mvWorld : worlds) {
                 var f = new CompletableFuture<Void>();
                 scheduler.runSync(() -> {
                     try {
                         loadWorld(mvWorld);
-                    } catch (Throwable t) {
-                        logger.error("Failed to load world '{}'", mvWorld.getIdentifier(), t);
+                    } catch (Exception e) {
+                        if (e instanceof InterruptedException) {
+                            Thread.currentThread().interrupt();
+                        }
+                        logger.error("Failed to load world '{}'", mvWorld.getIdentifier(), e);
                     } finally {
                         f.complete(null);
                     }

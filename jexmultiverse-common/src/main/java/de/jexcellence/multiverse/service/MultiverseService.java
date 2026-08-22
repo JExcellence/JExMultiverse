@@ -27,10 +27,16 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.ExecutionException;
 
 /**
  * Unified multiverse service implementing both internal operations and the
@@ -108,6 +114,24 @@ public class MultiverseService implements MultiverseProvider {
      */
     public boolean isWorldTypeAvailable(@NotNull MVWorldType type) {
         return edition.availableTypes().contains(type);
+    }
+
+    /**
+     * Checks whether a world type can actually be created on the running platform,
+     * independently of the edition.
+     *
+     * <p>Folia patches {@code CraftServer#createWorld} to throw, so worlds are built
+     * through the NMS runtime loader instead. That loader has no generator plumbing
+     * and always declares the void generator, which means a {@link MVWorldType#PLOT}
+     * world created there would generate as void. Such requests are refused rather
+     * than silently degraded.
+     *
+     * @param type the world generation type
+     * @return {@code true} if the type can be created on this platform
+     */
+    public boolean isTypeSupportedOnPlatform(@NotNull MVWorldType type) {
+        return type != MVWorldType.PLOT
+                || !(ServerDetector.detect() instanceof ServerType.Folia);
     }
 
     // ── World CRUD ──────────────────────────────────────────────────────────────
@@ -225,10 +249,11 @@ public class MultiverseService implements MultiverseProvider {
      * the world is created with the type's default generator.
      */
     private @NotNull CompletableFuture<Optional<MVWorld>> createViaFolia(@NotNull CreationSpec spec) {
-        if (spec.effectivePlotSize() != null || spec.effectiveRoadWidth() != null
-                || spec.effectiveSchematic() != null) {
-            logger.warn("[worlds] PLOT overrides (size/road/schematic) not yet supported on Folia - creating '{}' with defaults",
-                    spec.name());
+        // PLOT is rejected inside ensureViaNms - see the guard there. Schematics are
+        // silently unsupported on this path, so warn rather than pretend they applied.
+        if (spec.effectiveSchematic() != null) {
+            logger.warn("[worlds] schematic '{}' is not supported on the Folia creation path - creating '{}' without it",
+                    spec.effectiveSchematic(), spec.name());
         }
         return ensureViaNms(spec.name(), spec.environment(), spec.type()).thenCompose(snapOpt -> {
             if (snapOpt.isEmpty()) {
@@ -461,6 +486,7 @@ public class MultiverseService implements MultiverseProvider {
      * @param location   the new spawn location
      * @return a future containing {@code true} if the spawn was set
      */
+    @Override
     public @NotNull CompletableFuture<Boolean> setSpawn(@NotNull String identifier,
                                                          @NotNull Location location) {
         return getWorldEntity(identifier).thenCompose(opt -> {
@@ -644,21 +670,6 @@ public class MultiverseService implements MultiverseProvider {
     }
 
     /**
-     * Returns the server's default world (the first world in Bukkit's world list).
-     * This world serves as the parent for NORMAL companion worlds on Folia.
-     *
-     * @return the default world, or {@code null} if no worlds are loaded
-     */
-    private @Nullable World getDefaultWorld() {
-        var worlds = Bukkit.getWorlds();
-        if (worlds.isEmpty()) {
-            logger.error("Cannot resolve default world: server has no loaded worlds");
-            return null;
-        }
-        return worlds.get(0);
-    }
-
-    /**
      * Checks whether the world limit has been reached for the current edition.
      */
     public boolean isAtWorldLimit() {
@@ -776,7 +787,7 @@ public class MultiverseService implements MultiverseProvider {
         //     MVWorld row failed to persist.
 
         logger.debug("[startup] Scanning for loaded worlds to adopt...");
-        var adoptionFutures = new java.util.ArrayList<CompletableFuture<Void>>();
+        var adoptionFutures = new ArrayList<CompletableFuture<Void>>();
         for (var world : Bukkit.getWorlds()) {
             var worldName = world.getName();
 
@@ -911,6 +922,16 @@ public class MultiverseService implements MultiverseProvider {
             @NotNull String name,
             World.@NotNull Environment environment,
             @NotNull MVWorldType type) {
+        // PLOT is refused rather than silently degraded: this path always declares
+        // the void generator in bukkit.yml (there is no generator plumbing in the
+        // NMS loader), so a PLOT world created here would generate as void with no
+        // roads and no plots. Failing loudly beats handing back a broken world.
+        if (type == MVWorldType.PLOT) {
+            logger.error("[worlds] PLOT worlds cannot be created on Folia - the NMS runtime loader " +
+                    "has no generator plumbing and would produce a void world. Refusing to create '{}'.", name);
+            return CompletableFuture.completedFuture(Optional.empty());
+        }
+
         final Optional<RuntimeWorldLoader> backend = RuntimeWorldLoaderResolver.resolve(logger);
         if (backend.isEmpty()) {
             logger.error("[worlds] no RuntimeWorldLoader available - cannot create '{}' on Folia. " +
@@ -921,14 +942,14 @@ public class MultiverseService implements MultiverseProvider {
         // Step 1: write the on-disk skeleton so the NMS storage source can
         // open the directory. Idempotent - re-runs are safe.
         try {
-            final java.io.File worldContainer = Bukkit.getWorldContainer();
-            final java.io.File worldDir = new java.io.File(worldContainer, name);
-            if (!worldDir.exists() || !new java.io.File(worldDir, "level.dat").exists()) {
+            final File worldContainer = Bukkit.getWorldContainer();
+            final File worldDir = new File(worldContainer, name);
+            if (!worldDir.exists() || !new File(worldDir, "level.dat").exists()) {
                 LevelDatBuilder.writeSkeleton(name, environment);
             } else {
                 deleteStaleUidDat(worldDir);
             }
-        } catch (final java.io.IOException ex) {
+        } catch (final IOException ex) {
             logger.error("[worlds] failed to write skeleton for '{}': {}", name, ex.getMessage());
             return CompletableFuture.completedFuture(Optional.empty());
         }
@@ -938,7 +959,7 @@ public class MultiverseService implements MultiverseProvider {
         // doesn't trigger any restart-required path.
         try {
             BukkitYmlWriter.declare(name, GeneratorRegistry.voidGeneratorRef(), logger);
-        } catch (final java.io.IOException ex) {
+        } catch (final IOException ex) {
             logger.warn("[worlds] bukkit.yml write failed for '{}' (non-fatal): {}", name, ex.getMessage());
         }
 
@@ -949,7 +970,7 @@ public class MultiverseService implements MultiverseProvider {
         final CompletableFuture<World> loadFuture;
         try {
             loadFuture = loader.loadWorld(name, environment);
-        } catch (final java.io.IOException ex) {
+        } catch (final IOException ex) {
             logger.error("[worlds] loader rejected '{}': {}", name, ex.getMessage());
             return CompletableFuture.completedFuture(Optional.empty());
         }
@@ -976,14 +997,14 @@ public class MultiverseService implements MultiverseProvider {
      * NMS layer doesn't trip on a UUID collision with a previously-attempted
      * load. Non-fatal: the server may log a UUID warning but still loads.
      */
-    private void deleteStaleUidDat(@NotNull java.io.File worldDir) {
-        final java.io.File uidDat = new java.io.File(worldDir, "uid.dat");
+    private void deleteStaleUidDat(@NotNull File worldDir) {
+        final File uidDat = new File(worldDir, "uid.dat");
         if (!uidDat.exists()) {
             return;
         }
         try {
-            java.nio.file.Files.delete(uidDat.toPath());
-        } catch (final java.io.IOException ignored) {
+            Files.delete(uidDat.toPath());
+        } catch (final IOException ignored) {
             // Non-fatal: server may log a UUID collision warning but will still load
         }
     }
@@ -1037,8 +1058,8 @@ public class MultiverseService implements MultiverseProvider {
      */
     private static @NotNull String rootMessage(@NotNull Throwable t) {
         Throwable cur = t;
-        while ((cur instanceof java.util.concurrent.CompletionException
-                || cur instanceof java.util.concurrent.ExecutionException)
+        while ((cur instanceof CompletionException
+                || cur instanceof ExecutionException)
                 && cur.getCause() != null) {
             cur = cur.getCause();
         }

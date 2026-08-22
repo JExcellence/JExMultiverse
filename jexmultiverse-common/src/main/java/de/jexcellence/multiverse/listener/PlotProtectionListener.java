@@ -4,6 +4,7 @@ import de.jexcellence.jextranslate.R18nManager;
 import de.jexcellence.multiverse.service.MultiverseService;
 import de.jexcellence.multiverse.service.PlotFlag;
 import de.jexcellence.multiverse.service.PlotService;
+import org.bukkit.Location;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Projectile;
@@ -19,6 +20,9 @@ import org.bukkit.event.player.PlayerBucketEmptyEvent;
 import org.bukkit.event.player.PlayerBucketFillEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
+import java.util.Map;
 
 /**
  * Gates block / interaction events in PLOT worlds against plot ownership +
@@ -136,14 +140,14 @@ public class PlotProtectionListener implements Listener {
      *   <li>Otherwise → allow.</li>
      * </ol>
      */
-    private boolean denyBuild(@NotNull Player player, @NotNull org.bukkit.Location location) {
+    private boolean denyBuild(@NotNull Player player, @NotNull Location location) {
         if (player.hasPermission("jexplots.bypass.protect")) return false;
 
         var plot = plots.getPlotAt(location).orElse(null);
         if (plot != null) {
             if (plots.canBuild(player, plot)) return false;
             warnDenied(player, "plot.protection.denied",
-                    java.util.Map.of("owner_name", plot.getOwnerName()));
+                    Map.of("owner_name", plot.getOwnerName()));
             return true;
         }
 
@@ -151,19 +155,19 @@ public class PlotProtectionListener implements Listener {
         var inUnclaimedPlot = mv.plotAt(location).isPresent();
         if (inUnclaimedPlot) {
             if (player.hasPermission("jexplots.bypass.roads")) return false;
-            warnDenied(player, "plot.protection.unclaimed_denied", java.util.Map.of());
+            warnDenied(player, "plot.protection.unclaimed_denied", Map.of());
             return true;
         }
         if (mv.isRoadOrBorder(location)) {
             if (player.hasPermission("jexplots.bypass.roads")) return false;
-            warnDenied(player, "plot.protection.road_denied", java.util.Map.of());
+            warnDenied(player, "plot.protection.road_denied", Map.of());
             return true;
         }
         return false;
     }
 
     /** Resolves the attacking player from a direct hit or a projectile's shooter. */
-    private static @org.jetbrains.annotations.Nullable Player attackerFrom(@NotNull Entity damager) {
+    private static @Nullable Player attackerFrom(@NotNull Entity damager) {
         if (damager instanceof Player player) {
             return player;
         }
@@ -174,7 +178,7 @@ public class PlotProtectionListener implements Listener {
     }
 
     private void warnDenied(@NotNull Player player, @NotNull String key,
-                             @NotNull java.util.Map<String, Object> placeholders) {
+                             @NotNull Map<String, Object> placeholders) {
         var meta = player.getMetadata(WARN_KEY);
         long now = System.currentTimeMillis();
         long last = meta.isEmpty() ? 0L : meta.get(0).asLong();

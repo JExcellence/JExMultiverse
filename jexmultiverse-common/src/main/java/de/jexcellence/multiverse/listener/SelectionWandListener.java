@@ -17,7 +17,7 @@ import org.jetbrains.annotations.NotNull;
  * never break or place blocks.
  *
  * @author JExcellence
- * @since 4.0.0
+ * @since 3.3.0
  */
 public final class SelectionWandListener implements Listener {
 
@@ -27,6 +27,13 @@ public final class SelectionWandListener implements Listener {
         this.selections = selections;
     }
 
+    /**
+     * Sets selection position 1 on left-click and position 2 on right-click while
+     * the player is holding the selection wand, cancelling the interaction so the
+     * block is neither broken nor used.
+     *
+     * @param event the interact event
+     */
     @EventHandler(ignoreCancelled = false)
     public void onInteract(@NotNull PlayerInteractEvent event) {
         if (event.getHand() != EquipmentSlot.HAND || event.getClickedBlock() == null) {
