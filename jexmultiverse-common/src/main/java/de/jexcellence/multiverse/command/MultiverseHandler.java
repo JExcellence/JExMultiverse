@@ -824,9 +824,10 @@ public final class MultiverseHandler {
         if (selection == null) {
             return;
         }
+        final boolean includeAir = ctx.get("include_air", Boolean.class).orElse(Boolean.TRUE);
         r18n().msg(MSG_EDIT_WORKING).prefix()
                 .with(KEY_COUNT, String.valueOf(selection.blockCount())).send(player);
-        editor.copy(player.getUniqueId(), selection, feetAnchor(player)).thenAccept(count ->
+        editor.copy(player.getUniqueId(), selection, feetAnchor(player), includeAir).thenAccept(count ->
                 r18n().msg("multiverse.edit.copy_done").prefix()
                         .with(KEY_COUNT, String.valueOf(count)).send(player));
     }
@@ -839,9 +840,10 @@ public final class MultiverseHandler {
         if (selection == null) {
             return;
         }
+        final boolean includeAir = ctx.get("include_air", Boolean.class).orElse(Boolean.TRUE);
         r18n().msg(MSG_EDIT_WORKING).prefix()
                 .with(KEY_COUNT, String.valueOf(selection.blockCount())).send(player);
-        editor.cut(player.getUniqueId(), selection, feetAnchor(player)).thenAccept(count ->
+        editor.cut(player.getUniqueId(), selection, feetAnchor(player), includeAir).thenAccept(count ->
                 r18n().msg("multiverse.edit.cut_done").prefix()
                         .with(KEY_COUNT, String.valueOf(count)).send(player));
     }

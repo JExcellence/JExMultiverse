@@ -136,11 +136,15 @@ subcommands:
     description: "Copy the current selection (blocks + entities) to your clipboard"
     permission: "jexmultiverse.command.schematic"
     senders: [player]
+    argumentSchema:
+      - { name: include_air, type: boolean, required: false, description: "Include air blocks (default true). Set false to overlay only solid blocks on paste." }
 
   - name: cut
     description: "Copy the selection to your clipboard, then clear it"
     permission: "jexmultiverse.command.schematic"
     senders: [player]
+    argumentSchema:
+      - { name: include_air, type: boolean, required: false, description: "Include air blocks (default true). Set false to keep only solid blocks." }
 
   - name: save
     description: "Save the current selection to a .nbt schematic (entities included)"
