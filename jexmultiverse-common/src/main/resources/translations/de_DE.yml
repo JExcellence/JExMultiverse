@@ -25,6 +25,11 @@ multiverse:
   creating_world: "<gradient:#ffa500:#ff8c00>Erstelle:</gradient> <white>Erstelle Welt <gradient:#ff7f50:#ff4500>{world_name}</gradient>...</white>"
   create_success: "<gradient:#32cd32:#228b22>Erstellt:</gradient> <white>Welt <gradient:#ff7f50:#ff4500>{world_name}</gradient> erstellt. <gray>(Typ: {type}, Env: {environment})</gray></white>"
   create_failed: "<gradient:#dc143c:#b22222>Fehler:</gradient> <white>Welt <gradient:#ff7f50:#ff4500>{world_name}</gradient> konnte nicht erstellt werden.</white>"
+  import_already_managed: "<gradient:#ffa500:#ff8c00>Hinweis:</gradient> <white>Welt <gradient:#ff7f50:#ff4500>{world_name}</gradient> wird bereits verwaltet.</white>"
+  import_folder_not_found: "<gradient:#dc143c:#b22222>Fehler:</gradient> <white>Kein Weltordner <gradient:#ff7f50:#ff4500>{world_name}</gradient> auf der Platte gefunden. Nutze /mv create für eine neue Welt.</white>"
+  import_importing: "<gradient:#ffa500:#ff8c00>Importiere:</gradient> <white>Registriere existierende Welt <gradient:#ff7f50:#ff4500>{world_name}</gradient>...</white>"
+  import_success: "<gradient:#32cd32:#228b22>Importiert:</gradient> <white>Welt <gradient:#ff7f50:#ff4500>{world_name}</gradient> registriert. <gray>(Typ: {type}, Umgebung: {environment})</gray></white>"
+  import_failed: "<gradient:#dc143c:#b22222>Fehler:</gradient> <white>Welt <gradient:#ff7f50:#ff4500>{world_name}</gradient> konnte nicht importiert werden.</white>"
 
   deleting_world: "<gradient:#ffa500:#ff8c00>Lösche:</gradient> <white>Lösche Welt <gradient:#ff7f50:#ff4500>{world_name}</gradient>...</white>"
   delete_success: "<gradient:#32cd32:#228b22>Gelöscht:</gradient> <white>Welt <gradient:#ff7f50:#ff4500>{world_name}</gradient> wurde gelöscht.</white>"

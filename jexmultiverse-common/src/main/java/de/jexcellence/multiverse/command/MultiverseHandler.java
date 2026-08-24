@@ -97,6 +97,7 @@ public final class MultiverseHandler {
         return Map.ofEntries(
                 Map.entry("multiverse",                this::onRoot),
                 Map.entry("multiverse.create",         this::onCreate),
+                Map.entry("multiverse.import",         this::onImport),
                 Map.entry("multiverse.delete",         this::onDelete),
                 Map.entry("multiverse.edit",           this::onEdit),
                 Map.entry("multiverse.teleport",       this::onTeleport),
@@ -255,6 +256,54 @@ public final class MultiverseHandler {
                             .send(sender));
             return null;
         });
+    }
+
+    // ── Import ──────────────────────────────────────────────────────────────────
+
+    /**
+     * Registers an EXISTING world folder into the registry: loads it (applying the given
+     * environment + type/generator) and persists an {@link MVWorld} row via
+     * {@link MultiverseService#ensureWorld}. This is the missing counterpart to {@code create} for
+     * folders that already exist on disk (or are already loaded in Bukkit) but were never registered
+     * with us - the case where {@code create} says "already exists" yet {@code list}/{@code load}
+     * cannot see the world. It never generates a fresh world; use {@code /mv create} for that.
+     */
+    private void onImport(@NotNull CommandContext ctx) {
+        var sender = ctx.sender();
+        var name = ctx.require("name", String.class);
+        var environment = ctx.get(KEY_ENVIRONMENT, World.Environment.class).orElse(World.Environment.NORMAL);
+        var worldType = ctx.get("type", MVWorldType.class).orElse(MVWorldType.DEFAULT);
+
+        if (worldFactory.getCachedWorld(name).isPresent()) {
+            r18n().msg("multiverse.import_already_managed").prefix().with(KEY_WORLD_NAME, name).send(sender);
+            return;
+        }
+        // The folder must exist on disk (or the world must be live in Bukkit). Import registers an
+        // EXISTING world; it never creates a new one.
+        var folder = new java.io.File(Bukkit.getWorldContainer(), name);
+        if (Bukkit.getWorld(name) == null && !new java.io.File(folder, "level.dat").isFile()) {
+            r18n().msg("multiverse.import_folder_not_found").prefix().with(KEY_WORLD_NAME, name).send(sender);
+            return;
+        }
+
+        r18n().msg("multiverse.import_importing").prefix().with(KEY_WORLD_NAME, name).send(sender);
+
+        service.ensureWorld(name, environment, worldType).thenAccept(opt ->
+                PlatformScheduler.of(plugin).runSync(() -> {
+                    if (opt.isPresent()) {
+                        r18n().msg("multiverse.import_success").prefix()
+                                .with(KEY_WORLD_NAME, name)
+                                .with(KEY_ENVIRONMENT, environment.name())
+                                .with("type", worldType.name())
+                                .send(sender);
+                    } else {
+                        r18n().msg("multiverse.import_failed").prefix().with(KEY_WORLD_NAME, name).send(sender);
+                    }
+                })).exceptionally(ex -> {
+                    PlatformScheduler.of(plugin).runSync(() ->
+                            r18n().msg("multiverse.import_failed").prefix().with(KEY_WORLD_NAME, name).send(sender));
+                    return null;
+                });
     }
 
     // ── Unload ──────────────────────────────────────────────────────────────────

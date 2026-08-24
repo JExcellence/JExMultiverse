@@ -25,6 +25,11 @@ multiverse:
   creating_world: "<gradient:#ffa500:#ff8c00>Creating:</gradient> <white>Creating world <gradient:#ff7f50:#ff4500>{world_name}</gradient>...</white>"
   create_success: "<gradient:#32cd32:#228b22>Created:</gradient> <white>World <gradient:#ff7f50:#ff4500>{world_name}</gradient> created. <gray>(type: {type}, env: {environment})</gray></white>"
   create_failed: "<gradient:#dc143c:#b22222>Error:</gradient> <white>Failed to create world <gradient:#ff7f50:#ff4500>{world_name}</gradient>.</white>"
+  import_already_managed: "<gradient:#ffa500:#ff8c00>Note:</gradient> <white>World <gradient:#ff7f50:#ff4500>{world_name}</gradient> is already managed.</white>"
+  import_folder_not_found: "<gradient:#dc143c:#b22222>Error:</gradient> <white>No world folder <gradient:#ff7f50:#ff4500>{world_name}</gradient> found on disk. Use /mv create for a new world.</white>"
+  import_importing: "<gradient:#ffa500:#ff8c00>Importing:</gradient> <white>Registering existing world <gradient:#ff7f50:#ff4500>{world_name}</gradient>...</white>"
+  import_success: "<gradient:#32cd32:#228b22>Imported:</gradient> <white>World <gradient:#ff7f50:#ff4500>{world_name}</gradient> registered. <gray>(type: {type}, env: {environment})</gray></white>"
+  import_failed: "<gradient:#dc143c:#b22222>Error:</gradient> <white>Failed to import world <gradient:#ff7f50:#ff4500>{world_name}</gradient>.</white>"
 
   deleting_world: "<gradient:#ffa500:#ff8c00>Deleting:</gradient> <white>Deleting world <gradient:#ff7f50:#ff4500>{world_name}</gradient>...</white>"
   delete_success: "<gradient:#32cd32:#228b22>Deleted:</gradient> <white>World <gradient:#ff7f50:#ff4500>{world_name}</gradient> has been deleted.</white>"

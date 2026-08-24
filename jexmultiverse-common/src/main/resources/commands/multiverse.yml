@@ -21,6 +21,15 @@ subcommands:
       - { name: road_width,  type: positive_long,                                                  required: false, description: "Per-world road width override (PLOT only)" }
       - { name: schematic,   type: string,                                                         required: false, description: "Schematic file name without .nbt extension (PLOT only)" }
 
+  - name: import
+    description: "Register an existing world folder (load it + add it to the world list)"
+    permission: "jexmultiverse.command.create"
+    senders: [player]
+    argumentSchema:
+      - { name: name,        type: string,                                            required: true,  description: "Existing world folder name" }
+      - { name: environment, type: environment,                                       required: false, description: "World environment (NORMAL, NETHER, THE_END)" }
+      - { name: type,        type: "enum(de.jexcellence.multiverse.api.MVWorldType)", required: false, description: "World type / generator (DEFAULT, VOID, PLOT, ...)" }
+
   - name: delete
     description: "Delete a world"
     permission: "jexmultiverse.command.delete"
