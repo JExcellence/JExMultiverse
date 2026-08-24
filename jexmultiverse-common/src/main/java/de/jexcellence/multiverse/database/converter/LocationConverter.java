@@ -11,7 +11,9 @@ import org.bukkit.Location;
 import org.bukkit.World;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Collections;
 import java.util.UUID;
+import java.util.WeakHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -28,12 +30,28 @@ public class LocationConverter implements AttributeConverter<Location, String> {
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final String FIELD_WORLD_UUID = "worldUuid";
     private static final String FIELD_WORLD_NAME = "worldName";
+    /**
+     * Per-instance cache of the raw DB JSON a {@link Location} was hydrated from.
+     * When Hibernate flushes a Location whose world hasn't loaded yet (startup
+     * dirty-check runs before Multiverse boots the worlds), we fall back to this
+     * cached JSON so the column stays intact instead of being overwritten to
+     * {@code null} - which used to silently drop global spawns across restarts.
+     */
+    private static final java.util.Map<Location, String> ORIGIN_JSON =
+            Collections.synchronizedMap(new WeakHashMap<>());
 
     @Override
     public String convertToDatabaseColumn(@Nullable final Location location) {
         if (location == null) return null;
         final World world = location.getWorld();
         if (world == null) {
+            // Preserve the row: if this Location was hydrated from the DB and its
+            // world hasn't reloaded yet, return the JSON we read last time so the
+            // column keeps its coords instead of blanking on flush.
+            final String cached = ORIGIN_JSON.get(location);
+            if (cached != null) {
+                return cached;
+            }
             LOGGER.warning("Cannot serialize location without world reference");
             return null;
         }
@@ -68,9 +86,13 @@ public class LocationConverter implements AttributeConverter<Location, String> {
             // before use. Returning null here is what silently dropped the global
             // spawn on join.
             final World world = resolveWorld(worldUuidStr, worldName);
-            return new Location(world, node.get("x").asDouble(), node.get("y").asDouble(),
+            final Location location = new Location(world, node.get("x").asDouble(), node.get("y").asDouble(),
                     node.get("z").asDouble(), (float) node.get("yaw").asDouble(),
                     (float) node.get("pitch").asDouble());
+            // Stash the source JSON so a later flush with an unloaded world can
+            // round-trip the column back unchanged instead of dropping it.
+            ORIGIN_JSON.put(location, json);
+            return location;
         } catch (JsonProcessingException e) {
             LOGGER.log(Level.SEVERE, "Failed to deserialize location from JSON: " + json, e);
             return null;
