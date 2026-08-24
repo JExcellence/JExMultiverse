@@ -147,11 +147,12 @@ subcommands:
       - { name: include_air, type: boolean, required: false, description: "Include air blocks (default true). Set false to keep only solid blocks." }
 
   - name: save
-    description: "Save the current selection to a .nbt schematic (entities included)"
+    description: "Save the current selection to a .schem file (no freeze; blocks + signs/skulls/banners, no chest contents)"
     permission: "jexmultiverse.command.schematic"
     senders: [player]
     argumentSchema:
-      - { name: name, type: string, required: true, description: "Output schematic name (without extension)" }
+      - { name: name,        type: string,  required: true,  description: "Output schematic name (without extension)" }
+      - { name: include_air, type: boolean, required: false, description: "Include air blocks (default true). Air is skipped on paste regardless, so this rarely matters." }
 
   - name: rotate
     description: "Rotate your clipboard clockwise (90, 180 or 270 degrees)"

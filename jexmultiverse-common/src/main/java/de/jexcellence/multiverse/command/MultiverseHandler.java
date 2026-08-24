@@ -879,16 +879,21 @@ public final class MultiverseHandler {
             return;
         }
         var name = ctx.require("name", String.class);
-        try {
-            long count = editor.save(selection, name);
-            worldFactory.schematics().invalidate(name);
+        final boolean includeAir = ctx.get("include_air", Boolean.class).orElse(Boolean.TRUE);
+        r18n().msg(MSG_EDIT_WORKING).prefix()
+                .with(KEY_COUNT, String.valueOf(selection.blockCount())).send(player);
+        editor.save(selection, name, includeAir).whenComplete((count, error) -> {
+            if (error != null) {
+                plugin.getLogger().log(java.util.logging.Level.SEVERE, error,
+                        () -> "Failed to save schematic " + name);
+                r18n().msg("multiverse.edit.save_failed").prefix()
+                        .with(KEY_SCHEMATIC, name).send(player);
+                return;
+            }
             r18n().msg("multiverse.edit.save_done").prefix()
                     .with(KEY_SCHEMATIC, name)
                     .with(KEY_COUNT, String.valueOf(count)).send(player);
-        } catch (IllegalStateException e) {
-            r18n().msg("multiverse.edit.save_failed").prefix()
-                    .with(KEY_SCHEMATIC, name).send(player);
-        }
+        });
     }
 
     private void onRotate(@NotNull CommandContext ctx) {
