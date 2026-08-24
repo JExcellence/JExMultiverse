@@ -217,13 +217,6 @@ public class MultiverseService implements MultiverseProvider {
             return CompletableFuture.completedFuture(Optional.empty());
         }
 
-        // Fired inline on the caller thread, before anything is written to disk or
-        // the database. Reached from command handlers and GUI views, both main-thread.
-        if (EventDispatch.fireSync(new MVWorldCreateEvent(name, environment, type))) {
-            logger.debug("Creation of world '{}' cancelled by a listener", name);
-            return CompletableFuture.completedFuture(Optional.empty());
-        }
-
         // Overrides only apply to PLOT worlds; clear them otherwise so the
         // entity faithfully represents how the world was generated. Non-PLOT
         // worlds (hub/spawn builds) paste the schematic once at spawn after
@@ -235,6 +228,41 @@ public class MultiverseService implements MultiverseProvider {
                 isPlot ? schematicName : null,
                 isPlot ? null : schematicName);
 
+        // Fired before anything is written to disk or the database, and marshalled to
+        // the main thread when the caller is not on it. This is public API returning a
+        // future, so another plugin may call it from its own async work - JExOneblock
+        // does, from a ForkJoinPool worker, which is how this was found.
+        return EventDispatch.fireCancellable(new MVWorldCreateEvent(name, environment, type),
+                        scheduler)
+                .thenCompose(cancelled -> {
+                    if (Boolean.TRUE.equals(cancelled)) {
+                        logger.debug("Creation of world '{}' cancelled by a listener", name);
+                        return CompletableFuture.completedFuture(Optional.<MVWorld>empty());
+                    }
+                    return startCreation(spec);
+                });
+    }
+
+    /**
+     * Parameters for a single world-creation request, with PLOT overrides
+     * already resolved against {@code type} ({@code null} for non-PLOT worlds).
+     */
+    private record CreationSpec(@NotNull String name,
+                                World.@NotNull Environment environment,
+                                @NotNull MVWorldType type,
+                                @Nullable Integer effectivePlotSize,
+                                @Nullable Integer effectiveRoadWidth,
+                                @Nullable String effectiveSchematic,
+                                @Nullable String pasteSchematic) {}
+
+    /**
+     * Begins the actual creation, once no listener has objected.
+     *
+     * @param spec what to build
+     * @return a future completing with the created world
+     */
+    private @NotNull CompletableFuture<Optional<MVWorld>> startCreation(
+            @NotNull final CreationSpec spec) {
         // On Folia, Bukkit.createWorld throws UOE - route through the NMS-based
         // ensureViaNms path (same code path used by ensureWorld).
         if (ServerDetector.detect() instanceof ServerType.Folia) {
@@ -249,18 +277,6 @@ public class MultiverseService implements MultiverseProvider {
         scheduler.runSync(() -> createPaperWorld(spec, future));
         return future;
     }
-
-    /**
-     * Parameters for a single world-creation request, with PLOT overrides
-     * already resolved against {@code type} ({@code null} for non-PLOT worlds).
-     */
-    private record CreationSpec(@NotNull String name,
-                                World.@NotNull Environment environment,
-                                @NotNull MVWorldType type,
-                                @Nullable Integer effectivePlotSize,
-                                @Nullable Integer effectiveRoadWidth,
-                                @Nullable String effectiveSchematic,
-                                @Nullable String pasteSchematic) {}
 
     /**
      * Folia world creation via the NMS factory. PLOT overrides aren't yet
@@ -398,16 +414,35 @@ public class MultiverseService implements MultiverseProvider {
         //      a Location with a null World.
         //   3. THEN unload the Bukkit world on the main thread.
         //   4. THEN walk the world folder and delete the files.
-        var future = new CompletableFuture<Boolean>();
-
         // Snapshot up front: by the time the post-event fires the row is gone, and a
         // listener still wants to know what was deleted. Also the last point at which
         // a listener can veto, before plots cascade.
         final var snapshot = worldFactory.getCachedWorld(identifier).map(MVWorld::toSnapshot).orElse(null);
-        if (snapshot != null && EventDispatch.fireSync(new MVWorldDeleteEvent(snapshot))) {
-            logger.debug("Deletion of world '{}' cancelled by a listener", identifier);
-            return CompletableFuture.completedFuture(false);
+        if (snapshot == null) {
+            return startDeletion(identifier, null);
         }
+        return EventDispatch.fireCancellable(new MVWorldDeleteEvent(snapshot), scheduler)
+                .thenCompose(cancelled -> {
+                    if (Boolean.TRUE.equals(cancelled)) {
+                        logger.debug("Deletion of world '{}' cancelled by a listener", identifier);
+                        return CompletableFuture.completedFuture(false);
+                    }
+                    return startDeletion(identifier, snapshot);
+                });
+    }
+
+    /**
+     * Performs the deletion, once no listener has objected.
+     *
+     * @param identifier the world name
+     * @param snapshot   what the world looked like, for the post-event; {@code null}
+     *                   when the world was not in the cache to begin with
+     * @return a future containing {@code true} if deletion succeeded
+     */
+    private @NotNull CompletableFuture<Boolean> startDeletion(
+            @NotNull final String identifier,
+            @Nullable final MVWorldSnapshot snapshot) {
+        var future = new CompletableFuture<Boolean>();
 
         cascadeDeletePlots(identifier)
                 .thenCompose(v -> repository.deleteByIdentifier(identifier))
@@ -486,11 +521,23 @@ public class MultiverseService implements MultiverseProvider {
         }
         final var mvWorld = cached.get();
 
-        if (EventDispatch.fireSync(new MVWorldResetEvent(mvWorld.toSnapshot(), newSeed))) {
-            logger.debug("Reset of world '{}' cancelled by a listener", identifier);
-            return CompletableFuture.completedFuture(false);
-        }
+        return EventDispatch.fireCancellable(
+                        new MVWorldResetEvent(mvWorld.toSnapshot(), newSeed), scheduler)
+                .thenCompose(cancelled -> {
+                    if (Boolean.TRUE.equals(cancelled)) {
+                        logger.debug("Reset of world '{}' cancelled by a listener", identifier);
+                        return CompletableFuture.completedFuture(false);
+                    }
+                    return startReset(mvWorld, identifier, newSeed);
+                });
+    }
 
+    /**
+     * Performs the reset, once no listener has objected.
+     */
+    private @NotNull CompletableFuture<Boolean> startReset(@NotNull final MVWorld mvWorld,
+                                                           @NotNull final String identifier,
+                                                           final boolean newSeed) {
         logger.info("Resetting world '{}' (newSeed={})", identifier, newSeed);
         return cascadeDeletePlots(identifier)
                 .thenCompose(plotsPurged -> unloadAndWipe(identifier)
@@ -596,11 +643,24 @@ public class MultiverseService implements MultiverseProvider {
         }
 
         final var sourceWorld = cached.get();
-        if (EventDispatch.fireSync(new MVWorldCloneEvent(sourceWorld.toSnapshot(), target))) {
-            logger.debug("Clone of world '{}' cancelled by a listener", source);
-            return CompletableFuture.completedFuture(Optional.empty());
-        }
+        return EventDispatch.fireCancellable(
+                        new MVWorldCloneEvent(sourceWorld.toSnapshot(), target), scheduler)
+                .thenCompose(cancelled -> {
+                    if (Boolean.TRUE.equals(cancelled)) {
+                        logger.debug("Clone of world '{}' cancelled by a listener", source);
+                        return CompletableFuture.completedFuture(Optional.<MVWorldSnapshot>empty());
+                    }
+                    return startClone(sourceWorld, source, target);
+                });
+    }
 
+    /**
+     * Performs the clone, once no listener has objected.
+     */
+    private @NotNull CompletableFuture<Optional<MVWorldSnapshot>> startClone(
+            @NotNull final MVWorld sourceWorld,
+            @NotNull final String source,
+            @NotNull final String target) {
         // Flush the source to disk first, otherwise recently modified chunks are
         // still only in memory and the copy silently loses them.
         var saved = new CompletableFuture<Void>();

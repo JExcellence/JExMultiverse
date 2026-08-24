@@ -6,6 +6,7 @@ import org.bukkit.event.Cancellable;
 import org.bukkit.event.Event;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -89,12 +90,59 @@ public final class EventDispatch {
     }
 
     /**
-     * Fires a cancellable event inline and reports whether it was cancelled.
+     * Fires a cancellable event on the main thread and reports whether it was cancelled.
      *
-     * <p>The caller must already be on the main server thread. Cancellable events
-     * cannot be marshalled, because the decision has to be available before the
-     * operation continues. Every cancellable fire site in JExMultiverse is reached
-     * from a command handler or GUI view, both of which are main-thread.
+     * <p>The decision has to be available before the operation continues, which is
+     * why the result is a future rather than a boolean: when the caller is off the
+     * main thread the event is marshalled and the caller resumes afterwards, instead
+     * of racing ahead of the handlers.
+     *
+     * <p>This is what public, future-returning API methods must use.
+     * {@link #fireSync(Event)} throws off-thread, which is correct for internal
+     * main-thread-only operations and wrong for an API another plugin can call from
+     * wherever it likes.
+     *
+     * @param event     the cancellable event to fire
+     * @param scheduler the platform scheduler used to reach the main thread
+     * @return a future completing with {@code true} if a listener cancelled the event
+     */
+    public static @NotNull CompletableFuture<Boolean> fireCancellable(
+            @NotNull final Event event, @NotNull final PlatformScheduler scheduler) {
+        if (BOOTSTRAPPING.get()) {
+            return CompletableFuture.completedFuture(false);
+        }
+        if (Bukkit.isPrimaryThread()) {
+            return CompletableFuture.completedFuture(callAndReadCancelled(event));
+        }
+        final var decided = new CompletableFuture<Boolean>();
+        scheduler.runSync(() -> {
+            try {
+                decided.complete(callAndReadCancelled(event));
+            } catch (final RuntimeException e) {
+                // Never leave the caller's future hanging: a listener that throws
+                // would otherwise stall the whole world operation forever.
+                decided.completeExceptionally(e);
+            }
+        });
+        return decided;
+    }
+
+    private static boolean callAndReadCancelled(@NotNull final Event event) {
+        Bukkit.getPluginManager().callEvent(event);
+        return event instanceof Cancellable cancellable && cancellable.isCancelled();
+    }
+
+    /**
+     * Fires a cancellable event inline, requiring the caller to be on the main thread.
+     *
+     * <p>For operations that are main-thread-only in Bukkit regardless of this event -
+     * loading and unloading a world - where being off-thread is already a bug and a
+     * loud failure beats a silent one.
+     *
+     * <p>Do not use this from anything reachable through the public API.
+     * {@code MultiverseService} returns futures and is called by other plugins from
+     * their own async work, so its cancellable events go through
+     * {@link #fireCancellable(Event, PlatformScheduler)}.
      *
      * @param event the cancellable event to fire
      * @return {@code true} if a listener cancelled the event
@@ -108,7 +156,6 @@ public final class EventDispatch {
             throw new IllegalStateException(
                     "Cancellable event " + event.getEventName() + " must be fired on the main thread");
         }
-        Bukkit.getPluginManager().callEvent(event);
-        return event instanceof Cancellable cancellable && cancellable.isCancelled();
+        return callAndReadCancelled(event);
     }
 }
