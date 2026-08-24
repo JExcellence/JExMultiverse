@@ -141,6 +141,21 @@ public class WorldFactory {
                                               @Nullable Integer plotSizeOverride,
                                               @Nullable Integer roadWidthOverride,
                                               @Nullable String schematicName) {
+        // Pre-checks: catch the two Bukkit-refuses-silently cases before we ask
+        // it to create anything, so the failure is diagnosable instead of a bare
+        // 'Failed to create' line.
+        World existing = org.bukkit.Bukkit.getWorld(name);
+        if (existing != null) {
+            logger.warn("World '{}' is already loaded in Bukkit (env={}); use import/adopt, not create.",
+                    name, existing.getEnvironment());
+            return existing;
+        }
+        java.io.File folder = new java.io.File(org.bukkit.Bukkit.getWorldContainer(), name);
+        if (folder.isDirectory() && new java.io.File(folder, "level.dat").isFile()) {
+            logger.warn("World folder '{}' already exists on disk; use '/mv import {}' to adopt it "
+                    + "instead of creating a new one.", name, name);
+            return null;
+        }
         try {
             var creator = new WorldCreator(name)
                     .environment(environment);
@@ -151,16 +166,27 @@ public class WorldFactory {
             }
 
             var world = creator.createWorld();
-            if (world != null) {
-                // Default to not holding spawn chunks resident. A managed world with
-                // keepSpawnLoaded set overrides this in applyWorldSettings.
-                setIntRule(world, "spawnChunkRadius", 0);
-                logger.info("Created Bukkit world '{}' (env={}, type={}, plot-override={}/{}, schematic={})",
-                        name, environment, type, plotSizeOverride, roadWidthOverride, schematicName);
+            if (world == null) {
+                // Bukkit swallowed the failure (usually reserved name / io error);
+                // surface it with the coordinates we asked for so the operator has a
+                // starting point instead of a bare 'null'.
+                logger.error("Bukkit returned null when creating world '{}' (env={}, type={}). "
+                        + "Common causes: reserved name, disk io failure, generator mismatch.",
+                        name, environment, type);
+                return null;
             }
+            // Default to not holding spawn chunks resident. A managed world with
+            // keepSpawnLoaded set overrides this in applyWorldSettings.
+            setIntRule(world, "spawnChunkRadius", 0);
+            logger.info("Created Bukkit world '{}' (env={}, type={}, plot-override={}/{}, schematic={})",
+                    name, environment, type, plotSizeOverride, roadWidthOverride, schematicName);
             return world;
         } catch (Exception e) {
-            logger.error("Failed to create Bukkit world '{}'", name, e);
+            // Log the actual message + exception type so the operator sees WHY,
+            // not just that it failed. Full stack still attached via the throwable arg.
+            String msg = e.getMessage() != null ? e.getMessage() : "no message";
+            logger.error("Failed to create Bukkit world '{}' ({}: {})",
+                    name, e.getClass().getSimpleName(), msg, e);
             return null;
         }
     }
