@@ -557,5 +557,6 @@ jexcommand:
     player-not-online: "<gradient:#dc143c:#b22222>Nicht online:</gradient> <white>{value}</white>"
     player-unknown: "<gradient:#dc143c:#b22222>Unbekannter Spieler:</gradient> <white>{value}</white>"
     invalid-enum: "<gradient:#dc143c:#b22222>Ungültiger Wert:</gradient> <white>{value}</white> <gray>(erlaubt: {options})</gray>"
+    invalid-boolean: "<red><yellow>{value}</yellow> ist ungültig - nutze true / false / yes / no / on / off.</red>"
     invalid-uuid: "<gradient:#dc143c:#b22222>Ungültige UUID:</gradient> <white>{value}</white>"
     expected-single-word: "<gradient:#dc143c:#b22222>Einzelnes Wort ohne Leerzeichen erwartet.</gradient>"

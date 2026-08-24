@@ -52,6 +52,7 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.time.Duration;
 
@@ -377,22 +378,41 @@ public abstract class JExMultiverse {
         // Shared i18n bridge - all framework & plugin keys route through R18nManager.
         var messages = new R18nCommandMessages();
 
-        // Register each YAML tree against its handler map.
-        factory.registerTree("commands/multiverse.yml",
+        // Register each YAML tree against its handler map. The return value is
+        // checked, because registerTree answers null when the tree fails to load and
+        // logs the cause through JExCommand's own logger - which does not reliably
+        // reach the console. /multiverse silently did not exist for a while because a
+        // single unknown argument type failed the whole tree and nothing said so.
+        reportTree("multiverse", factory.registerTree("commands/multiverse.yml",
                 new MultiverseHandler(
                         multiverseService, worldFactory, viewFrame, plugin,
                         selectionService, schematicEditor, workloadExecutor, selectionBorder).handlerMap(),
-                messages, registry);
-        factory.registerTree("commands/spawn.yml",
+                messages, registry));
+        reportTree("spawn", factory.registerTree("commands/spawn.yml",
                 new SpawnHandler(
                         multiverseService, plugin).handlerMap(),
-                messages, registry);
-        factory.registerTree("commands/plot.yml",
+                messages, registry));
+        reportTree("plot", factory.registerTree("commands/plot.yml",
                 new PlotHandler(plotService, multiverseService, worldFactory, viewFrame, plugin).handlerMap(),
-                messages, registry);
+                messages, registry));
 
         // Still let JExCommand auto-register any listener classes under the plugin package.
         factory.registerAllCommandsAndListeners();
+    }
+
+    /**
+     * Says whether a command tree actually registered.
+     *
+     * @param label the command name
+     * @param tree  what {@code registerTree} returned; {@code null} means it failed
+     */
+    private void reportTree(@NotNull String label, @Nullable Object tree) {
+        if (tree == null) {
+            logger.error("/{} FAILED to register - the command will not exist. "
+                    + "A JExCommand parse error above names the cause.", label);
+            return;
+        }
+        logger.info("Registered /{}", label);
     }
 
     /**
