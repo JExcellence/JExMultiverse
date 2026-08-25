@@ -882,7 +882,19 @@ public final class MultiverseHandler {
         final boolean includeAir = ctx.get("include_air", Boolean.class).orElse(Boolean.TRUE);
         r18n().msg(MSG_EDIT_WORKING).prefix()
                 .with(KEY_COUNT, String.valueOf(selection.blockCount())).send(player);
-        editor.save(selection, name, includeAir).whenComplete((count, error) -> {
+        // Report progress every 10% so a large save doesn't look frozen. The
+        // callback fires per chunk column; throttle to decile boundaries.
+        final int[] lastDecile = {0};
+        editor.save(selection, name, includeAir, fraction -> {
+            int decile = (int) (fraction * 10);
+            if (decile > lastDecile[0] && decile < 10) {
+                lastDecile[0] = decile;
+                final int percent = decile * 10;
+                r18n().msg("multiverse.edit.save_progress").prefix()
+                        .with(KEY_SCHEMATIC, name)
+                        .with("percent", String.valueOf(percent)).send(player);
+            }
+        }).whenComplete((count, error) -> {
             if (error != null) {
                 plugin.getLogger().log(java.util.logging.Level.SEVERE, error,
                         () -> "Failed to save schematic " + name);

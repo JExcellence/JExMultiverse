@@ -102,6 +102,7 @@ multiverse:
     paste_done: "<gradient:#32cd32:#228b22>Pasted:</gradient> <white>Clipboard (<gradient:#ff7f50:#ff4500>{width}x{height}x{length}</gradient>) at <gradient:#ff7f50:#ff4500>{x}, {y}, {z}</gradient>.</white>"
     save_done: "<gradient:#32cd32:#228b22>Saved:</gradient> <white><gradient:#ff7f50:#ff4500>{schematic}</gradient> <gray>({count} blocks)</gray> → plugins/JExMultiverse/schematics/.</white>"
     save_failed: "<gradient:#dc143c:#b22222>Error:</gradient> <white>Could not save <gradient:#ff7f50:#ff4500>{schematic}</gradient> - see console.</white>"
+    save_progress: "<gradient:#2DD4BF:#6366F1>Saving</gradient> <white><gradient:#ff7f50:#ff4500>{schematic}</gradient></white> <dark_gray>»</dark_gray> <#67E8F9>{percent}%</#67E8F9>"
     rotate_done: "<gradient:#32cd32:#228b22>Rotated:</gradient> <white>Clipboard turned <gradient:#ff7f50:#ff4500>{degrees}°</gradient> clockwise.</white>"
     rotate_bad_arg: "<gradient:#dc143c:#b22222>Error:</gradient> <white>Use <gradient:#ff7f50:#ff4500>90</gradient>, <gradient:#ff7f50:#ff4500>180</gradient> or <gradient:#ff7f50:#ff4500>270</gradient>.</white>"
     flip_done: "<gradient:#32cd32:#228b22>Flipped:</gradient> <white>Clipboard mirrored across the <gradient:#ff7f50:#ff4500>{axis}</gradient> axis.</white>"

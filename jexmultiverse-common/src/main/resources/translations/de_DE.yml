@@ -102,6 +102,7 @@ multiverse:
     paste_done: "<gradient:#32cd32:#228b22>Eingefügt:</gradient> <white>Zwischenablage (<gradient:#ff7f50:#ff4500>{width}x{height}x{length}</gradient>) bei <gradient:#ff7f50:#ff4500>{x}, {y}, {z}</gradient>.</white>"
     save_done: "<gradient:#32cd32:#228b22>Gespeichert:</gradient> <white><gradient:#ff7f50:#ff4500>{schematic}</gradient> <gray>({count} Blöcke)</gray> → plugins/JExMultiverse/schematics/.</white>"
     save_failed: "<gradient:#dc143c:#b22222>Fehler:</gradient> <white>Konnte <gradient:#ff7f50:#ff4500>{schematic}</gradient> nicht speichern - siehe Konsole.</white>"
+    save_progress: "<gradient:#2DD4BF:#6366F1>Speichere</gradient> <white><gradient:#ff7f50:#ff4500>{schematic}</gradient></white> <dark_gray>»</dark_gray> <#67E8F9>{percent}%</#67E8F9>"
     rotate_done: "<gradient:#32cd32:#228b22>Gedreht:</gradient> <white>Zwischenablage um <gradient:#ff7f50:#ff4500>{degrees}°</gradient> im Uhrzeigersinn gedreht.</white>"
     rotate_bad_arg: "<gradient:#dc143c:#b22222>Fehler:</gradient> <white>Nutze <gradient:#ff7f50:#ff4500>90</gradient>, <gradient:#ff7f50:#ff4500>180</gradient> oder <gradient:#ff7f50:#ff4500>270</gradient>.</white>"
     flip_done: "<gradient:#32cd32:#228b22>Gespiegelt:</gradient> <white>Zwischenablage an der <gradient:#ff7f50:#ff4500>{axis}</gradient>-Achse gespiegelt.</white>"
