@@ -793,6 +793,13 @@ public final class MultiverseHandler {
         long count = selection.blockCount();
         r18n().msg(MSG_EDIT_WORKING).prefix()
                 .with(KEY_COUNT, String.valueOf(count)).send(player);
+        if (count > SchematicEditor.SNAPSHOT_MAX_VOLUME) {
+            // Undo snapshot skipped for regions this large - see SchematicEditor's
+            // SNAPSHOT_MAX_VOLUME. Warn the player before the fill starts so they
+            // know /mv undo won't restore it.
+            r18n().msg("multiverse.edit.undo_skipped").prefix()
+                    .with(KEY_COUNT, String.valueOf(count)).send(player);
+        }
         editor.fill(player.getUniqueId(), selection, material.createBlockData()).thenRun(() ->
                 r18n().msg("multiverse.edit.set_done").prefix()
                         .with(KEY_COUNT, String.valueOf(count))
@@ -855,9 +862,14 @@ public final class MultiverseHandler {
     }
 
     private void onPasteClipboard(@NotNull Player player) {
-        if (editor.clipboard(player.getUniqueId()).isEmpty()) {
+        var clip = editor.clipboard(player.getUniqueId()).orElse(null);
+        if (clip == null) {
             r18n().msg(MSG_EDIT_NO_CLIPBOARD).prefix().send(player);
             return;
+        }
+        if (clip.volume() > SchematicEditor.SNAPSHOT_MAX_VOLUME) {
+            r18n().msg("multiverse.edit.undo_skipped").prefix()
+                    .with(KEY_COUNT, String.valueOf(clip.volume())).send(player);
         }
         editor.paste(player, true, false).thenAccept(result -> result.ifPresent(r ->
                 r18n().msg("multiverse.edit.paste_done").prefix()
@@ -880,8 +892,19 @@ public final class MultiverseHandler {
         }
         var name = ctx.require("name", String.class);
         final boolean includeAir = ctx.get("include_air", Boolean.class).orElse(Boolean.TRUE);
+        long saveCount = selection.blockCount();
+        if (saveCount > SchematicEditor.SAVE_MAX_VOLUME) {
+            // Bail early with an actionable message instead of letting the writer
+            // OOM the server. Splitting a 200M-cell region into 4 quarters brings
+            // each part under the limit.
+            r18n().msg("multiverse.edit.save_too_large").prefix()
+                    .with(KEY_SCHEMATIC, name)
+                    .with(KEY_COUNT, String.valueOf(saveCount))
+                    .with("limit", String.valueOf(SchematicEditor.SAVE_MAX_VOLUME)).send(player);
+            return;
+        }
         r18n().msg(MSG_EDIT_WORKING).prefix()
-                .with(KEY_COUNT, String.valueOf(selection.blockCount())).send(player);
+                .with(KEY_COUNT, String.valueOf(saveCount)).send(player);
         // Report progress every 10% so a large save doesn't look frozen. The
         // callback fires per chunk column; throttle to decile boundaries.
         final int[] lastDecile = {0};
