@@ -119,7 +119,6 @@ multiverse:
     flip_done: "<gradient:#32cd32:#228b22>Flipped:</gradient> <white>Clipboard mirrored across the <gradient:#ff7f50:#ff4500>{axis}</gradient> axis.</white>"
     undo_done: "<gradient:#32cd32:#228b22>Undone:</gradient> <white>Restored the region from your last paste.</white>"
     undo_skipped: "<gradient:#f59e0b:#d97706>Heads up:</gradient> <white>Selection is too large ({count} blocks) - skipping undo snapshot; /mv undo will NOT restore this action.</white>"
-    save_too_large: "<gradient:#dc143c:#b22222>Too large:</gradient> <white>Selection is {count} blocks, limit is {limit}. Split the selection into smaller parts and save them separately (e.g. {schematic}_a, {schematic}_b).</white>"
     undo_empty: "<gradient:#dc143c:#b22222>Nothing:</gradient> <white>No paste to undo.</white>"
 
 multiverse_editor_ui:

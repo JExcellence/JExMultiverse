@@ -120,7 +120,6 @@ multiverse:
     undo_done: "<gradient:#32cd32:#228b22>Rückgängig:</gradient> <white>Bereich des letzten Einfügens wiederhergestellt.</white>"
     undo_empty: "<gradient:#dc143c:#b22222>Nichts:</gradient> <white>Kein Einfügen zum Rückgängigmachen.</white>"
     undo_skipped: "<gradient:#f59e0b:#d97706>Achtung:</gradient> <white>Auswahl ist zu groß ({count} Blöcke) - Undo-Snapshot wird übersprungen, /mv undo wird die Aktion nicht wiederherstellen.</white>"
-    save_too_large: "<gradient:#dc143c:#b22222>Zu groß:</gradient> <white>Auswahl hat {count} Blöcke, Limit ist {limit}. Zerlege die Auswahl in kleinere Teile und speichere sie einzeln (z.B. {schematic}_a, {schematic}_b).</white>"
 
 multiverse_editor_ui:
   title: "<gradient:#ff7f50:#ff4500>Welt bearbeiten</gradient> <dark_gray>({world_name})</dark_gray>"
