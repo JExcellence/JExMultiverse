@@ -145,7 +145,8 @@ public class MultiverseGameRulesView extends PaginatedView<GameRule<?>> {
                                                              @NotNull MVWorld world,
                                                              @NotNull GameRule<?> rule) {
         var stored = world.getGameRules().get(WorldFactory.gameRuleName(rule));
-        var material = materialFor(stored);
+        var live = liveValue(world, rule);
+        var material = materialFor(stored, live);
 
         var placeholders = new HashMap<String, Object>();
         placeholders.put(KEY_RULE, WorldFactory.gameRuleName(rule));
@@ -159,11 +160,30 @@ public class MultiverseGameRulesView extends PaginatedView<GameRule<?>> {
         );
     }
 
-    private static @NotNull Material materialFor(String stored) {
-        if (stored == null) {
+    /**
+     * Managed rules use their stored value's colour so the click state is obvious.
+     * Unmanaged rules fall through to the LIVE value so an admin can see at a
+     * glance which rules the world currently reports as enabled, instead of every
+     * unmanaged rule being gray (which used to hide whether mobGriefing was actually
+     * on or off on that world). GRAY only when the world is unloaded.
+     */
+    private static @NotNull Material materialFor(String stored, @org.jetbrains.annotations.Nullable Boolean live) {
+        if (stored != null) {
+            return VAL_TRUE.equalsIgnoreCase(stored) ? Material.LIME_DYE : Material.RED_DYE;
+        }
+        if (live == null) {
             return Material.GRAY_DYE;
         }
-        return VAL_TRUE.equalsIgnoreCase(stored) ? Material.LIME_DYE : Material.RED_DYE;
+        return live ? Material.LIME_DYE : Material.RED_DYE;
+    }
+
+    private static @org.jetbrains.annotations.Nullable Boolean liveValue(@NotNull MVWorld world, @NotNull GameRule<?> rule) {
+        var live = Bukkit.getWorld(world.getIdentifier());
+        if (live == null) {
+            return null;
+        }
+        var value = live.getGameRuleValue(rule);
+        return value instanceof Boolean b ? b : null;
     }
 
     private static @NotNull String describe(String stored) {

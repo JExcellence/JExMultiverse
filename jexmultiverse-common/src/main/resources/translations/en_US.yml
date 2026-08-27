@@ -1,6 +1,17 @@
 prefix:
   - "<gradient:#ff7f50:#ff4500>Multiverse</gradient> <dark_gray>|</dark_gray> "
 
+# Shared chrome fallbacks used by BaseView / PaginatedView when a specific view
+# omits its own back/page key (see JExPlatform BaseView#i18nWithDefault). Without
+# these the mv edit / gamerules GUIs render raw i18n keys as tile names.
+_defaults:
+  back: "<gradient:#ffa500:#ff6347>← Back</gradient>"
+  page:
+    name: "<gradient:#ff7f50:#ff4500>Page {current}</gradient> <dark_gray>/</dark_gray> <gradient:#ffa500:#ff6347>{total}</gradient>"
+    lore:
+      - "<gray>Left-click: previous page</gray>"
+      - "<gray>Right-click: next page</gray>"
+
 multiverse:
   invalid_environment: "<gradient:#dc143c:#b22222>Error:</gradient> <white>Unknown environment <gradient:#ff7f50:#ff4500>{environment}</gradient>. Use NORMAL, NETHER, or THE_END.</white>"
   invalid_type: "<gradient:#dc143c:#b22222>Error:</gradient> <white>Unknown world type <gradient:#ff7f50:#ff4500>{type}</gradient>. Use DEFAULT, VOID, or PLOT.</white>"

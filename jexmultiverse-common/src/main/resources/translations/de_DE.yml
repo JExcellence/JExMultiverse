@@ -1,6 +1,17 @@
 prefix:
   - "<gradient:#ff7f50:#ff4500>Multiverse</gradient> <dark_gray>|</dark_gray> "
 
+# Shared chrome-Fallbacks für BaseView / PaginatedView, wenn eine View ihre
+# eigenen back/page-Keys weglässt. Ohne diese rendern die mv edit / gamerules
+# GUIs die rohen i18n-Keys statt der Tile-Namen.
+_defaults:
+  back: "<gradient:#ffa500:#ff6347>← Zurück</gradient>"
+  page:
+    name: "<gradient:#ff7f50:#ff4500>Seite {current}</gradient> <dark_gray>/</dark_gray> <gradient:#ffa500:#ff6347>{total}</gradient>"
+    lore:
+      - "<gray>Linksklick: vorherige Seite</gray>"
+      - "<gray>Rechtsklick: nächste Seite</gray>"
+
 multiverse:
   invalid_environment: "<gradient:#dc143c:#b22222>Fehler:</gradient> <white>Unbekannte Umgebung <gradient:#ff7f50:#ff4500>{environment}</gradient>. Erlaubt: NORMAL, NETHER, THE_END.</white>"
   invalid_type: "<gradient:#dc143c:#b22222>Fehler:</gradient> <white>Unbekannter Welttyp <gradient:#ff7f50:#ff4500>{type}</gradient>. Erlaubt: DEFAULT, VOID, PLOT.</white>"
