@@ -2,6 +2,8 @@
 
 World management + plot ownership plugin for Paper servers. Custom generators (void & plot), per-world generation overrides, schematic import (Bukkit + WorldEdit/FAWE), per-plot ownership with trusted/denied members and configurable flags, plot merging, in-game GUIs throughout, full developer API.
 
+> **Status:** BUILT (free + premium editions). **Last verified:** 2026-09-17. **Related:** [../README.md](../README.md), [../JExOneblock/JEXMULTIVERSE_FEATURE_REQUEST.md](../JExOneblock/JEXMULTIVERSE_FEATURE_REQUEST.md) (open Folia companion-world request). Built: `de.jexcellence.multiverse.api.MultiverseProvider` + `jexmultiverse-{api,common,folia-nms,free,premium}` modules.
+
 - World CRUD with three generation types: `DEFAULT` (vanilla), `VOID` (empty), `PLOT` (grid-based plots with roads and walls)
 - Per-world plot generation overrides on `/mv create` (plot size, road width, schematic to paste at every plot)
 - Schematic import - Bukkit `.nbt` (native, no deps) + WorldEdit/FAWE `.schem`/`.schematic` (soft-dep)
@@ -391,3 +393,8 @@ Artifacts:
 - Command framework: JExCommand 2.0
 - i18n: JExTranslate / R18n
 - Schematic loading: Bukkit Structure API + WorldEdit / FastAsyncWorldEdit (optional)
+
+
+## Changelog
+
+- 2026-09-17: doc-quality pass (status banner + cross-link to the open Folia feature request).
