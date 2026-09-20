@@ -663,17 +663,21 @@ public class MultiverseService implements MultiverseProvider {
             @NotNull final String target) {
         // Flush the source to disk first, otherwise recently modified chunks are
         // still only in memory and the copy silently loses them.
-        var saved = new CompletableFuture<Void>();
+        // Also resolve the world folder on the main thread via Bukkit API, because
+        // Bukkit.getWorldContainer() + name sometimes mismatches the actual folder.
+        var saved = new CompletableFuture<java.io.File>();
         scheduler.runSync(() -> {
             var live = Bukkit.getWorld(source);
             if (live != null) {
                 live.save();
+                saved.complete(live.getWorldFolder());
+            } else {
+                saved.complete(null);
             }
-            saved.complete(null);
         });
 
         return saved
-                .thenCompose(v -> worldFactory.copyWorldFiles(source, target))
+                .thenCompose(sourceFolder -> worldFactory.copyWorldFiles(source, target, sourceFolder))
                 .thenCompose(copied -> Boolean.TRUE.equals(copied)
                         ? persistClone(sourceWorld, target)
                         : CompletableFuture.completedFuture(Optional.<MVWorldSnapshot>empty()))

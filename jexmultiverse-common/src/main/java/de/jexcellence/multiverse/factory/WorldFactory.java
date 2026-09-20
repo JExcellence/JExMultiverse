@@ -646,13 +646,26 @@ public class WorldFactory {
      */
     public @NotNull CompletableFuture<Boolean> copyWorldFiles(@NotNull String sourceName,
                                                               @NotNull String targetName) {
+        return copyWorldFiles(sourceName, targetName, null);
+    }
+
+    /**
+     * Overload that accepts the source world folder resolved on the main thread
+     * via {@code Bukkit.getWorld(name).getWorldFolder()}, avoiding a mismatch
+     * between {@code Bukkit.getWorldContainer()} and the actual folder location.
+     */
+    public @NotNull CompletableFuture<Boolean> copyWorldFiles(@NotNull String sourceName,
+                                                              @NotNull String targetName,
+                                                              @Nullable java.io.File resolvedSourceFolder) {
         return CompletableFuture.supplyAsync(() -> {
             var container = Bukkit.getWorldContainer().getAbsolutePath();
-            var source = Path.of(container, sourceName);
+            var source = resolvedSourceFolder != null
+                    ? resolvedSourceFolder.toPath()
+                    : Path.of(container, sourceName);
             var target = Path.of(container, targetName);
 
             if (!Files.exists(source)) {
-                logger.error("Cannot clone '{}': world folder does not exist", sourceName);
+                logger.error("Cannot clone '{}': world folder does not exist (checked {})", sourceName, source);
                 return false;
             }
             if (Files.exists(target)) {
