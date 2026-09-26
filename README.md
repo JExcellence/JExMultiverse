@@ -2,7 +2,7 @@
 
 World management + plot ownership plugin for Paper servers. Custom generators (void & plot), per-world generation overrides, schematic import (Bukkit + WorldEdit/FAWE), per-plot ownership with trusted/denied members and configurable flags, plot merging, in-game GUIs throughout, full developer API.
 
-> **Status:** BUILT (free + premium editions). **Last verified:** 2026-09-17. **Related:** [../README.md](../README.md), [../JExOneblock/JEXMULTIVERSE_FEATURE_REQUEST.md](../JExOneblock/JEXMULTIVERSE_FEATURE_REQUEST.md) (open Folia companion-world request). Built: `de.jexcellence.multiverse.api.MultiverseProvider` + `jexmultiverse-{api,common,folia-nms,free,premium}` modules.
+> **Status:** BUILT (free + premium editions). **Last verified:** 2026-09-26. **Related:** [../README.md](../README.md), [../JExOneblock/JEXMULTIVERSE_FEATURE_REQUEST.md](../JExOneblock/JEXMULTIVERSE_FEATURE_REQUEST.md) (open Folia companion-world request). Built: `de.jexcellence.multiverse.api.MultiverseProvider` + `jexmultiverse-{api,common,folia-nms,free,premium}` modules.
 
 - World CRUD with three generation types: `DEFAULT` (vanilla), `VOID` (empty), `PLOT` (grid-based plots with roads and walls)
 - Per-world plot generation overrides on `/mv create` (plot size, road width, schematic to paste at every plot)
@@ -17,7 +17,7 @@ World management + plot ownership plugin for Paper servers. Custom generators (v
 - Async-first design - all I/O returns `CompletableFuture`; main-thread work is dispatched via Bukkit scheduler
 - Free and Premium editions: Free is capped at 3 worlds with `DEFAULT`/`VOID`; Premium is unlimited and includes `PLOT`
 - Public API via `MultiverseProvider`, registered on Bukkit's `ServicesManager` - exposes plot grid coords/bounds for external plugins
-- Backed by JEHibernate 3.0.3 - H2 by default, MySQL/PostgreSQL/Oracle/SQL Server supported
+- Backed by JEHibernate 4.0.0 (suite catalog `gradle/libs.versions.toml`) - H2 by default, MySQL/PostgreSQL/Oracle/SQL Server supported
 
 
 ## Table of Contents
@@ -46,8 +46,8 @@ World management + plot ownership plugin for Paper servers. Custom generators (v
 
 ## Requirements
 
-- Java 21+
-- Paper 1.19+ (developed against Paper API 1.21.x)
+- Java 25 (suite toolchain)
+- Paper: `paper-plugin.yml` declares `api-version: '1.19'`; the suite builds against Paper `26.2.build.87-stable`
 - JExDependency runtime loader (handles library injection)
 - Optional: WorldEdit or FastAsyncWorldEdit - enables `.schem`/`.schematic` schematic loading. Bukkit `.nbt` works without it.
 
@@ -90,11 +90,11 @@ between merged plots are cleared automatically.
 
 ### Translations
 
-Translation files live in `plugins/JExMultiverse/translations/`. Shipped languages: `en_US`, `de_DE`. New keys from plugin upgrades are merged into existing on-disk YAML at startup, so admin customizations are preserved. Add a new language by creating `<locale>.yml` and registering it in `translation.yml` under `supportedLanguages`. Reload in-game with `/r18n reload`.
+Translation files live in `plugins/JExMultiverse/translations/`. Shipped languages: `en_US`, `de_DE` (set in code via `enableTranslations("en_US", "de_DE")`). New keys from plugin upgrades are merged into existing on-disk YAML at startup, so admin customizations are preserved.
 
 ### Database
 
-Hibernate properties are in `plugins/JExMultiverse/database/hibernate.properties`. Default backend is H2 stored at `plugins/JExMultiverse/database/jexmultiverse`. Switch to MySQL, PostgreSQL, Oracle, or SQL Server by editing the connection settings. Schema migrations are automatic via `hbm2ddl=update`.
+Hibernate properties are in `plugins/JExMultiverse/database/hibernate.properties`. Default backend is H2 stored at `plugins/JExMultiverse/database/jexmultiverse`. Switch to MySQL, PostgreSQL, Oracle, or SQL Server by editing the connection settings. Schema migrations are automatic via `hibernate.hbm2ddl.auto=update`.
 
 
 ## Commands
@@ -111,7 +111,26 @@ Hibernate properties are in `plugins/JExMultiverse/database/hibernate.properties
 | `/mv load <world>` | Load a world from the database |
 | `/mv list` | Paginated GUI of all managed worlds (text fallback for console) |
 | `/mv applyschematic <world> [schematic]` | Re-paste a schematic into every plot in loaded chunks |
+| `/mv import <name> [env] [type]` | Register an existing world folder (load it and add it to the world list) |
+| `/mv unload <world> [save]` | Unload a world without deleting it (`save` defaults to true) |
+| `/mv reset <world> [confirm] [new_seed]` | Regenerate a world's terrain, keeping its settings; needs `confirm` |
+| `/mv clone <world> <target>` | Copy a world (terrain and settings) under a new name |
+| `/mv paste [schematic] [setspawn]` | Paste a schematic file, or your clipboard when no name is given |
+| `/mv wand` | Get the selection wand (golden axe): left-click = pos1, right-click = pos2 |
+| `/mv pos1` / `/mv pos2` | Set a selection corner to the block you stand on |
+| `/mv selection` | Toggle a particle outline of the selection |
+| `/mv set <block>` | Fill the selection with a block |
+| `/mv copy [include_air]` | Copy the selection (blocks and entities) to your clipboard |
+| `/mv cut [include_air]` | Copy the selection to your clipboard, then clear it |
+| `/mv save <name> [include_air]` | Save the selection to a `.schem` file (blocks plus signs/skulls/banners, no chest contents) |
+| `/mv rotate <90\|180\|270>` | Rotate your clipboard clockwise |
+| `/mv flip [x\|z]` | Mirror your clipboard (default `x`) |
+| `/mv undo` | Restore the region overwritten by your last paste |
+| `/mv lock [world]` / `/mv unlock [world]` | Build-lock a world (only operators / build mode can act) or remove the lock |
+| `/mv build` | Toggle personal build mode to bypass build-locked worlds |
 | `/mv help` | Show command help |
+
+Full tree: `jexmultiverse-common/src/main/resources/commands/multiverse.yml`.
 
 **`/mv create` arguments:**
 - `name` - world folder name (required)
@@ -168,13 +187,20 @@ Aliases: `/p`, `/plots`.
 | Permission | Description |
 |------------|-------------|
 | `jexmultiverse.command` | Use `/multiverse` (root) |
-| `jexmultiverse.command.create` | Create worlds |
+| `jexmultiverse.command.create` | Create and import worlds |
 | `jexmultiverse.command.delete` | Delete worlds |
 | `jexmultiverse.command.edit` | Open the world editor GUI |
 | `jexmultiverse.command.teleport` | Teleport to managed worlds |
 | `jexmultiverse.command.load` | Load worlds from the database |
 | `jexmultiverse.command.list` | List managed worlds |
 | `jexmultiverse.command.applyschematic` | Retroactively paste a schematic into a world's plots |
+| `jexmultiverse.command.unload` | Unload worlds |
+| `jexmultiverse.command.reset` | Regenerate a world's terrain |
+| `jexmultiverse.command.clone` | Copy worlds |
+| `jexmultiverse.command.paste` | Paste schematics / clipboard |
+| `jexmultiverse.command.schematic` | Selection and clipboard tools (`wand`, `pos1`, `pos2`, `selection`, `set`, `copy`, `cut`, `save`, `rotate`, `flip`, `undo`) |
+| `jexmultiverse.command.lock` | Build-lock / unlock worlds |
+| `jexmultiverse.command.build` | Toggle personal build mode |
 | `jexmultiverse.spawn` | Use `/spawn` |
 
 ### Plot management
@@ -211,7 +237,7 @@ Stand on the plot you want to claim and run `/plot claim`. The claim limit is re
 ### Trusted / denied members
 
 - `/plot trust <player>` - let them build, break, interact, and use containers.
-- `/plot deny <player>` - store the role; full entry blocking is on the Phase 2D+ roadmap (currently surfaces in `/plot info` and the GUI but doesn't gate movement yet).
+- `/plot deny <player>` - denied players are pushed back when they try to enter the plot (`PlotFlagListener`), independent of the `entry` flag. The role also shows in `/plot info` and the GUI.
 
 Membership is per-plot. Merging plots A + B does not propagate trusted lists across the group - each plot keeps its own list.
 
@@ -355,7 +381,7 @@ mv.getPlotFlag(loc, "pvp").ifPresent(pvpEnabled -> { /* ... */ });
 
 The plot-grid + ownership API is intended for external plugins that want to integrate with JExMultiverse plot worlds - claim systems, plot-merging tools, region overlays, anti-grief integrations, etc. It exposes stable `(world, gridX, gridZ)` identifiers, exact bounds, ownership snapshots, and effective flag values without forcing consumers to know the underlying generation parameters or schema.
 
-`MVWorldSnapshot`, `PlotCoord`, `PlotBounds`, and `PlotOwnership` are all Java 21 records.
+`MVWorldSnapshot`, `PlotCoord`, `PlotBounds`, and `PlotOwnership` are all records.
 
 Heavy work happens off the main thread; schedule any Bukkit API calls back onto the primary thread.
 
@@ -397,4 +423,5 @@ Artifacts:
 
 ## Changelog
 
+- 2026-09-26: added the missing `/mv` subcommands and their permissions from `multiverse.yml`; JEHibernate 4.0.0; deny entry blocking documented as implemented; Java 25 / Paper requirement corrected.
 - 2026-09-17: doc-quality pass (status banner + cross-link to the open Folia feature request).
