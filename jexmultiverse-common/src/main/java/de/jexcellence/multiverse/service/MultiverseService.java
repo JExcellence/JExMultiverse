@@ -42,6 +42,7 @@ import org.jetbrains.annotations.Nullable;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -84,6 +85,14 @@ public class MultiverseService implements MultiverseProvider {
      */
     private volatile boolean runtimeLoadFailureLogged;
 
+    /**
+     * Completes once the persisted worlds have been loaded at boot. The provider is
+     * registered before that load finishes, so API calls that create, clone or delete
+     * worlds wait on it; otherwise a sister plugin's {@code ensureWorld} races the boot
+     * load and tries to create a world that is about to be loaded from its row.
+     */
+    private final CompletableFuture<Void> ready = new CompletableFuture<>();
+
     public MultiverseService(@NotNull MultiverseEdition edition,
                              @NotNull MVWorldRepository repository,
                              @NotNull WorldFactory worldFactory,
@@ -96,6 +105,14 @@ public class MultiverseService implements MultiverseProvider {
         this.logger = logger;
         this.plugin = plugin;
         this.scheduler = scheduler;
+    }
+
+    /**
+     * Marks the boot-time world load as finished and releases API calls waiting on it.
+     * Idempotent.
+     */
+    public void markReady() {
+        ready.complete(null);
     }
 
     // ── Edition queries ─────────────────────────────────────────────────────────
@@ -403,7 +420,12 @@ public class MultiverseService implements MultiverseProvider {
      * @param identifier the world name
      * @return a future containing {@code true} if deletion succeeded
      */
+    @Override
     public @NotNull CompletableFuture<Boolean> deleteWorld(@NotNull String identifier) {
+        return ready.thenCompose(v -> deleteWorldNow(identifier));
+    }
+
+    private @NotNull CompletableFuture<Boolean> deleteWorldNow(@NotNull String identifier) {
         // ORDER MATTERS: DB row is removed BEFORE the Bukkit world is unloaded.
         //   1. Cascade-delete the plot rows in this world (otherwise they're
         //      orphaned + the protection listener gets confused on restart).
@@ -442,41 +464,55 @@ public class MultiverseService implements MultiverseProvider {
     private @NotNull CompletableFuture<Boolean> startDeletion(
             @NotNull final String identifier,
             @Nullable final MVWorldSnapshot snapshot) {
-        var future = new CompletableFuture<Boolean>();
-
-        cascadeDeletePlots(identifier)
+        return cascadeDeletePlots(identifier)
                 .thenCompose(v -> repository.deleteByIdentifier(identifier))
-                .thenAccept(dbDeleted -> scheduler.runSync(() -> {
-                    if (!dbDeleted) {
-                        future.complete(false);
-                        return;
-                    }
-                    // fireEvents = false: the row is already gone, so a cancelled
-                    // unload here would leave the world half-deleted.
-                    var unloaded = worldFactory.unloadWorld(identifier, false, false);
-                    if (!unloaded) {
-                        logger.warn("Deleted DB row for '{}' but failed to unload Bukkit world. " +
-                                "Restart the server to fully release the world.", identifier);
-                        worldFactory.invalidateCache(identifier);
-                        future.complete(false);
-                        return;
-                    }
-                    worldFactory.deleteWorldFiles(identifier).thenAccept(filesDeleted -> {
-                        worldFactory.invalidateCache(identifier);
+                .thenCompose(dbDeleted -> unloadForDeletion(identifier, Boolean.TRUE.equals(dbDeleted)))
+                .thenCompose(folder -> folder.isEmpty()
+                        ? CompletableFuture.completedFuture(false)
+                        : worldFactory.deleteWorldFiles(identifier, folder.get()))
+                .thenApply(filesDeleted -> {
+                    worldFactory.invalidateCache(identifier);
+                    if (Boolean.TRUE.equals(filesDeleted)) {
                         logger.info("Deleted world '{}' (db + bukkit + files)", identifier);
                         if (snapshot != null) {
                             EventDispatch.fire(new MVWorldDeletedEvent(snapshot), scheduler);
                         }
-                        future.complete(filesDeleted);
-                    });
-                }))
+                    }
+                    return Boolean.TRUE.equals(filesDeleted);
+                })
                 .exceptionally(ex -> {
-                    logger.error("Failed to delete world '{}'", identifier, ex);
-                    future.complete(false);
-                    return null;
+                    logger.error("Failed to delete world '{}': {}", identifier, rootMessage(ex));
+                    return false;
                 });
+    }
 
-        return future;
+    /**
+     * Resolves the world's folder and unloads it without saving, on the main / global
+     * region thread. The folder is resolved before the unload, while the loaded world can
+     * still report exactly where it lives.
+     *
+     * <p>Unload events are not fired: the row is already gone at this point, so a
+     * cancelled unload would leave the world half-deleted.
+     *
+     * @param identifier the world identifier
+     * @param hadRow     whether a database row was deleted, for the log line
+     * @return a future with the folder to delete, or empty when the world would not unload
+     */
+    private @NotNull CompletableFuture<Optional<Path>> unloadForDeletion(@NotNull String identifier,
+                                                                         boolean hadRow) {
+        var result = new CompletableFuture<Optional<Path>>();
+        scheduler.runSync(() -> {
+            var folder = worldFactory.resolveWorldFolder(identifier);
+            if (!worldFactory.unloadWorld(identifier, false, false)) {
+                logger.warn("Failed to unload '{}' for deletion (db row deleted: {}). "
+                        + "Restart the server to fully release the world.", identifier, hadRow);
+                worldFactory.invalidateCache(identifier);
+                result.complete(Optional.empty());
+                return;
+            }
+            result.complete(Optional.of(folder));
+        });
+        return result;
     }
 
     /**
@@ -559,16 +595,21 @@ public class MultiverseService implements MultiverseProvider {
      * @return a future completing with {@code true} once the folder is gone
      */
     private @NotNull CompletableFuture<Boolean> unloadAndWipe(@NotNull String identifier) {
-        var unloaded = new CompletableFuture<Boolean>();
+        var unloaded = new CompletableFuture<Optional<Path>>();
         // fireEvents = false: reset is announced through its own event pair, and the
         // world is coming straight back, so an unload/load burst would be misleading.
-        scheduler.runSync(() -> unloaded.complete(worldFactory.unloadWorld(identifier, false, false)));
-        return unloaded.thenCompose(ok -> {
-            if (!Boolean.TRUE.equals(ok)) {
+        scheduler.runSync(() -> {
+            var folder = worldFactory.resolveWorldFolder(identifier);
+            unloaded.complete(worldFactory.unloadWorld(identifier, false, false)
+                    ? Optional.of(folder)
+                    : Optional.empty());
+        });
+        return unloaded.thenCompose(folder -> {
+            if (folder.isEmpty()) {
                 logger.error("Cannot reset '{}': world would not unload", identifier);
                 return CompletableFuture.completedFuture(false);
             }
-            return worldFactory.deleteWorldFiles(identifier);
+            return worldFactory.deleteWorldFiles(identifier, folder.get());
         });
     }
 
@@ -620,6 +661,11 @@ public class MultiverseService implements MultiverseProvider {
      * not inherit the global-spawn flag, because only one world may hold it, and it
      * does not inherit plot claims - a cloned {@code PLOT} world starts unclaimed.
      *
+     * <p>The source may be unloaded, which is the recommended state for template worlds:
+     * its row is read from the database and its folder is copied as it is on disk. A
+     * loaded source is never copied while the server can still write to it; it is
+     * unloaded with a save first and loaded again once the copy is done.
+     *
      * @param source the world to copy
      * @param target the new identifier
      * @return a future completing with the clone's snapshot, or empty on failure
@@ -627,32 +673,66 @@ public class MultiverseService implements MultiverseProvider {
     @Override
     public @NotNull CompletableFuture<Optional<MVWorldSnapshot>> cloneWorld(@NotNull String source,
                                                                             @NotNull String target) {
-        var cached = worldFactory.getCachedWorld(source);
-        if (cached.isEmpty()) {
-            logger.warn("Cannot clone '{}': not a managed world", source);
-            return CompletableFuture.completedFuture(Optional.empty());
-        }
-        if (worldFactory.getCachedWorld(target).isPresent() || Bukkit.getWorld(target) != null) {
-            logger.warn("Cannot clone to '{}': a world with that name already exists", target);
-            return CompletableFuture.completedFuture(Optional.empty());
-        }
-        if (isAtWorldLimit()) {
-            logger.warn("Cannot clone '{}': world limit reached ({}/{})",
-                    source, getWorldCount(), getMaxWorlds());
-            return CompletableFuture.completedFuture(Optional.empty());
-        }
-
-        final var sourceWorld = cached.get();
-        return EventDispatch.fireCancellable(
-                        new MVWorldCloneEvent(sourceWorld.toSnapshot(), target), scheduler)
-                .thenCompose(cancelled -> {
-                    if (Boolean.TRUE.equals(cancelled)) {
-                        logger.debug("Clone of world '{}' cancelled by a listener", source);
+        return ready.thenCompose(v -> findWorldRow(source))
+                .thenCompose(row -> {
+                    if (row.isEmpty()) {
+                        logger.warn("Cannot clone '{}': not a managed world", source);
                         return CompletableFuture.completedFuture(Optional.<MVWorldSnapshot>empty());
                     }
-                    return startClone(sourceWorld, source, target);
+                    return validateCloneTarget(row.get(), source, target);
                 });
     }
+
+    /**
+     * Returns a world's row from the cache, or from the database when the world is not
+     * loaded. Database hits are deliberately not cached: the cache holds loaded worlds.
+     *
+     * @param identifier the world identifier
+     * @return a future with the row, or empty if there is none
+     */
+    private @NotNull CompletableFuture<Optional<MVWorld>> findWorldRow(@NotNull String identifier) {
+        var cached = worldFactory.getCachedWorld(identifier);
+        if (cached.isPresent()) {
+            return CompletableFuture.completedFuture(cached);
+        }
+        return repository.findByIdentifierAsync(identifier);
+    }
+
+    /**
+     * Refuses a clone onto an existing world or past the world limit, then asks
+     * listeners before starting it.
+     */
+    private @NotNull CompletableFuture<Optional<MVWorldSnapshot>> validateCloneTarget(
+            @NotNull MVWorld sourceWorld,
+            @NotNull String source,
+            @NotNull String target) {
+        return worldExists(target).thenCompose(exists -> {
+            if (Boolean.TRUE.equals(exists) || Bukkit.getWorld(target) != null) {
+                logger.warn("Cannot clone to '{}': a world with that name already exists", target);
+                return CompletableFuture.completedFuture(Optional.<MVWorldSnapshot>empty());
+            }
+            if (isAtWorldLimit()) {
+                logger.warn("Cannot clone '{}': world limit reached ({}/{})",
+                        source, getWorldCount(), getMaxWorlds());
+                return CompletableFuture.completedFuture(Optional.<MVWorldSnapshot>empty());
+            }
+            return EventDispatch.fireCancellable(
+                            new MVWorldCloneEvent(sourceWorld.toSnapshot(), target), scheduler)
+                    .thenCompose(cancelled -> {
+                        if (Boolean.TRUE.equals(cancelled)) {
+                            logger.debug("Clone of world '{}' cancelled by a listener", source);
+                            return CompletableFuture.completedFuture(Optional.<MVWorldSnapshot>empty());
+                        }
+                        return startClone(sourceWorld, source, target);
+                    });
+        });
+    }
+
+    /**
+     * Where a clone copies from and to, and whether the source has to be loaded again
+     * after the copy.
+     */
+    private record ClonePlan(@NotNull Path sourceFolder, @NotNull Path targetFolder, boolean reloadSource) {}
 
     /**
      * Performs the clone, once no listener has objected.
@@ -661,26 +741,12 @@ public class MultiverseService implements MultiverseProvider {
             @NotNull final MVWorld sourceWorld,
             @NotNull final String source,
             @NotNull final String target) {
-        // Flush the source to disk first, otherwise recently modified chunks are
-        // still only in memory and the copy silently loses them.
-        // Also resolve the world folder on the main thread via Bukkit API, because
-        // Bukkit.getWorldContainer() + name sometimes mismatches the actual folder.
-        var saved = new CompletableFuture<java.io.File>();
-        scheduler.runSync(() -> {
-            var live = Bukkit.getWorld(source);
-            if (live != null) {
-                live.save();
-                saved.complete(live.getWorldFolder());
-            } else {
-                saved.complete(null);
-            }
-        });
-
-        return saved
-                .thenCompose(sourceFolder -> worldFactory.copyWorldFiles(source, target, sourceFolder))
-                .thenCompose(copied -> Boolean.TRUE.equals(copied)
-                        ? persistClone(sourceWorld, target)
-                        : CompletableFuture.completedFuture(Optional.<MVWorldSnapshot>empty()))
+        var plan = new CompletableFuture<Optional<ClonePlan>>();
+        scheduler.runSync(() -> plan.complete(prepareClone(source, target)));
+        return plan
+                .thenCompose(prepared -> prepared.isEmpty()
+                        ? CompletableFuture.completedFuture(Optional.<MVWorldSnapshot>empty())
+                        : copyAndPersist(sourceWorld, target, prepared.get()))
                 .exceptionally(ex -> {
                     logger.error("Failed to clone '{}' to '{}': {}", source, target, rootMessage(ex));
                     return Optional.empty();
@@ -688,22 +754,91 @@ public class MultiverseService implements MultiverseProvider {
     }
 
     /**
-     * Persists and loads a freshly copied world folder. Extracted from
-     * {@link #cloneWorld(String, String)} to keep that method within the cognitive
-     * complexity limit.
+     * Resolves both folders and takes a loaded source offline, on the main / global
+     * region thread.
      *
-     * @param sourceWorld the world that was copied
-     * @param target      the clone's identifier
+     * <p>{@code World#save()} only schedules the writes on 26.x - the data files are
+     * written later by the dimension IO worker - so copying right after it races the
+     * save and can copy half-written files or lock them on Windows. Unloading with a save
+     * closes the level instead, after which the folder is quiet.
+     *
+     * @param source the world to copy
+     * @param target the clone's identifier
+     * @return the plan, or empty when the source cannot be taken offline
+     */
+    private @NotNull Optional<ClonePlan> prepareClone(@NotNull String source, @NotNull String target) {
+        var sourceFolder = worldFactory.resolveWorldFolder(source);
+        var targetFolder = worldFactory.resolveWorldFolder(target);
+        var live = Bukkit.getWorld(source);
+        if (live == null) {
+            return Optional.of(new ClonePlan(sourceFolder, targetFolder, false));
+        }
+        var players = live.getPlayers().size();
+        if (players > 0) {
+            logger.warn("Cannot clone '{}' while {} player(s) are in it - move them out or unload it first",
+                    source, players);
+            return Optional.empty();
+        }
+        if (!worldFactory.unloadWorld(source, true, false)) {
+            logger.warn("Cannot clone '{}': the world would not unload for the copy", source);
+            return Optional.empty();
+        }
+        return Optional.of(new ClonePlan(sourceFolder, targetFolder, true));
+    }
+
+    /**
+     * Copies the folder, brings a temporarily unloaded source back, then persists and
+     * loads the clone.
+     */
+    private @NotNull CompletableFuture<Optional<MVWorldSnapshot>> copyAndPersist(@NotNull MVWorld sourceWorld,
+                                                                                 @NotNull String target,
+                                                                                 @NotNull ClonePlan plan) {
+        return worldFactory.copyWorldFiles(plan.sourceFolder(), plan.targetFolder())
+                .handle((copied, ex) -> ex == null && Boolean.TRUE.equals(copied))
+                .thenCompose(copied -> reloadCloneSource(sourceWorld, plan).thenApply(v -> copied))
+                .thenCompose(copied -> Boolean.TRUE.equals(copied)
+                        ? persistClone(sourceWorld, target, plan.targetFolder())
+                        : CompletableFuture.completedFuture(Optional.<MVWorldSnapshot>empty()));
+    }
+
+    /**
+     * Loads the source again if {@link #prepareClone(String, String)} unloaded it.
+     */
+    private @NotNull CompletableFuture<Void> reloadCloneSource(@NotNull MVWorld sourceWorld,
+                                                               @NotNull ClonePlan plan) {
+        if (!plan.reloadSource()) {
+            return CompletableFuture.completedFuture(null);
+        }
+        var done = new CompletableFuture<Void>();
+        scheduler.runSync(() -> {
+            try {
+                if (worldFactory.loadWorld(sourceWorld) == null) {
+                    logger.warn("Clone source '{}' was unloaded for the copy and would not load again",
+                            sourceWorld.getIdentifier());
+                }
+            } finally {
+                done.complete(null);
+            }
+        });
+        return done;
+    }
+
+    /**
+     * Persists and loads a freshly copied world folder.
+     *
+     * @param sourceWorld    the world that was copied
+     * @param target         the clone's identifier
+     * @param expectedFolder the folder the files were copied into
      * @return a future completing with the clone's snapshot, or empty on failure
      */
     private @NotNull CompletableFuture<Optional<MVWorldSnapshot>> persistClone(@NotNull MVWorld sourceWorld,
-                                                                               @NotNull String target) {
+                                                                               @NotNull String target,
+                                                                               @NotNull Path expectedFolder) {
         var clone = MVWorld.builder()
                 .identifier(target)
                 .type(sourceWorld.getType())
                 .environment(sourceWorld.getEnvironment())
                 .spawnLocation(sourceWorld.getSpawnLocation())
-                // Never copied: only one world may be the global spawn.
                 .globalizedSpawn(false)
                 .pvpEnabled(sourceWorld.isPvpEnabled())
                 .plotSizeOverride(sourceWorld.getPlotSizeOverride())
@@ -715,21 +850,39 @@ public class MultiverseService implements MultiverseProvider {
         clone.setEnterPermission(sourceWorld.getEnterPermission());
 
         return repository.saveWorld(clone).thenCompose(persisted -> {
-            var loaded = new CompletableFuture<Optional<MVWorldSnapshot>>();
-            scheduler.runSync(() -> {
-                var world = worldFactory.loadWorld(persisted);
-                if (world == null) {
-                    logger.error("Cloned files for '{}' but the world would not load", target);
-                    loaded.complete(Optional.empty());
-                    return;
+            var loaded = new CompletableFuture<Boolean>();
+            scheduler.runSync(() -> loaded.complete(loadClone(sourceWorld, persisted, expectedFolder)));
+            return loaded.thenCompose(ok -> {
+                if (Boolean.TRUE.equals(ok)) {
+                    return CompletableFuture.completedFuture(Optional.of(persisted.toSnapshot()));
                 }
-                logger.info("Cloned world '{}' to '{}'", sourceWorld.getIdentifier(), target);
-                Bukkit.getPluginManager().callEvent(
-                        new MVWorldClonedEvent(sourceWorld.toSnapshot(), persisted.toSnapshot()));
-                loaded.complete(Optional.of(persisted.toSnapshot()));
+                return deleteWorldNow(target).thenApply(cleaned -> Optional.<MVWorldSnapshot>empty());
             });
-            return loaded;
         });
+    }
+
+    /**
+     * Loads the persisted clone from its copied folder and checks that the server really
+     * opened that folder. Runs on the main / global region thread.
+     *
+     * @return {@code true} if the clone is loaded
+     */
+    private boolean loadClone(@NotNull MVWorld sourceWorld, @NotNull MVWorld persisted, @NotNull Path expectedFolder) {
+        var target = persisted.getIdentifier();
+        var world = worldFactory.loadWorld(persisted);
+        if (world == null) {
+            logger.error("Cloned files for '{}' but the world would not load - removing the copy", target);
+            return false;
+        }
+        var actualFolder = world.getWorldPath().toAbsolutePath().normalize();
+        if (!actualFolder.equals(expectedFolder)) {
+            logger.error("Clone '{}' was loaded from {} but the files were copied to {}; the copy is unused",
+                    target, actualFolder, expectedFolder);
+        }
+        logger.info("Cloned world '{}' to '{}'", sourceWorld.getIdentifier(), target);
+        Bukkit.getPluginManager().callEvent(
+                new MVWorldClonedEvent(sourceWorld.toSnapshot(), persisted.toSnapshot()));
+        return true;
     }
 
     // ── Unload ──────────────────────────────────────────────────────────────────
@@ -1229,6 +1382,12 @@ public class MultiverseService implements MultiverseProvider {
     public @NotNull CompletableFuture<Optional<MVWorldSnapshot>> ensureWorld(@NotNull String name,
                                                                               World.@NotNull Environment environment,
                                                                               @NotNull MVWorldType type) {
+        return ready.thenCompose(v -> ensureWorldNow(name, environment, type));
+    }
+
+    private @NotNull CompletableFuture<Optional<MVWorldSnapshot>> ensureWorldNow(@NotNull String name,
+                                                                                  World.@NotNull Environment environment,
+                                                                                  @NotNull MVWorldType type) {
         // Already managed → return the existing snapshot. We check both
         // the in-memory cache and Bukkit's world list so a world that
         // exists on disk but isn't yet registered with us (e.g. a

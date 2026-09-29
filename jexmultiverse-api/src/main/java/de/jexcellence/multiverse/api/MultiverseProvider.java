@@ -43,6 +43,11 @@ public interface MultiverseProvider {
      * <p>Folia-safe: world creation routes through PlatformScheduler
      * internally.
      *
+     * <p>The future does not start work until JExMultiverse has finished loading its
+     * persisted worlds at boot, so a world that is already persisted is adopted
+     * instead of being created a second time. Callers must not block the main thread
+     * on it during server startup.
+     *
      * @param name        the world identifier (also the on-disk folder name)
      * @param environment the world environment (NORMAL / NETHER / THE_END)
      * @param type        the JExMultiverse world generation type
@@ -130,6 +135,12 @@ public interface MultiverseProvider {
      * <p>The clone does not inherit the source world's global-spawn flag, because only
      * one world may hold it, and does not inherit plot claims.
      *
+     * <p>The copy is always taken from disk. An unloaded source (the recommended state
+     * for template worlds) is copied as is. A loaded source must be empty of players; it
+     * is unloaded with a save for the copy and loaded again afterwards. Runtime files
+     * such as {@code session.lock}, the world UUID and chunk tickets are never copied,
+     * and the clone is loaded from the copied folder.
+     *
      * @param source the world to copy
      * @param target the new identifier
      * @return a future completing with the clone's snapshot, or empty on failure
@@ -150,6 +161,25 @@ public interface MultiverseProvider {
      * @since 3.7.0
      */
     @NotNull CompletableFuture<Boolean> unloadWorld(@NotNull String identifier, boolean save);
+
+    /**
+     * Deletes a world for good: unloads it without saving, removes its database row and
+     * plot claims, and deletes its folder from disk.
+     *
+     * <p>The folder is resolved the same way the server lays worlds out (on 26.x that is
+     * {@code <level>/dimensions/<namespace>/<name>}), so the folder that is deleted is the
+     * folder the world was loaded from. An identifier without a database row is still
+     * unloaded and its folder removed, which makes this safe for sweeping leftovers.
+     * Players in the world are moved to the default world's spawn first.
+     *
+     * <p>Safe to call from any thread; the unload runs on the global region / main thread
+     * and the file deletion runs asynchronously.
+     *
+     * @param identifier the world identifier
+     * @return a future completing with {@code true} if the world is gone from disk
+     * @since 3.7.0
+     */
+    @NotNull CompletableFuture<Boolean> deleteWorld(@NotNull String identifier);
 
     // ── Plot grid (PLOT-type worlds only) ──────────────────────────────────────
 

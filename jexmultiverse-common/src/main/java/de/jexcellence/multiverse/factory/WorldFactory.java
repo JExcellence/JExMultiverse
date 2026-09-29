@@ -18,7 +18,6 @@ import org.bukkit.Bukkit;
 import org.bukkit.Difficulty;
 import org.bukkit.GameRule;
 import org.bukkit.Location;
-import org.bukkit.Registry;
 import org.bukkit.World;
 import org.bukkit.WorldCreator;
 import org.bukkit.generator.ChunkGenerator;
@@ -26,21 +25,28 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.File;
 import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Factory responsible for creating, loading, caching, unloading, and deleting
@@ -68,9 +74,29 @@ public class WorldFactory {
     /**
      * Files never carried into a cloned world. {@code uid.dat} would duplicate the
      * source world's UUID and make the server refuse to load one of the pair;
-     * {@code session.lock} is held by the running server and is recreated on load.
+     * {@code session.lock} is held by the running server and is recreated on load. The
+     * remaining entries are per-dimension runtime state that the server writes in the
+     * background and that a fresh world has to start without.
      */
-    private static final Set<String> SKIPPED_ON_COPY = Set.of("uid.dat", "session.lock");
+    private static final Set<String> SKIPPED_ON_COPY = Set.of(
+            "uid.dat", "session.lock", "chunk_tickets.dat", "raids.dat", "raids_end.dat",
+            "wandering_trader.dat", "scheduled_events.dat", "paper-world.yml");
+
+    /**
+     * Top-level entries of a world folder that carry terrain or world data. Anything else
+     * (backups, temp files, plugin leftovers) stays behind when a world is cloned.
+     */
+    private static final Set<String> COPIED_TOP_LEVEL = Set.of(
+            "region", "entities", "poi", "data", "DIM-1", "DIM1", "level.dat");
+
+    /** Paper 26.x stores the world UUID here instead of {@code uid.dat}. */
+    private static final Path PAPER_METADATA = Path.of("data", "paper", "metadata.dat");
+
+    private static final int DELETE_ATTEMPTS = 3;
+    private static final long DELETE_RETRY_DELAY_MS = 1_000L;
+
+    /** Gamerule names already reported as unknown, so each one is logged once per session. */
+    private final Set<String> reportedUnknownRules = ConcurrentHashMap.newKeySet();
 
     public WorldFactory(@NotNull JavaPlugin plugin,
                         @NotNull MVWorldRepository repository,
@@ -141,21 +167,48 @@ public class WorldFactory {
                                               @Nullable Integer plotSizeOverride,
                                               @Nullable Integer roadWidthOverride,
                                               @Nullable String schematicName) {
-        // Pre-checks: catch the two Bukkit-refuses-silently cases before we ask
-        // it to create anything, so the failure is diagnosable instead of a bare
-        // 'Failed to create' line.
-        World existing = org.bukkit.Bukkit.getWorld(name);
+        return openBukkitWorld(new WorldSpec(name, environment, type,
+                plotSizeOverride, roadWidthOverride, schematicName), false);
+    }
+
+    /**
+     * What to open: the identifier plus everything that decides the generator.
+     */
+    private record WorldSpec(@NotNull String name,
+                             World.@NotNull Environment environment,
+                             @NotNull MVWorldType type,
+                             @Nullable Integer plotSizeOverride,
+                             @Nullable Integer roadWidthOverride,
+                             @Nullable String schematicName) {}
+
+    /**
+     * Creates or opens a Bukkit world.
+     *
+     * @param spec          the world to open
+     * @param allowExisting {@code true} when the folder is expected to exist already, as
+     *                      for a persisted or freshly cloned world; {@code false} for a
+     *                      brand-new world, where an existing legacy folder is refused
+     * @return the world, or {@code null} on failure
+     */
+    private @Nullable World openBukkitWorld(@NotNull WorldSpec spec, boolean allowExisting) {
+        var name = spec.name();
+        World existing = Bukkit.getWorld(name);
         if (existing != null) {
             logger.warn("World '{}' is already loaded in Bukkit (env={}); use import/adopt, not create.",
                     name, existing.getEnvironment());
             return existing;
         }
-        java.io.File folder = new java.io.File(org.bukkit.Bukkit.getWorldContainer(), name);
-        if (folder.isDirectory() && new java.io.File(folder, "level.dat").isFile()) {
+        var folder = new File(Bukkit.getWorldContainer(), name);
+        if (!allowExisting && folder.isDirectory() && new File(folder, "level.dat").isFile()) {
             logger.warn("World folder '{}' already exists on disk; use '/mv import {}' to adopt it "
                     + "instead of creating a new one.", name, name);
             return null;
         }
+        var environment = spec.environment();
+        var type = spec.type();
+        var plotSizeOverride = spec.plotSizeOverride();
+        var roadWidthOverride = spec.roadWidthOverride();
+        var schematicName = spec.schematicName();
         try {
             var creator = new WorldCreator(name)
                     .environment(environment);
@@ -175,9 +228,7 @@ public class WorldFactory {
                         name, environment, type);
                 return null;
             }
-            // Default to not holding spawn chunks resident. A managed world with
-            // keepSpawnLoaded set overrides this in applyWorldSettings.
-            setIntRule(world, "spawnChunkRadius", 0);
+            applySpawnChunkRadius(world, false);
             logger.info("Created Bukkit world '{}' (env={}, type={}, plot-override={}/{}, schematic={})",
                     name, environment, type, plotSizeOverride, roadWidthOverride, schematicName);
             return world;
@@ -326,8 +377,9 @@ public class WorldFactory {
             return null;
         }
 
-        var world = createBukkitWorld(mvWorld.getIdentifier(), mvWorld.getEnvironment(), mvWorld.getType(),
-                mvWorld.getPlotSizeOverride(), mvWorld.getRoadWidthOverride(), mvWorld.getSchematicName());
+        var world = openBukkitWorld(new WorldSpec(mvWorld.getIdentifier(), mvWorld.getEnvironment(),
+                mvWorld.getType(), mvWorld.getPlotSizeOverride(), mvWorld.getRoadWidthOverride(),
+                mvWorld.getSchematicName()), true);
         if (world != null) {
             cacheWorld(mvWorld);
             applyWorldSettings(world, mvWorld);
@@ -387,7 +439,7 @@ public class WorldFactory {
             player.teleport(defaultWorld.getSpawnLocation());
         }
 
-        var success = Bukkit.unloadWorld(world, save);
+        var success = unloadBukkitWorld(world, save);
         if (success) {
             invalidateCache(identifier);
             logger.info("Unloaded world '{}'", identifier);
@@ -398,6 +450,24 @@ public class WorldFactory {
             logger.warn("Failed to unload world '{}'", identifier);
         }
         return success;
+    }
+
+    /**
+     * Unloads a world, treating a server that refuses runtime unloads (Folia throws) as
+     * a failed unload instead of letting the exception escape the scheduler task, which
+     * would leave the caller's future pending forever.
+     *
+     * @param world the world to unload
+     * @param save  whether to save chunks first
+     * @return {@code true} if the server unloaded the world
+     */
+    private boolean unloadBukkitWorld(@NotNull World world, boolean save) {
+        try {
+            return Bukkit.unloadWorld(world, save);
+        } catch (Exception e) {
+            logger.warn("Server refused to unload world '{}': {}", world.getName(), e.getMessage());
+            return false;
+        }
     }
 
     // ── Per-world runtime settings ──────────────────────────────────────────────
@@ -412,9 +482,7 @@ public class WorldFactory {
      * @param mvWorld the managed row carrying the settings
      */
     public void applyWorldSettings(@NotNull World world, @NotNull MVWorld mvWorld) {
-        // spawnChunkRadius is the modern replacement for the deprecated
-        // setKeepSpawnInMemory. 0 keeps nothing resident; 2 is the vanilla default.
-        setIntRule(world, "spawnChunkRadius", mvWorld.isKeepSpawnLoaded() ? 2 : 0);
+        applySpawnChunkRadius(world, mvWorld.isKeepSpawnLoaded());
         applyGameRules(world, mvWorld);
         applyDifficulty(world, mvWorld);
         applyTime(world, mvWorld);
@@ -422,88 +490,75 @@ public class WorldFactory {
     }
 
     /**
-     * Sets a boolean gamerule by name, resolved through the registry.
+     * Sets {@code spawnChunkRadius} where the server still has it.
      *
-     * <p>Avoids the deprecated {@code GameRule} constants; a missing rule is logged
-     * rather than thrown, since the server build decides which rules exist.
+     * <p>26.x removed spawn chunks together with the rule, so there is nothing to keep
+     * resident and the call is a quiet no-op there.
      *
-     * @param world the live Bukkit world
-     * @param name  the vanilla gamerule name
-     * @param value the value to set
+     * @param world     the live Bukkit world
+     * @param keepSpawn {@code true} for the vanilla radius of 2, {@code false} for 0
      */
-    @SuppressWarnings("unchecked")
-    private void setBooleanRule(@NotNull World world, @NotNull String name, boolean value) {
-        var rule = resolveGameRule(name);
-        if (rule == null || rule.getType() != Boolean.class) {
-            logger.warn("Gamerule '{}' unavailable on this server build - skipping", name);
-            return;
-        }
-        world.setGameRule((GameRule<Boolean>) rule, value);
+    private void applySpawnChunkRadius(@NotNull World world, boolean keepSpawn) {
+        setRule(world, "spawnChunkRadius", keepSpawn ? "2" : "0");
     }
 
     /**
-     * Sets an integer gamerule by name, resolved through the registry.
+     * Sets a gamerule by any of its names, resolved through {@link GameRuleResolver}.
+     *
+     * <p>Avoids the deprecated {@code GameRule} constants. A rule the server does not
+     * know is reported once per session at debug level, since the server build decides
+     * which rules exist.
      *
      * @param world the live Bukkit world
-     * @param name  the vanilla gamerule name
-     * @param value the value to set
+     * @param name  the gamerule name, legacy camelCase or 26.x snake_case
+     * @param value the value as a string
      */
-    @SuppressWarnings("unchecked")
-    private void setIntRule(@NotNull World world, @NotNull String name, int value) {
-        var rule = resolveGameRule(name);
-        if (rule == null || rule.getType() != Integer.class) {
-            logger.warn("Gamerule '{}' unavailable on this server build - skipping", name);
+    private void setRule(@NotNull World world, @NotNull String name, @NotNull String value) {
+        var resolved = GameRuleResolver.resolve(name);
+        if (resolved == null) {
+            reportUnknownRule(name, world.getName());
             return;
         }
-        world.setGameRule((GameRule<Integer>) rule, value);
+        if (!applyGameRule(world, resolved, value)) {
+            logger.debug("Gamerule '{}' rejected value '{}' in world '{}'", name, value, world.getName());
+        }
     }
 
     /**
-     * Lazily built index of every gamerule the running server knows, keyed by its
-     * lowercased vanilla name. Populated on first use rather than in a static
-     * initialiser, because the registry is not usable until the server is up.
+     * Logs an unknown gamerule once per name and session at debug level.
+     *
+     * @param name      the gamerule name
+     * @param worldName the world it was requested for
      */
-    private static volatile Map<String, GameRule<?>> gameRuleIndex;
+    private void reportUnknownRule(@NotNull String name, @NotNull String worldName) {
+        if (reportedUnknownRules.add(name.toLowerCase(Locale.ROOT))) {
+            logger.debug("Gamerule '{}' does not exist on this server build - skipping (first seen in '{}')",
+                    name, worldName);
+        }
+    }
 
     /**
-     * Returns a gamerule's vanilla name, for example {@code doDaylightCycle}.
-     *
-     * <p>This is the one place {@code GameRule#getName()} is called. It is deprecated
-     * for removal in favour of the {@code Keyed} interface, but the namespaced key
-     * format is not something we can verify against the API jar, and guessing it
-     * wrong would silently orphan every stored gamerule. When the method is finally
-     * removed, change this single helper to derive the name from {@code getKey()} and
-     * ship a migration for the stored values.
+     * Returns a gamerule's name as the server reports it, for example {@code advance_time}
+     * on 26.x. Stored names from older builds keep resolving through
+     * {@link #resolveGameRule(String)}.
      *
      * @param rule the gamerule
-     * @return the vanilla gamerule name
+     * @return the gamerule name
      */
-    @SuppressWarnings("removal")
     public static @NotNull String gameRuleName(@NotNull GameRule<?> rule) {
-        return rule.getName();
+        return GameRuleResolver.name(rule);
     }
 
     /**
-     * Resolves a gamerule by its vanilla name, case-insensitively.
-     *
-     * <p>Goes through {@code Registry.GAME_RULE} rather than the deprecated
-     * {@code GameRule.getByName} or the deprecated per-rule constants, so the set of
-     * known rules always matches the server build.
+     * Resolves a gamerule by its name, case-insensitively, accepting the legacy camelCase
+     * names that 26.x renamed.
      *
      * @param name the gamerule name
      * @return the gamerule, or {@code null} if the server does not know it
      */
     public static @Nullable GameRule<?> resolveGameRule(@NotNull String name) {
-        var index = gameRuleIndex;
-        if (index == null) {
-            var built = new HashMap<String, GameRule<?>>();
-            for (var rule : Registry.GAME_RULE) {
-                built.put(gameRuleName(rule).toLowerCase(Locale.ROOT), rule);
-            }
-            index = Map.copyOf(built);
-            gameRuleIndex = index;
-        }
-        return index.get(name.toLowerCase(Locale.ROOT));
+        var resolved = GameRuleResolver.resolve(name);
+        return resolved == null ? null : resolved.rule();
     }
 
     /**
@@ -515,13 +570,12 @@ public class WorldFactory {
      */
     private void applyGameRules(@NotNull World world, @NotNull MVWorld mvWorld) {
         mvWorld.getGameRules().forEach((name, value) -> {
-            var rule = resolveGameRule(name);
-            if (rule == null) {
-                logger.warn("Unknown gamerule '{}' configured for world '{}' - skipping",
-                        name, mvWorld.getIdentifier());
+            var resolved = GameRuleResolver.resolve(name);
+            if (resolved == null) {
+                reportUnknownRule(name, mvWorld.getIdentifier());
                 return;
             }
-            if (!applyGameRule(world, rule, value)) {
+            if (!applyGameRule(world, resolved, value)) {
                 logger.warn("Rejected gamerule value '{}={}' for world '{}'",
                         name, value, mvWorld.getIdentifier());
             }
@@ -532,18 +586,22 @@ public class WorldFactory {
      * Applies one gamerule, converting the stored string to the rule's value type.
      *
      * <p>Gamerules are either {@code Boolean} or {@code Integer}; anything else is
-     * refused rather than guessed at.
+     * refused rather than guessed at. A boolean stored under a legacy name whose 26.x
+     * replacement means the opposite is flipped.
      *
-     * @param world the live Bukkit world
-     * @param rule  the resolved gamerule
-     * @param value the stored string value
+     * @param world    the live Bukkit world
+     * @param resolved the resolved gamerule
+     * @param value    the stored string value
      * @return {@code true} if the rule was applied
      */
     @SuppressWarnings("unchecked")
-    private boolean applyGameRule(@NotNull World world, @NotNull GameRule<?> rule, @NotNull String value) {
+    private boolean applyGameRule(@NotNull World world, @NotNull GameRuleResolver.Resolved resolved,
+                                  @NotNull String value) {
+        var rule = resolved.rule();
         var type = rule.getType();
         if (type == Boolean.class) {
-            return world.setGameRule((GameRule<Boolean>) rule, Boolean.parseBoolean(value));
+            boolean parsed = Boolean.parseBoolean(value.trim());
+            return world.setGameRule((GameRule<Boolean>) rule, parsed != resolved.inverted());
         }
         if (type == Integer.class) {
             try {
@@ -588,7 +646,7 @@ public class WorldFactory {
         if (fixed == null) {
             return;
         }
-        setBooleanRule(world, "doDaylightCycle", false);
+        setRule(world, "doDaylightCycle", "false");
         world.setTime(fixed);
     }
 
@@ -605,7 +663,7 @@ public class WorldFactory {
         if (!mvWorld.isWeatherLocked()) {
             return;
         }
-        setBooleanRule(world, "doWeatherCycle", false);
+        setRule(world, "doWeatherCycle", "false");
         var type = mvWorld.getWeatherType() == null
                 ? "CLEAR"
                 : mvWorld.getWeatherType().trim().toUpperCase(Locale.ROOT);
@@ -630,111 +688,204 @@ public class WorldFactory {
     // ── World copy / deletion ───────────────────────────────────────────────────
 
     /**
-     * Copies a world folder on disk under a new name.
+     * Resolves the folder a world lives in, or will live in once it is created.
      *
-     * <p>Skips {@code uid.dat} and {@code session.lock}. Copying {@code uid.dat} would
-     * give the clone the source world's UUID, which makes the server refuse to load
-     * one of them; {@code session.lock} is held by the running server and is
-     * regenerated on load anyway.
+     * <p>A loaded world reports its own folder. For a world that is not loaded the folder
+     * is derived from the primary world's layout: its parent is {@code <level>/dimensions/minecraft}
+     * on 26.x, where {@link WorldCreator} places every world keyed {@code minecraft:<name>},
+     * and the world container on older builds. Deriving both the copy target and the delete
+     * target from here is what keeps them identical to the folder the server loads.
      *
-     * <p>Runs entirely off the main thread. The caller is responsible for saving the
-     * source world first, otherwise recently changed chunks may not be on disk yet.
+     * <p>Call on the main / global region thread.
      *
-     * @param sourceName the world folder to copy
-     * @param targetName the new folder name
-     * @return a future completing with {@code true} if the copy succeeded
+     * @param name the world identifier
+     * @return the absolute world folder
      */
-    public @NotNull CompletableFuture<Boolean> copyWorldFiles(@NotNull String sourceName,
-                                                              @NotNull String targetName) {
-        return copyWorldFiles(sourceName, targetName, null);
+    public @NotNull Path resolveWorldFolder(@NotNull String name) {
+        var loaded = Bukkit.getWorld(name);
+        if (loaded != null) {
+            return loaded.getWorldPath().toAbsolutePath().normalize();
+        }
+        var worlds = Bukkit.getWorlds();
+        Path parent = worlds.isEmpty()
+                ? null
+                : worlds.getFirst().getWorldPath().toAbsolutePath().normalize().getParent();
+        if (parent == null) {
+            parent = Bukkit.getWorldContainer().toPath().toAbsolutePath().normalize();
+        }
+        return parent.resolve(name);
     }
 
     /**
-     * Overload that accepts the source world folder resolved on the main thread
-     * via {@code Bukkit.getWorld(name).getWorldFolder()}, avoiding a mismatch
-     * between {@code Bukkit.getWorldContainer()} and the actual folder location.
+     * Copies a world folder on disk into a new folder.
+     *
+     * <p>Only terrain and world data are copied: {@code region}, {@code entities},
+     * {@code poi}, {@code data} and, on older builds, {@code level.dat} and the legacy
+     * dimension folders. The world UUID ({@code uid.dat} or Paper's
+     * {@code data/paper/metadata.dat}), {@code session.lock} and per-dimension runtime
+     * files such as {@code chunk_tickets.dat} are skipped. A copy that fails halfway is
+     * removed again, so the target never holds a half-written world.
+     *
+     * <p>Runs off the main thread. The source must not be loaded while it is copied,
+     * because the server writes its data files in the background.
+     *
+     * @param source the world folder to copy
+     * @param target the new world folder, which must not exist yet
+     * @return a future completing with {@code true} if the copy succeeded
      */
-    public @NotNull CompletableFuture<Boolean> copyWorldFiles(@NotNull String sourceName,
-                                                              @NotNull String targetName,
-                                                              @Nullable java.io.File resolvedSourceFolder) {
+    public @NotNull CompletableFuture<Boolean> copyWorldFiles(@NotNull Path source, @NotNull Path target) {
         return CompletableFuture.supplyAsync(() -> {
-            var container = Bukkit.getWorldContainer().getAbsolutePath();
-            var source = resolvedSourceFolder != null
-                    ? resolvedSourceFolder.toPath()
-                    : Path.of(container, sourceName);
-            var target = Path.of(container, targetName);
-
-            if (!Files.exists(source)) {
-                logger.error("Cannot clone '{}': world folder does not exist (checked {})", sourceName, source);
+            if (!Files.isDirectory(source)) {
+                logger.error("Cannot clone: world folder {} does not exist", source);
                 return false;
             }
             if (Files.exists(target)) {
-                logger.error("Cannot clone to '{}': target folder already exists", targetName);
+                logger.error("Cannot clone: target folder {} already exists", target);
                 return false;
             }
-
-            try (var walk = Files.walk(source)) {
-                walk.forEach(path -> copyOneEntry(source, target, path));
-                logger.info("Copied world folder '{}' to '{}'", sourceName, targetName);
+            try {
+                Files.walkFileTree(source, new WorldCopyVisitor(source, target));
+                logger.info("Copied world folder {} to {}", source, target);
                 return true;
             } catch (IOException e) {
-                logger.error("Failed to copy world folder '{}' to '{}'", sourceName, targetName, e);
+                logger.error("Failed to copy world folder {} to {}: {}", source, target, e.getMessage());
+                deleteTree(target);
                 return false;
             }
         });
     }
 
     /**
-     * Copies a single entry of a world folder, skipping the two files that must not
-     * be duplicated. Extracted to keep {@link #copyWorldFiles} within the cognitive
-     * complexity limit.
+     * Returns whether an entry of a world folder belongs in a clone.
      *
-     * @param source the source root
-     * @param target the target root
-     * @param path   the entry being copied
+     * @param relative the entry's path relative to the world folder
+     * @return {@code true} if the entry is copied
      */
-    private void copyOneEntry(@NotNull Path source, @NotNull Path target, @NotNull Path path) {
-        var name = path.getFileName().toString();
-        if (SKIPPED_ON_COPY.contains(name)) {
-            return;
+    static boolean isCopiedOnClone(@NotNull Path relative) {
+        if (relative.getNameCount() == 1 && !COPIED_TOP_LEVEL.contains(relative.toString())) {
+            return false;
         }
+        var name = relative.getFileName().toString();
+        return !SKIPPED_ON_COPY.contains(name)
+                && !name.endsWith(".tmp")
+                && !name.endsWith("_old")
+                && !relative.equals(PAPER_METADATA);
+    }
+
+    /**
+     * Walks a world folder and copies the entries {@link #isCopiedOnClone(Path)} accepts.
+     */
+    private static final class WorldCopyVisitor extends SimpleFileVisitor<Path> {
+
+        private final Path source;
+        private final Path target;
+
+        private WorldCopyVisitor(@NotNull Path source, @NotNull Path target) {
+            this.source = source;
+            this.target = target;
+        }
+
+        @Override
+        public @NotNull FileVisitResult preVisitDirectory(@NotNull Path dir,
+                                                          @NotNull BasicFileAttributes attrs) throws IOException {
+            if (dir.equals(source)) {
+                Files.createDirectories(target);
+                return FileVisitResult.CONTINUE;
+            }
+            var relative = source.relativize(dir);
+            if (!isCopiedOnClone(relative)) {
+                return FileVisitResult.SKIP_SUBTREE;
+            }
+            Files.createDirectories(target.resolve(relative));
+            return FileVisitResult.CONTINUE;
+        }
+
+        @Override
+        public @NotNull FileVisitResult visitFile(@NotNull Path file,
+                                                  @NotNull BasicFileAttributes attrs) throws IOException {
+            var relative = source.relativize(file);
+            if (isCopiedOnClone(relative)) {
+                Files.copy(file, target.resolve(relative), StandardCopyOption.COPY_ATTRIBUTES);
+            }
+            return FileVisitResult.CONTINUE;
+        }
+    }
+
+    /**
+     * Deletes a world folder from disk.
+     *
+     * <p>The folder has to be named after the world and look like a world folder
+     * ({@code region}, {@code data} or {@code level.dat} inside), otherwise nothing is
+     * deleted. Windows can keep region files locked for a moment after an unload, so a
+     * partial delete is retried a few times before it is reported.
+     *
+     * @param worldName the world identifier
+     * @param folder    the resolved world folder, see {@link #resolveWorldFolder(String)}
+     * @return a future completing with {@code true} once the folder is gone
+     */
+    public @NotNull CompletableFuture<Boolean> deleteWorldFiles(@NotNull String worldName, @NotNull Path folder) {
+        if (!Files.exists(folder)) {
+            logger.debug("World folder {} does not exist, nothing to delete", folder);
+            return CompletableFuture.completedFuture(true);
+        }
+        var fileName = folder.getFileName();
+        if (fileName == null || !fileName.toString().equalsIgnoreCase(worldName) || !looksLikeWorldFolder(folder)) {
+            logger.warn("Refusing to delete {} for world '{}': not a world folder of that name", folder, worldName);
+            return CompletableFuture.completedFuture(false);
+        }
+        return deleteAttempt(worldName, folder, 1);
+    }
+
+    private static boolean looksLikeWorldFolder(@NotNull Path folder) {
+        return Files.isDirectory(folder.resolve("region"))
+                || Files.isDirectory(folder.resolve("data"))
+                || Files.isRegularFile(folder.resolve("level.dat"));
+    }
+
+    private @NotNull CompletableFuture<Boolean> deleteAttempt(@NotNull String worldName,
+                                                              @NotNull Path folder,
+                                                              int attempt) {
+        Executor executor = attempt == 1
+                ? ForkJoinPool.commonPool()
+                : CompletableFuture.delayedExecutor(DELETE_RETRY_DELAY_MS, TimeUnit.MILLISECONDS);
+        return CompletableFuture.supplyAsync(() -> deleteTree(folder), executor).thenCompose(done -> {
+            if (Boolean.TRUE.equals(done)) {
+                logger.info("Deleted world folder {} of '{}'", folder, worldName);
+                return CompletableFuture.completedFuture(true);
+            }
+            if (attempt >= DELETE_ATTEMPTS) {
+                logger.warn("Could not fully delete world folder {} of '{}' after {} attempts",
+                        folder, worldName, attempt);
+                return CompletableFuture.completedFuture(false);
+            }
+            return deleteAttempt(worldName, folder, attempt + 1);
+        });
+    }
+
+    /**
+     * Deletes a directory tree, best effort.
+     *
+     * @param root the directory to delete
+     * @return {@code true} if the directory no longer exists
+     */
+    private boolean deleteTree(@NotNull Path root) {
+        if (!Files.exists(root)) {
+            return true;
+        }
+        try (var walk = Files.walk(root)) {
+            walk.sorted(Comparator.reverseOrder()).forEach(this::deleteQuietly);
+        } catch (IOException | UncheckedIOException e) {
+            logger.debug("Could not walk {} for deletion: {}", root, e.getMessage());
+        }
+        return !Files.exists(root);
+    }
+
+    private void deleteQuietly(@NotNull Path path) {
         try {
-            Files.copy(path, target.resolve(source.relativize(path)),
-                    StandardCopyOption.REPLACE_EXISTING);
+            Files.deleteIfExists(path);
         } catch (IOException e) {
-            logger.warn("Failed to copy '{}' while cloning: {}", path, e.getMessage());
+            logger.debug("Could not delete {}: {}", path, e.getMessage());
         }
-    }
-
-    /**
-     * Deletes the world folder from disk using {@link Files#walk}.
-     *
-     * @param worldName the world folder name
-     * @return a future that completes when the files are deleted
-     */
-    public @NotNull CompletableFuture<Boolean> deleteWorldFiles(@NotNull String worldName) {
-        return CompletableFuture.supplyAsync(() -> {
-            var worldPath = Path.of(Bukkit.getWorldContainer().getAbsolutePath(), worldName);
-            if (!Files.exists(worldPath)) {
-                logger.debug("World folder '{}' does not exist, nothing to delete", worldName);
-                return true;
-            }
-            try (var walk = Files.walk(worldPath)) {
-                walk.sorted(Comparator.reverseOrder())
-                        .forEach(path -> {
-                            try {
-                                Files.deleteIfExists(path);
-                            } catch (IOException e) {
-                                logger.warn("Failed to delete file: {}", path);
-                            }
-                        });
-                logger.info("Deleted world folder '{}'", worldName);
-                return true;
-            } catch (IOException e) {
-                logger.error("Failed to walk world directory '{}'", worldName, e);
-                return false;
-            }
-        });
     }
 
     // ── Cache operations ────────────────────────────────────────────────────────

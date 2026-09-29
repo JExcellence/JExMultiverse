@@ -322,10 +322,14 @@ public abstract class JExMultiverse {
         Bukkit.getServicesManager().register(
                 MultiverseProvider.class, multiverseService, plugin, ServicePriority.Normal);
 
-        worldFactory.loadAllWorlds().join();
-        // After loading all persisted worlds, scan for and adopt companion worlds
-        // that were created at runtime but not yet tracked by JExMultiverse
-        multiverseService.adoptCompanionWorldsOnStartup().join();
+        try {
+            worldFactory.loadAllWorlds().join();
+            // After loading all persisted worlds, scan for and adopt companion worlds
+            // that were created at runtime but not yet tracked by JExMultiverse
+            multiverseService.adoptCompanionWorldsOnStartup().join();
+        } finally {
+            multiverseService.markReady();
+        }
         plotService.loadAll().join();
         logger.info("Multiverse + plot services ready");
     }
