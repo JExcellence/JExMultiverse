@@ -561,6 +561,7 @@ jexcommand:
     missing-argument: "<gradient:#dc143c:#b22222>Missing argument:</gradient> <gold>{name}</gold> <dark_gray>(<gray>{type}</gray>)</dark_gray>"
     too-many-arguments: "<gradient:#dc143c:#b22222>Too many arguments.</gradient>"
     unknown-subcommand: "<gradient:#dc143c:#b22222>Unknown subcommand:</gradient> <gold>{name}</gold>"
+    ambiguous-subcommand: "<#dc143c><gold>{name}</gold> matches several subcommands: <gold>{choices}</gold>. Click one or type more letters.</#dc143c>"
     no-permission: "<gradient:#dc143c:#b22222>No permission.</gradient> <dark_gray>(<gray>{permission}</gray>)</dark_gray>"
     not-a-player: "<gradient:#dc143c:#b22222>Players only.</gradient>"
     not-a-console: "<gradient:#dc143c:#b22222>Console only.</gradient>"
