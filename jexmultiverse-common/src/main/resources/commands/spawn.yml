@@ -6,4 +6,5 @@ description: "Teleport to spawn"
 aliases:
   - pspawn
 permission: "jexmultiverse.spawn"
+default: true
 senders: [player]
