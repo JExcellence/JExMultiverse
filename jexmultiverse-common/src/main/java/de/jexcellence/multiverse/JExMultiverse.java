@@ -397,7 +397,7 @@ public abstract class JExMultiverse {
                         multiverseService, plugin).handlerMap(),
                 messages, registry));
         reportTree("plot", factory.registerTree("commands/plot.yml",
-                new PlotHandler(plotService, multiverseService, worldFactory, viewFrame, plugin).handlerMap(),
+                new PlotHandler(plotService, multiverseService, viewFrame, plugin).handlerMap(),
                 messages, registry));
 
         // Still let JExCommand auto-register any listener classes under the plugin package.

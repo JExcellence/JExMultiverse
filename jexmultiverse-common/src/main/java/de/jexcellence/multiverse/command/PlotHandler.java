@@ -2,65 +2,82 @@ package de.jexcellence.multiverse.command;
 
 import com.raindropcentral.commands.v2.CommandContext;
 import com.raindropcentral.commands.v2.CommandHandler;
-import de.jexcellence.jextranslate.R18nManager;
-import de.jexcellence.multiverse.api.MVWorldType;
+import de.jexcellence.jexplatform.gui.chat.ChatPanel;
+import de.jexcellence.jexplatform.gui.style.BedrockViewers;
+import de.jexcellence.jexplatform.scheduler.PlatformScheduler;
+import de.jexcellence.jextranslate.MessageBuilder;
 import de.jexcellence.multiverse.database.entity.MemberRole;
 import de.jexcellence.multiverse.database.entity.Plot;
-import de.jexcellence.multiverse.factory.WorldFactory;
 import de.jexcellence.multiverse.service.MultiverseService;
 import de.jexcellence.multiverse.service.PlotFlag;
 import de.jexcellence.multiverse.service.PlotService;
+import de.jexcellence.multiverse.service.PlotService.MergeResult;
+import de.jexcellence.multiverse.view.MultiverseCards;
+import de.jexcellence.multiverse.view.PlotActions;
 import de.jexcellence.multiverse.view.PlotMenuView;
+import de.jexcellence.multiverse.view.bedrock.PlotForms;
 import me.devnatan.inventoryframework.ViewFrame;
-import de.jexcellence.jexplatform.scheduler.PlatformScheduler;
-import org.bukkit.Bukkit;
+import org.bukkit.Material;
 import org.bukkit.OfflinePlayer;
+import org.bukkit.block.BlockFace;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
+import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * /plot command tree handler - claim, unclaim, info, trust, untrust, deny,
- * undeny, home, list. Phase 2A scope.
- *
- * <p>Flags + merging arrive in Phase 2B/2C and add their own handler entries.
+ * {@code /plot} command tree handler: claim, unclaim, info, trust, untrust, deny, undeny, home, list, flag,
+ * merge, unmerge, border, menu and help. Single results are one prefixed chat line; info, list, flag list and
+ * help are {@link ChatPanel} panels. Bedrock players get the plot menu as a Cumulus form.
  *
  * @author JExcellence
  * @since 3.2.0
  */
 public final class PlotHandler {
 
-    private static final String KEY_NOT_ON_PLOT  = "plot.error.not_on_plot";
-    private static final String KEY_NOT_OWNER    = "plot.error.not_owner";
-    private static final String KEY_BYPASS       = "jexplots.bypass.protect";
-    private static final String KEY_OWNER_NAME   = "owner_name";
-    private static final String KEY_GRID_X       = "grid_x";
-    private static final String KEY_GRID_Z       = "grid_z";
-    private static final String KEY_WORLD_NAME   = "world_name";
-    private static final String KEY_TARGET_NAME  = "target_name";
-    private static final String KEY_COUNT        = "count";
-    private static final String KEY_VALUE        = "value";
-    private static final String KEY_ALIAS        = "alias";
-
+    private static final String KEY_NOT_ON_PLOT = "plot.error.not_on_plot";
+    private static final String KEY_NOT_OWNER = "plot.error.not_owner";
+    private static final String PERM_BYPASS = "jexplots.bypass.protect";
+    private static final String KEY_OWNER_NAME = "owner_name";
+    private static final String KEY_GRID_X = "grid_x";
+    private static final String KEY_GRID_Z = "grid_z";
+    private static final String KEY_WORLD_NAME = "world_name";
+    private static final String KEY_TARGET_NAME = "target_name";
+    private static final String KEY_COUNT = "count";
+    private static final String KEY_VALUE = "value";
+    private static final String KEY_ALIAS = "alias";
+    private static final String KEY_FLAG = "flag";
+    private static final String KEY_MAX = "max";
+    private static final String KEY_DIRECTION = "direction";
+    private static final String PANEL = ChatPanels.ROOT + "plot.";
     private static final String MSG_FLAG_SET_USAGE = "plot.error.flag_set_usage";
+
+    private static final List<String> HELP_COMMANDS = List.of(
+            "claim", "unclaim", "info", "trust", "untrust", "deny", "home", "list", "flag", "merge", "unmerge",
+            "menu", "border");
 
     private final PlotService plots;
     private final MultiverseService mv;
     private final ViewFrame viewFrame;
     private final JavaPlugin plugin;
+    private final PlotActions actions;
+    private final AtomicReference<PlotForms> forms = new AtomicReference<>();
 
     public PlotHandler(@NotNull PlotService plots,
                        @NotNull MultiverseService mv,
-                       @NotNull WorldFactory worldFactory,
                        @NotNull ViewFrame viewFrame,
                        @NotNull JavaPlugin plugin) {
         this.plots = plots;
         this.mv = mv;
         this.viewFrame = viewFrame;
         this.plugin = plugin;
+        this.actions = new PlotActions(plugin, plots, mv);
     }
 
     /**
@@ -70,479 +87,382 @@ public final class PlotHandler {
      */
     public @NotNull Map<String, CommandHandler> handlerMap() {
         return Map.ofEntries(
-                Map.entry("plot",          this::onRoot),
-                Map.entry("plot.claim",    this::onClaim),
-                Map.entry("plot.unclaim",  this::onUnclaim),
-                Map.entry("plot.info",     this::onInfo),
-                Map.entry("plot.trust",    this::onTrust),
-                Map.entry("plot.untrust",  this::onUntrust),
-                Map.entry("plot.deny",     this::onDeny),
-                Map.entry("plot.undeny",   this::onUndeny),
-                Map.entry("plot.home",     this::onHome),
-                Map.entry("plot.list",     this::onList),
-                Map.entry("plot.flag",     this::onFlag),
-                Map.entry("plot.merge",    this::onMerge),
-                Map.entry("plot.unmerge",  this::onUnmerge),
-                Map.entry("plot.menu",     this::onMenu),
-                Map.entry("plot.border",   this::onBorder),
-                Map.entry("plot.help",     this::onHelp)
+                Map.entry("plot", this::onHelp),
+                Map.entry("plot.claim", this::onClaim),
+                Map.entry("plot.unclaim", this::onUnclaim),
+                Map.entry("plot.info", this::onInfo),
+                Map.entry("plot.trust", ctx -> setRoleHere(ctx, MemberRole.TRUSTED)),
+                Map.entry("plot.untrust", ctx -> removeRoleHere(ctx, MemberRole.TRUSTED)),
+                Map.entry("plot.deny", ctx -> setRoleHere(ctx, MemberRole.DENIED)),
+                Map.entry("plot.undeny", ctx -> removeRoleHere(ctx, MemberRole.DENIED)),
+                Map.entry("plot.home", this::onHome),
+                Map.entry("plot.list", this::onList),
+                Map.entry("plot.flag", this::onFlag),
+                Map.entry("plot.merge", this::onMerge),
+                Map.entry("plot.unmerge", this::onUnmerge),
+                Map.entry("plot.menu", this::onMenu),
+                Map.entry("plot.border", this::onBorder),
+                Map.entry("plot.help", this::onHelp)
         );
     }
 
-    // ── Root → help ─────────────────────────────────────────────────────────────
-
-    private void onRoot(@NotNull CommandContext ctx) { onHelp(ctx); }
-
-    // ── Claim ───────────────────────────────────────────────────────────────────
-
     private void onClaim(@NotNull CommandContext ctx) {
-        var player = ctx.asPlayer().orElse(null);
-        if (player == null) return;
-
+        Player player = ctx.asPlayer().orElse(null);
+        if (player == null) {
+            return;
+        }
         var coord = mv.plotAt(player.getLocation()).orElse(null);
         if (coord == null) {
-            r18n().msg(KEY_NOT_ON_PLOT).prefix().send(player);
+            msg(KEY_NOT_ON_PLOT).prefix().send(player);
             return;
         }
-
-        var existing = plots.getPlot(coord.world(), coord.gridX(), coord.gridZ()).orElse(null);
+        Plot existing = plots.getPlot(coord.world(), coord.gridX(), coord.gridZ()).orElse(null);
         if (existing != null) {
-            r18n().msg("plot.error.already_claimed").prefix()
-                    .with(KEY_OWNER_NAME, existing.getOwnerName())
-                    .send(player);
+            msg("plot.error.already_claimed").prefix().with(KEY_OWNER_NAME, existing.getOwnerName()).send(player);
             return;
         }
-
-        var owned = plots.getOwnedPlots(player.getUniqueId()).size();
-        var limit = plots.getClaimLimit(player);
+        int owned = plots.getOwnedPlots(player.getUniqueId()).size();
+        int limit = plots.getClaimLimit(player);
         if (owned >= limit) {
-            r18n().msg("plot.error.claim_limit").prefix()
+            msg("plot.error.claim_limit").prefix()
                     .with("owned", String.valueOf(owned))
-                    .with("max", limit == Integer.MAX_VALUE ? "unlimited" : String.valueOf(limit))
+                    .with(KEY_MAX, limitText(player, limit))
                     .send(player);
             return;
         }
-
         plots.claim(player, player.getLocation()).thenAccept(opt -> PlatformScheduler.of(plugin).runSync(() -> {
             if (opt.isPresent()) {
-                r18n().msg("plot.claimed").prefix()
+                msg("plot.claimed").prefix()
                         .with(KEY_GRID_X, String.valueOf(coord.gridX()))
                         .with(KEY_GRID_Z, String.valueOf(coord.gridZ()))
                         .with(KEY_WORLD_NAME, coord.world())
                         .send(player);
             } else {
-                r18n().msg("plot.error.claim_failed").prefix().send(player);
+                msg("plot.error.claim_failed").prefix().send(player);
             }
         }));
     }
-
-    // ── Unclaim ─────────────────────────────────────────────────────────────────
 
     private void onUnclaim(@NotNull CommandContext ctx) {
-        var player = ctx.asPlayer().orElse(null);
-        if (player == null) return;
-
-        var plot = plots.getPlotAt(player.getLocation()).orElse(null);
-        if (plot == null) {
-            r18n().msg(KEY_NOT_ON_PLOT).prefix().send(player);
-            return;
+        Player player = ctx.asPlayer().orElse(null);
+        Plot plot = ownedPlotHere(player);
+        if (player != null && plot != null) {
+            actions.unclaim(player, plot);
         }
-        if (!plot.isOwner(player.getUniqueId()) && !player.hasPermission(KEY_BYPASS)) {
-            r18n().msg(KEY_NOT_OWNER).prefix()
-                    .with(KEY_OWNER_NAME, plot.getOwnerName()).send(player);
-            return;
-        }
-
-        plots.unclaim(plot).thenAccept(success -> PlatformScheduler.of(plugin).runSync(() -> {
-            if (Boolean.TRUE.equals(success)) {
-                r18n().msg("plot.unclaimed").prefix()
-                        .with(KEY_GRID_X, String.valueOf(plot.getGridX()))
-                        .with(KEY_GRID_Z, String.valueOf(plot.getGridZ()))
-                        .send(player);
-            } else {
-                r18n().msg("plot.error.unclaim_failed").prefix().send(player);
-            }
-        }));
     }
-
-    // ── Info ────────────────────────────────────────────────────────────────────
 
     private void onInfo(@NotNull CommandContext ctx) {
-        var player = ctx.asPlayer().orElse(null);
-        if (player == null) return;
-
-        var plot = plots.getPlotAt(player.getLocation()).orElse(null);
-        if (plot == null) {
-            r18n().msg(KEY_NOT_ON_PLOT).prefix().send(player);
+        Player player = ctx.asPlayer().orElse(null);
+        if (player == null) {
             return;
         }
-
-        var members = plots.getMembers(plot);
-        var trustedCount = members.values().stream().filter(r -> r == MemberRole.TRUSTED).count();
-        var deniedCount = members.values().stream().filter(r -> r == MemberRole.DENIED).count();
-
-        r18n().msg("plot.info_header").prefix()
-                .with(KEY_GRID_X, String.valueOf(plot.getGridX()))
-                .with(KEY_GRID_Z, String.valueOf(plot.getGridZ()))
-                .with(KEY_WORLD_NAME, plot.getWorldName())
-                .send(player);
-        r18n().msg("plot.info_owner")
-                .with(KEY_OWNER_NAME, plot.getOwnerName())
-                .send(player);
-        r18n().msg("plot.info_members")
-                .with("trusted", String.valueOf(trustedCount))
-                .with("denied", String.valueOf(deniedCount))
-                .send(player);
+        Plot plot = plots.getPlotAt(player.getLocation()).orElse(null);
+        if (plot == null) {
+            msg(KEY_NOT_ON_PLOT).prefix().send(player);
+            return;
+        }
+        Map<?, MemberRole> members = plots.getMembers(plot);
+        long trusted = members.values().stream().filter(role -> role == MemberRole.TRUSTED).count();
+        long denied = members.values().stream().filter(role -> role == MemberRole.DENIED).count();
+        String merge = plot.getMergedGroupIdString() != null ? "merged" : "standalone";
+        ChatPanel panel = ChatPanel.create()
+                .header(ChatPanels.line(player, gridMsg(PANEL + "info.header", plot)))
+                .context(ChatPanels.line(player, msg(PANEL + "info.context")
+                        .with(KEY_WORLD_NAME, MultiverseCards.escape(plot.getWorldName()))))
+                .gap();
+        ChatPanels.row(panel, player, "owner", MultiverseCards.tone(player, "accent", plot.getOwnerName()));
+        ChatPanels.row(panel, player, "trusted", MultiverseCards.tone(player, "ok", String.valueOf(trusted)));
+        ChatPanels.row(panel, player, "denied", MultiverseCards.tone(player, "bad", String.valueOf(denied)));
+        ChatPanels.row(panel, player, "merge", MultiverseCards.word(player, "plain", merge));
+        ChatPanels.row(panel, player, "changed", MultiverseCards.value(player,
+                actions.overrides(plot) + " / " + PlotFlag.values().length));
+        panel.send(player);
     }
 
-    // ── Trust / untrust / deny / undeny ─────────────────────────────────────────
-
-    private void onTrust(@NotNull CommandContext ctx)   { setRoleHere(ctx, MemberRole.TRUSTED); }
-    private void onDeny(@NotNull CommandContext ctx)    { setRoleHere(ctx, MemberRole.DENIED); }
-    private void onUntrust(@NotNull CommandContext ctx) { removeRoleHere(ctx, MemberRole.TRUSTED); }
-    private void onUndeny(@NotNull CommandContext ctx)  { removeRoleHere(ctx, MemberRole.DENIED); }
-
     private void setRoleHere(@NotNull CommandContext ctx, @NotNull MemberRole role) {
-        var player = ctx.asPlayer().orElse(null);
-        if (player == null) return;
-        var plot = plots.getPlotAt(player.getLocation()).orElse(null);
-        if (plot == null) {
-            r18n().msg(KEY_NOT_ON_PLOT).prefix().send(player);
+        Player player = ctx.asPlayer().orElse(null);
+        Plot plot = ownedPlotHere(player);
+        if (player == null || plot == null) {
             return;
         }
-        if (!plot.isOwner(player.getUniqueId()) && !player.hasPermission(KEY_BYPASS)) {
-            r18n().msg(KEY_NOT_OWNER).prefix().with(KEY_OWNER_NAME, plot.getOwnerName()).send(player);
-            return;
-        }
-
-        var target = ctx.require("target", OfflinePlayer.class);
+        OfflinePlayer target = ctx.require("target", OfflinePlayer.class);
         if (target.getUniqueId().equals(plot.getOwnerUuid())) {
-            r18n().msg("plot.error.target_is_owner").prefix().send(player);
+            msg("plot.error.target_is_owner").prefix().send(player);
             return;
         }
-
         plots.setMember(plot, target, role).thenAccept(ok -> PlatformScheduler.of(plugin).runSync(() -> {
-            var key = role == MemberRole.TRUSTED ? "plot.trusted" : "plot.denied";
-            r18n().msg(ok ? key : "plot.error.member_failed").prefix()
+            String key = role == MemberRole.TRUSTED ? "plot.trusted" : "plot.denied";
+            msg(Boolean.TRUE.equals(ok) ? key : "plot.error.member_failed").prefix()
                     .with(KEY_TARGET_NAME, String.valueOf(target.getName()))
                     .send(player);
         }));
     }
 
     private void removeRoleHere(@NotNull CommandContext ctx, @NotNull MemberRole role) {
-        var player = ctx.asPlayer().orElse(null);
-        if (player == null) return;
-        var plot = plots.getPlotAt(player.getLocation()).orElse(null);
-        if (plot == null) {
-            r18n().msg(KEY_NOT_ON_PLOT).prefix().send(player);
+        Player player = ctx.asPlayer().orElse(null);
+        Plot plot = ownedPlotHere(player);
+        if (player == null || plot == null) {
             return;
         }
-        if (!plot.isOwner(player.getUniqueId()) && !player.hasPermission(KEY_BYPASS)) {
-            r18n().msg(KEY_NOT_OWNER).prefix().with(KEY_OWNER_NAME, plot.getOwnerName()).send(player);
-            return;
-        }
-
-        var target = ctx.require("target", OfflinePlayer.class);
-        var current = plots.roleOf(plot, target.getUniqueId()).orElse(null);
+        OfflinePlayer target = ctx.require("target", OfflinePlayer.class);
+        String name = String.valueOf(target.getName());
+        MemberRole current = plots.roleOf(plot, target.getUniqueId()).orElse(null);
         if (current != role) {
-            r18n().msg("plot.error.member_not_set").prefix()
-                    .with(KEY_TARGET_NAME, String.valueOf(target.getName())).send(player);
+            msg("plot.error.member_not_set").prefix().with(KEY_TARGET_NAME, name).send(player);
             return;
         }
-
-        plots.removeMember(plot, target.getUniqueId()).thenAccept(ok -> PlatformScheduler.of(plugin).runSync(() -> {
-            var key = role == MemberRole.TRUSTED ? "plot.untrusted" : "plot.undenied";
-            r18n().msg(ok ? key : "plot.error.member_failed").prefix()
-                    .with(KEY_TARGET_NAME, String.valueOf(target.getName()))
-                    .send(player);
-        }));
+        actions.removeMember(player, plot, new PlotActions.Member(target.getUniqueId(), name, role),
+                PlotHandler::noFollowUp);
     }
 
-    // ── Home ────────────────────────────────────────────────────────────────────
-
     private void onHome(@NotNull CommandContext ctx) {
-        var player = ctx.asPlayer().orElse(null);
-        if (player == null) return;
-
-        var owned = plots.getOwnedPlots(player.getUniqueId());
-        if (owned.isEmpty()) {
-            r18n().msg("plot.error.no_plots").prefix().send(player);
+        Player player = ctx.asPlayer().orElse(null);
+        if (player == null) {
             return;
         }
-
-        int idx = ctx.get("n", Long.class).map(Long::intValue).orElse(1) - 1;
-        if (idx < 0 || idx >= owned.size()) {
-            r18n().msg("plot.error.no_such_home").prefix()
-                    .with("n", String.valueOf(idx + 1))
+        List<Plot> owned = plots.getOwnedPlots(player.getUniqueId());
+        if (owned.isEmpty()) {
+            msg("plot.error.no_plots").prefix().send(player);
+            return;
+        }
+        int index = ctx.get("n", Long.class).map(Long::intValue).orElse(1) - 1;
+        if (index < 0 || index >= owned.size()) {
+            msg("plot.error.no_such_home").prefix()
+                    .with("n", String.valueOf(index + 1))
                     .with(KEY_COUNT, String.valueOf(owned.size()))
                     .send(player);
             return;
         }
-
-        var plot = owned.get(idx);
-        var bukkit = Bukkit.getWorld(plot.getWorldName());
-        if (bukkit == null) {
-            r18n().msg("multiverse.world_not_loaded").prefix()
-                    .with(KEY_WORLD_NAME, plot.getWorldName()).send(player);
-            return;
-        }
-        var bounds = mv.plotBounds(plot.getWorldName(), plot.getGridX(), plot.getGridZ()).orElse(null);
-        if (bounds == null) return;
-        var loc = new org.bukkit.Location(bukkit, bounds.centerX() + 0.5,
-                bounds.surfaceY() + 1, bounds.centerZ() + 0.5);
-        PlatformScheduler.of(plugin).runSync(() -> {
-            player.teleportAsync(loc);
-            r18n().msg("plot.teleported").prefix()
-                    .with(KEY_GRID_X, String.valueOf(plot.getGridX()))
-                    .with(KEY_GRID_Z, String.valueOf(plot.getGridZ()))
-                    .with(KEY_WORLD_NAME, plot.getWorldName())
-                    .send(player);
-        });
+        actions.teleportHome(player, owned.get(index));
     }
-
-    // ── List ────────────────────────────────────────────────────────────────────
 
     private void onList(@NotNull CommandContext ctx) {
-        var sender = ctx.sender();
-        var player = ctx.asPlayer().orElse(null);
-        var ownerUuid = player != null ? player.getUniqueId() : null;
-        if (ownerUuid == null) {
-            r18n().msg("plot.error.console_no_owner").prefix().send(sender);
+        CommandSender sender = ctx.sender();
+        Player player = ctx.asPlayer().orElse(null);
+        if (player == null) {
+            msg("plot.error.console_no_owner").prefix().send(sender);
             return;
         }
-
-        var owned = plots.getOwnedPlots(ownerUuid);
+        List<Plot> owned = plots.getOwnedPlots(player.getUniqueId());
         if (owned.isEmpty()) {
-            r18n().msg("plot.list_empty").prefix().send(sender);
+            msg("plot.list_empty").prefix().send(sender);
             return;
         }
-
-        var limit = plots.getClaimLimit(player);
-        r18n().msg("plot.list_header").prefix()
-                .with(KEY_COUNT, String.valueOf(owned.size()))
-                .with("max", limit == Integer.MAX_VALUE ? "unlimited" : String.valueOf(limit))
-                .send(sender);
+        ChatPanel panel = ChatPanel.create()
+                .header(ChatPanels.line(player, PANEL + "list.header"))
+                .context(ChatPanels.line(player, msg(PANEL + "list.context")
+                        .with(KEY_COUNT, owned.size())
+                        .with(KEY_MAX, limitText(player, plots.getClaimLimit(player)))))
+                .gap();
         for (int i = 0; i < owned.size(); i++) {
-            var p = owned.get(i);
-            r18n().msg("plot.list_entry")
-                    .with("n", String.valueOf(i + 1))
-                    .with(KEY_WORLD_NAME, p.getWorldName())
-                    .with(KEY_GRID_X, String.valueOf(p.getGridX()))
-                    .with(KEY_GRID_Z, String.valueOf(p.getGridZ()))
-                    .send(sender);
+            Plot plot = owned.get(i);
+            panel.line(ChatPanels.line(player, gridMsg(PANEL + "list.entry", plot)
+                    .with("n", i + 1)
+                    .with(KEY_WORLD_NAME, MultiverseCards.escape(plot.getWorldName()))));
         }
+        panel.footer(ChatPanels.line(player, msg(PANEL + "list.footer").with(KEY_ALIAS, ctx.alias())));
+        panel.send(player);
     }
-
-    // ── Flag ────────────────────────────────────────────────────────────────────
 
     private void onFlag(@NotNull CommandContext ctx) {
-        var player = ctx.asPlayer().orElse(null);
-        if (player == null) return;
-
-        var plot = plots.getPlotAt(player.getLocation()).orElse(null);
-        if (plot == null) {
-            r18n().msg(KEY_NOT_ON_PLOT).prefix().send(player);
+        Player player = ctx.asPlayer().orElse(null);
+        Plot plot = ownedPlotHere(player);
+        if (player == null || plot == null) {
             return;
         }
-        if (!plot.isOwner(player.getUniqueId()) && !player.hasPermission(KEY_BYPASS)) {
-            r18n().msg(KEY_NOT_OWNER).prefix().with(KEY_OWNER_NAME, plot.getOwnerName()).send(player);
-            return;
-        }
-
-        var action = ctx.require("action", PlotFlagAction.class);
+        PlotFlagAction action = ctx.require("action", PlotFlagAction.class);
         switch (action) {
-            case LIST   -> handleFlagList(player, plot);
-            case SET    -> handleFlagSet(ctx, player, plot);
+            case LIST -> sendFlagList(player, plot);
+            case SET -> handleFlagSet(ctx, player, plot);
             case REMOVE -> handleFlagRemove(ctx, player, plot);
-            default     -> r18n().msg(MSG_FLAG_SET_USAGE).prefix().send(player);
+            default -> msg(MSG_FLAG_SET_USAGE).prefix().send(player);
         }
     }
 
-    private void handleFlagList(@NotNull Player player, @NotNull Plot plot) {
-        r18n().msg("plot.flag_list_header").prefix()
-                .with(KEY_GRID_X, String.valueOf(plot.getGridX()))
-                .with(KEY_GRID_Z, String.valueOf(plot.getGridZ()))
-                .send(player);
-        for (var f : PlotFlag.values()) {
-            var effective = plots.getFlag(plot, f);
-            var override = plots.hasFlagOverride(plot, f);
-            r18n().msg("plot.flag_list_entry")
-                    .with("flag", f.key())
-                    .with(KEY_VALUE, String.valueOf(effective))
-                    .with("source", override ? "override" : "default")
-                    .send(player);
+    private void sendFlagList(@NotNull Player player, @NotNull Plot plot) {
+        ChatPanel panel = ChatPanel.create()
+                .header(ChatPanels.line(player, gridMsg(PANEL + "flags.header", plot)))
+                .gap();
+        for (PlotFlag flag : PlotFlag.values()) {
+            String source = plots.hasFlagOverride(plot, flag) ? "override" : "default";
+            String value = MultiverseCards.state(player, plots.getFlag(plot, flag)) + " "
+                    + MultiverseCards.word(player, "muted", source);
+            ChatPanels.labelledRow(panel, player,
+                    MultiverseCards.text(player, MultiverseCards.ROOT + "bedrock.flag." + flag.key()), value);
         }
+        panel.footer(ChatPanels.line(player, PANEL + "flags.footer"));
+        panel.send(player);
     }
 
     private void handleFlagSet(@NotNull CommandContext ctx, @NotNull Player player, @NotNull Plot plot) {
-        var flag = ctx.get("flag", PlotFlag.class).orElse(null);
-        if (flag == null) {
-            r18n().msg(MSG_FLAG_SET_USAGE).prefix().send(player);
+        PlotFlag flag = ctx.get(KEY_FLAG, PlotFlag.class).orElse(null);
+        Boolean value = parseBoolean(ctx.get(KEY_VALUE, String.class).orElse(null));
+        if (flag == null || value == null) {
+            msg(MSG_FLAG_SET_USAGE).prefix().send(player);
             return;
         }
-        var raw = ctx.get(KEY_VALUE, String.class).orElse(null);
-        Boolean value = parseBoolean(raw);
-        if (value == null) {
-            r18n().msg(MSG_FLAG_SET_USAGE).prefix().send(player);
-            return;
-        }
-        plots.setFlag(plot, flag, value).thenAccept(ok -> PlatformScheduler.of(plugin).runSync(() ->
-                r18n().msg(ok ? "plot.flag_set" : "plot.error.flag_failed").prefix()
-                        .with("flag", flag.key())
-                        .with(KEY_VALUE, String.valueOf(value))
-                        .send(player)));
+        actions.setFlag(player, plot, flag, value, PlotHandler::noFollowUp);
     }
 
     private void handleFlagRemove(@NotNull CommandContext ctx, @NotNull Player player, @NotNull Plot plot) {
-        var flag = ctx.get("flag", PlotFlag.class).orElse(null);
+        PlotFlag flag = ctx.get(KEY_FLAG, PlotFlag.class).orElse(null);
         if (flag == null) {
-            r18n().msg("plot.error.flag_remove_usage").prefix().send(player);
+            msg("plot.error.flag_remove_usage").prefix().send(player);
             return;
         }
         plots.removeFlag(plot, flag).thenAccept(ok -> PlatformScheduler.of(plugin).runSync(() ->
-                r18n().msg(ok ? "plot.flag_removed" : "plot.error.flag_failed").prefix()
-                        .with("flag", flag.key())
+                msg(Boolean.TRUE.equals(ok) ? "plot.flag_removed" : "plot.error.flag_failed").prefix()
+                        .with(KEY_FLAG, flag.key())
                         .send(player)));
     }
 
-    private static @org.jetbrains.annotations.Nullable Boolean parseBoolean(
-            @org.jetbrains.annotations.Nullable String raw) {
-        if (raw == null) return null;
-        return switch (raw.toLowerCase(java.util.Locale.ROOT)) {
+    private static @Nullable Boolean parseBoolean(@Nullable String raw) {
+        if (raw == null) {
+            return null;
+        }
+        return switch (raw.toLowerCase(Locale.ROOT)) {
             case "true", "yes", "on", "1", "enable", "enabled" -> Boolean.TRUE;
             case "false", "no", "off", "0", "disable", "disabled" -> Boolean.FALSE;
             default -> null;
         };
     }
 
-    // ── Border ──────────────────────────────────────────────────────────────────
-
     private void onBorder(@NotNull CommandContext ctx) {
-        var player = ctx.asPlayer().orElse(null);
-        if (player == null) return;
-        var plot = plots.getPlotAt(player.getLocation()).orElse(null);
-        if (plot == null) {
-            r18n().msg(KEY_NOT_ON_PLOT).prefix().send(player);
+        Player player = ctx.asPlayer().orElse(null);
+        Plot plot = ownedPlotHere(player);
+        if (player == null || plot == null) {
             return;
         }
-        if (!plot.isOwner(player.getUniqueId()) && !player.hasPermission(KEY_BYPASS)) {
-            r18n().msg(KEY_NOT_OWNER).prefix().with(KEY_OWNER_NAME, plot.getOwnerName()).send(player);
-            return;
-        }
-
-        var material = ctx.get("material", org.bukkit.Material.class).orElse(null);
+        Material material = ctx.get("material", Material.class).orElse(null);
         plots.setBorder(plot, material).thenAccept(ok -> PlatformScheduler.of(plugin).runSync(() -> {
-            if (!ok) {
-                r18n().msg("plot.error.border_failed").prefix().send(player);
-                return;
-            }
-            if (material == null) {
-                r18n().msg("plot.border_reset").prefix().send(player);
+            if (!Boolean.TRUE.equals(ok)) {
+                msg("plot.error.border_failed").prefix().send(player);
+            } else if (material == null) {
+                msg("plot.border_reset").prefix().send(player);
             } else {
-                r18n().msg("plot.border_set").prefix()
-                        .with("material", material.name().toLowerCase()).send(player);
+                msg("plot.border_set").prefix()
+                        .with("material", material.name().toLowerCase(Locale.ROOT)).send(player);
             }
         }));
     }
-
-    // ── Menu ────────────────────────────────────────────────────────────────────
 
     private void onMenu(@NotNull CommandContext ctx) {
-        var player = ctx.asPlayer().orElse(null);
-        if (player == null) return;
-        var plot = plots.getPlotAt(player.getLocation()).orElse(null);
-        if (plot == null) {
-            r18n().msg(KEY_NOT_ON_PLOT).prefix().send(player);
+        Player player = ctx.asPlayer().orElse(null);
+        if (player == null) {
             return;
         }
-        viewFrame.open(PlotMenuView.class, player,
-                PlotMenuView.dataMap(plot, plugin, plots, mv));
+        Plot plot = plots.getPlotAt(player.getLocation()).orElse(null);
+        if (plot == null) {
+            msg(KEY_NOT_ON_PLOT).prefix().send(player);
+            return;
+        }
+        if (BedrockViewers.isBedrock(player)) {
+            forms().openMenu(player, plot);
+            return;
+        }
+        viewFrame.open(PlotMenuView.class, player, PlotMenuView.dataMap(plot, plugin, plots, mv));
     }
 
-    // ── Merge / Unmerge ─────────────────────────────────────────────────────────
+    private @NotNull PlotForms forms() {
+        PlotForms current = forms.get();
+        if (current != null) {
+            return current;
+        }
+        forms.compareAndSet(null, new PlotForms(actions));
+        return forms.get();
+    }
 
     private void onMerge(@NotNull CommandContext ctx) {
-        var player = ctx.asPlayer().orElse(null);
-        if (player == null) return;
-
-        var plot = plots.getPlotAt(player.getLocation()).orElse(null);
-        if (plot == null) {
-            r18n().msg(KEY_NOT_ON_PLOT).prefix().send(player);
+        Player player = ctx.asPlayer().orElse(null);
+        Plot plot = ownedPlotHere(player);
+        if (player == null || plot == null) {
             return;
         }
-        if (!plot.isOwner(player.getUniqueId()) && !player.hasPermission(KEY_BYPASS)) {
-            r18n().msg(KEY_NOT_OWNER).prefix().with(KEY_OWNER_NAME, plot.getOwnerName()).send(player);
-            return;
-        }
+        BlockFace facing = player.getFacing();
+        plots.merge(player, plot, facing).thenAccept(result -> PlatformScheduler.of(plugin).runSync(() ->
+                mergeMessage(player, result, facing).prefix().send(player)));
+    }
 
-        var facing = player.getFacing();
-        plots.merge(player, plot, facing).thenAccept(result -> PlatformScheduler.of(plugin).runSync(() -> {
-            switch (result) {
-                case OK -> r18n().msg("plot.merged").prefix()
-                        .with("direction", facing.name().toLowerCase()).send(player);
-                case NO_NEIGHBOR -> r18n().msg("plot.error.merge_no_neighbor").prefix()
-                        .with("direction", facing.name().toLowerCase()).send(player);
-                case DIFFERENT_OWNER -> r18n().msg("plot.error.merge_different_owner").prefix().send(player);
-                case LIMIT_REACHED -> r18n().msg("plot.error.merge_limit").prefix()
-                        .with("max", String.valueOf(plots.getMergeLimit(player))).send(player);
-                case NOT_ADJACENT -> r18n().msg("plot.error.merge_not_adjacent").prefix().send(player);
-                case FAILED -> r18n().msg("plot.error.merge_failed").prefix().send(player);
-            }
-        }));
+    private @NotNull MessageBuilder mergeMessage(@NotNull Player player, @NotNull MergeResult result,
+                                                 @NotNull BlockFace facing) {
+        String direction = facing.name().toLowerCase(Locale.ROOT);
+        return switch (result) {
+            case OK -> msg("plot.merged").with(KEY_DIRECTION, direction);
+            case NO_NEIGHBOR -> msg("plot.error.merge_no_neighbor").with(KEY_DIRECTION, direction);
+            case DIFFERENT_OWNER -> msg("plot.error.merge_different_owner");
+            case LIMIT_REACHED -> msg("plot.error.merge_limit").with(KEY_MAX, String.valueOf(plots.getMergeLimit(player)));
+            case NOT_ADJACENT -> msg("plot.error.merge_not_adjacent");
+            default -> msg("plot.error.merge_failed");
+        };
     }
 
     private void onUnmerge(@NotNull CommandContext ctx) {
-        var player = ctx.asPlayer().orElse(null);
-        if (player == null) return;
-
-        var plot = plots.getPlotAt(player.getLocation()).orElse(null);
-        if (plot == null) {
-            r18n().msg(KEY_NOT_ON_PLOT).prefix().send(player);
-            return;
-        }
-        if (!plot.isOwner(player.getUniqueId()) && !player.hasPermission(KEY_BYPASS)) {
-            r18n().msg(KEY_NOT_OWNER).prefix().with(KEY_OWNER_NAME, plot.getOwnerName()).send(player);
+        Player player = ctx.asPlayer().orElse(null);
+        Plot plot = ownedPlotHere(player);
+        if (player == null || plot == null) {
             return;
         }
         if (plot.getMergedGroupIdString() == null) {
-            r18n().msg("plot.error.unmerge_not_merged").prefix().send(player);
+            msg("plot.error.unmerge_not_merged").prefix().send(player);
             return;
         }
-
         plots.unmerge(plot).thenAccept(ok -> PlatformScheduler.of(plugin).runSync(() ->
-                r18n().msg(ok ? "plot.unmerged" : "plot.error.unmerge_failed").prefix().send(player)));
+                msg(Boolean.TRUE.equals(ok) ? "plot.unmerged" : "plot.error.unmerge_failed").prefix().send(player)));
     }
-
-    // ── Help ────────────────────────────────────────────────────────────────────
 
     private void onHelp(@NotNull CommandContext ctx) {
-
-        var sender = ctx.sender();
-        var alias = ctx.alias();
-        r18n().msg("plot.help_header").send(sender);
-        if (hasPerm(sender, "jexplots.command.claim"))   r18n().msg("plot.help_claim").with(KEY_ALIAS, alias).send(sender);
-        if (hasPerm(sender, "jexplots.command.unclaim")) r18n().msg("plot.help_unclaim").with(KEY_ALIAS, alias).send(sender);
-        if (hasPerm(sender, "jexplots.command.info"))    r18n().msg("plot.help_info").with(KEY_ALIAS, alias).send(sender);
-        if (hasPerm(sender, "jexplots.command.trust"))   r18n().msg("plot.help_trust").with(KEY_ALIAS, alias).send(sender);
-        if (hasPerm(sender, "jexplots.command.untrust")) r18n().msg("plot.help_untrust").with(KEY_ALIAS, alias).send(sender);
-        if (hasPerm(sender, "jexplots.command.deny"))    r18n().msg("plot.help_deny").with(KEY_ALIAS, alias).send(sender);
-        if (hasPerm(sender, "jexplots.command.home"))    r18n().msg("plot.help_home").with(KEY_ALIAS, alias).send(sender);
-        if (hasPerm(sender, "jexplots.command.list"))    r18n().msg("plot.help_list").with(KEY_ALIAS, alias).send(sender);
-        if (hasPerm(sender, "jexplots.command.flag"))    r18n().msg("plot.help_flag").with(KEY_ALIAS, alias).send(sender);
-        if (hasPerm(sender, "jexplots.command.merge"))   r18n().msg("plot.help_merge").with(KEY_ALIAS, alias).send(sender);
-        if (hasPerm(sender, "jexplots.command.unmerge")) r18n().msg("plot.help_unmerge").with(KEY_ALIAS, alias).send(sender);
-        if (hasPerm(sender, "jexplots.command.menu"))    r18n().msg("plot.help_menu").with(KEY_ALIAS, alias).send(sender);
-        if (hasPerm(sender, "jexplots.command.border"))  r18n().msg("plot.help_border").with(KEY_ALIAS, alias).send(sender);
-        r18n().msg("plot.help_footer").send(sender);
+        CommandSender sender = ctx.sender();
+        ChatPanel panel = ChatPanel.create()
+                .header(ChatPanels.line(sender, PANEL + "help.header"))
+                .context(ChatPanels.line(sender, PANEL + "help.context"))
+                .gap();
+        for (String command : HELP_COMMANDS) {
+            if (hasPerm(sender, "jexplots.command." + command)) {
+                panel.line(ChatPanels.line(sender, msg(PANEL + "help." + command).with(KEY_ALIAS, ctx.alias())));
+            }
+        }
+        panel.send(sender);
     }
 
-    // ── Helpers ─────────────────────────────────────────────────────────────────
+    /**
+     * The plot the player stands on when they own it or may bypass protection; sends the matching error and
+     * returns {@code null} otherwise.
+     */
+    private @Nullable Plot ownedPlotHere(@Nullable Player player) {
+        if (player == null) {
+            return null;
+        }
+        Plot plot = plots.getPlotAt(player.getLocation()).orElse(null);
+        if (plot == null) {
+            msg(KEY_NOT_ON_PLOT).prefix().send(player);
+            return null;
+        }
+        if (!plot.isOwner(player.getUniqueId()) && !player.hasPermission(PERM_BYPASS)) {
+            msg(KEY_NOT_OWNER).prefix().with(KEY_OWNER_NAME, plot.getOwnerName()).send(player);
+            return null;
+        }
+        return plot;
+    }
+
+    private static @NotNull MessageBuilder gridMsg(@NotNull String key, @NotNull Plot plot) {
+        return msg(key).with(KEY_GRID_X, plot.getGridX()).with(KEY_GRID_Z, plot.getGridZ());
+    }
+
+    private static @NotNull String limitText(@Nullable Player player, int limit) {
+        return limit == Integer.MAX_VALUE
+                ? MultiverseCards.text(player, MultiverseCards.COMMON + "word.unlimited")
+                : String.valueOf(limit);
+    }
+
+    private static void noFollowUp() {
+        // The chat confirmation sent by PlotActions is the only feedback a command needs.
+    }
 
     private static boolean hasPerm(@NotNull CommandSender sender, @NotNull String node) {
         return sender instanceof Player p && (p.isOp() || p.hasPermission(node));
     }
 
-    private static R18nManager r18n() {
-        return R18nManager.getInstance();
+    private static @NotNull MessageBuilder msg(@NotNull String key) {
+        return MultiverseCards.msg(key);
     }
 }

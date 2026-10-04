@@ -342,188 +342,14 @@ plot:
   undenied: "<gradient:#ffa500:#ff8c00>Un-denied:</gradient> <white><gradient:#ff7f50:#ff4500>{target_name}</gradient> can enter this plot again.</white>"
   teleported: "<gradient:#32cd32:#228b22>Teleported:</gradient> <white>Plot <gradient:#ff7f50:#ff4500>{grid_x},{grid_z}</gradient> in <gradient:#ff7f50:#ff4500>{world_name}</gradient>.</white>"
 
-  info_header: "<gradient:#ff7f50:#ff4500>Plot {grid_x},{grid_z}</gradient> <dark_gray>in {world_name}</dark_gray>"
-  info_owner:  "  <gray>Owner:</gray> <gradient:#ffa500:#ff6347>{owner_name}</gradient>"
-  info_members: "  <gray>Trusted:</gray> <white>{trusted}</white> <dark_gray>·</dark_gray> <gray>Denied:</gray> <white>{denied}</white>"
-
   list_empty: "<gray>You don't own any plots.</gray>"
-  list_header: "<gradient:#ff7f50:#ff4500>Your plots</gradient> <dark_gray>({count}/{max})</dark_gray>"
-  list_entry: " <gray>{n}.</gray> <gradient:#ffa500:#ff6347>{world_name}</gradient> <dark_gray>@ {grid_x},{grid_z}</dark_gray>"
-
-  help_header: "<gradient:#ff7f50:#ff4500>Plot commands</gradient>"
-  help_claim:   "<gradient:#ffa500:#ff6347>/{alias} claim</gradient> <gray>- claim the plot you're standing on</gray>"
-  help_unclaim: "<gradient:#ffa500:#ff6347>/{alias} unclaim</gradient> <gray>- release the plot you're standing on</gray>"
-  help_info:    "<gradient:#ffa500:#ff6347>/{alias} info</gradient> <gray>- show plot info</gray>"
-  help_trust:   "<gradient:#ffa500:#ff6347>/{alias} trust <player></gradient> <gray>- let a player build</gray>"
-  help_untrust: "<gradient:#ffa500:#ff6347>/{alias} untrust <player></gradient> <gray>- remove a trusted player</gray>"
-  help_deny:    "<gradient:#ffa500:#ff6347>/{alias} deny <player></gradient> <gray>- block a player from entering</gray>"
-  help_home:    "<gradient:#ffa500:#ff6347>/{alias} home [n]</gradient> <gray>- teleport to your plot</gray>"
-  help_list:    "<gradient:#ffa500:#ff6347>/{alias} list</gradient> <gray>- list your plots</gray>"
-  help_flag:    "<gradient:#ffa500:#ff6347>/{alias} flag <set|remove|list> [flag] [value]</gradient> <gray>- manage plot flags</gray>"
-  help_footer:  "<dark_gray>───────────────────────────────</dark_gray>"
-
-  flag_list_header: "<gradient:#ff7f50:#ff4500>Flags for plot {grid_x},{grid_z}</gradient>"
-  flag_list_entry:  " <gray>•</gray> <gradient:#ffa500:#ff6347>{flag}</gradient> <dark_gray>=</dark_gray> <white>{value}</white> <dark_gray>({source})</dark_gray>"
   flag_set:         "<gradient:#32cd32:#228b22>Set:</gradient> <white>Flag <gradient:#ff7f50:#ff4500>{flag}</gradient> = <gradient:#ffa500:#ff6347>{value}</gradient>.</white>"
   flag_removed:     "<gradient:#ffa500:#ff8c00>Removed:</gradient> <white>Flag <gradient:#ff7f50:#ff4500>{flag}</gradient> reset to default.</white>"
 
   merged: "<gradient:#32cd32:#228b22>Merged:</gradient> <white>Joined with the plot to the <gradient:#ff7f50:#ff4500>{direction}</gradient>.</white>"
   unmerged: "<gradient:#ffa500:#ff8c00>Unmerged:</gradient> <white>This plot is now standalone again.</white>"
-  help_merge:   "<gradient:#ffa500:#ff6347>/{alias} merge</gradient> <gray>- merge with the plot you're facing</gray>"
-  help_unmerge: "<gradient:#ffa500:#ff6347>/{alias} unmerge</gradient> <gray>- split this plot off the merge group</gray>"
-  help_menu:    "<gradient:#ffa500:#ff6347>/{alias} menu</gradient> <gray>- open the plot management GUI</gray>"
-  help_border:  "<gradient:#ffa500:#ff6347>/{alias} border [material]</gradient> <gray>- change your plot's wall material</gray>"
-
   border_set:    "<gradient:#32cd32:#228b22>Border:</gradient> <white>Plot wall set to <gradient:#ff7f50:#ff4500>{material}</gradient>.</white>"
   border_reset:  "<gradient:#ffa500:#ff8c00>Border:</gradient> <white>Plot wall reset to the default claimed material.</white>"
-
-plot_menu_ui:
-  title: "<gradient:#ff7f50:#ff4500>Plot</gradient> <dark_gray>{world_name} @ {grid_x},{grid_z}</dark_gray>"
-  info:
-    name: "<gradient:#ffa500:#ff6347>{owner_name}'s plot</gradient>"
-    lore:
-      - ""
-      - "<gray>Owner:</gray> <white>{owner_name}</white>"
-      - "<gray>World:</gray> <white>{world_name}</white>"
-      - "<gray>Grid:</gray> <white>{grid_x},{grid_z}</white>"
-      - "<gray>Trusted:</gray> <white>{trusted}</white> <dark_gray>·</dark_gray> <gray>Denied:</gray> <white>{denied}</white>"
-      - "<gray>Merged:</gray> <white>{merged}</white>"
-  members:
-    name: "<gradient:#ff7f50:#ff4500>Members</gradient>"
-    lore:
-      - ""
-      - "<gray>Click to view trusted</gray>"
-      - "<gray>and denied players.</gray>"
-  flags:
-    name: "<gradient:#ff7f50:#ff4500>Flags</gradient>"
-    lore:
-      - ""
-      - "<gray>Click to toggle plot flags</gray>"
-      - "<gray>like PvP, mob spawning,</gray>"
-      - "<gray>explosions, and fire.</gray>"
-  home:
-    name: "<gradient:#ff7f50:#ff4500>Teleport home</gradient>"
-    lore:
-      - ""
-      - "<gray>Click to teleport to the</gray>"
-      - "<gray>center of this plot.</gray>"
-  unclaim:
-    name: "<gradient:#dc143c:#b22222>Unclaim plot</gradient>"
-    lore:
-      - ""
-      - "<gray>Releases this plot.</gray>"
-      - "<gray>All members and flags are removed.</gray>"
-
-plot_flags_ui:
-  title: "<gradient:#ff7f50:#ff4500>Flags</gradient> <dark_gray>{grid_x},{grid_z}</dark_gray>"
-  flag:
-    pvp:
-      name: "<gradient:#ff7f50:#ff4500>PvP</gradient> <dark_gray>({value})</dark_gray>"
-      lore:
-        - ""
-        - "<gray>Status:</gray> <white>{value}</white> <dark_gray>({source})</dark_gray>"
-        - ""
-        - "<gray>When enabled, anyone can</gray>"
-        - "<gray>fight in this plot.</gray>"
-        - ""
-        - "<gradient:#ff7f50:#ff4500>Click</gradient> <gray>to toggle</gray>"
-    mob-spawning:
-      name: "<gradient:#ff7f50:#ff4500>Mob spawning</gradient> <dark_gray>({value})</dark_gray>"
-      lore:
-        - ""
-        - "<gray>Status:</gray> <white>{value}</white> <dark_gray>({source})</dark_gray>"
-        - ""
-        - "<gray>Controls hostile mobs from</gray>"
-        - "<gray>naturally spawning.</gray>"
-        - ""
-        - "<gradient:#ff7f50:#ff4500>Click</gradient> <gray>to toggle</gray>"
-    explosion:
-      name: "<gradient:#ff7f50:#ff4500>Explosions</gradient> <dark_gray>({value})</dark_gray>"
-      lore:
-        - ""
-        - "<gray>Status:</gray> <white>{value}</white> <dark_gray>({source})</dark_gray>"
-        - ""
-        - "<gray>When disabled, blocks in this</gray>"
-        - "<gray>plot survive creepers and TNT.</gray>"
-        - ""
-        - "<gradient:#ff7f50:#ff4500>Click</gradient> <gray>to toggle</gray>"
-    fire-spread:
-      name: "<gradient:#ff7f50:#ff4500>Fire spread</gradient> <dark_gray>({value})</dark_gray>"
-      lore:
-        - ""
-        - "<gray>Status:</gray> <white>{value}</white> <dark_gray>({source})</dark_gray>"
-        - ""
-        - "<gray>When disabled, fire won't</gray>"
-        - "<gray>spread or burn blocks.</gray>"
-        - ""
-        - "<gradient:#ff7f50:#ff4500>Click</gradient> <gray>to toggle</gray>"
-    keep-inventory:
-      name: "<gradient:#ff7f50:#ff4500>Keep inventory</gradient> <dark_gray>({value})</dark_gray>"
-      lore:
-        - ""
-        - "<gray>Status:</gray> <white>{value}</white> <dark_gray>({source})</dark_gray>"
-        - ""
-        - "<gray>When enabled, players keep their</gray>"
-        - "<gray>items and XP if they die here.</gray>"
-        - ""
-        - "<gradient:#ff7f50:#ff4500>Click</gradient> <gray>to toggle</gray>"
-    entry:
-      name: "<gradient:#ff7f50:#ff4500>Public entry</gradient> <dark_gray>({value})</dark_gray>"
-      lore:
-        - ""
-        - "<gray>Status:</gray> <white>{value}</white> <dark_gray>({source})</dark_gray>"
-        - ""
-        - "<gray>When disabled, only the owner</gray>"
-        - "<gray>and trusted members can enter.</gray>"
-        - ""
-        - "<gradient:#ff7f50:#ff4500>Click</gradient> <gray>to toggle</gray>"
-    liquid-flow:
-      name: "<gradient:#ff7f50:#ff4500>Liquid flow</gradient> <dark_gray>({value})</dark_gray>"
-      lore:
-        - ""
-        - "<gray>Status:</gray> <white>{value}</white> <dark_gray>({source})</dark_gray>"
-        - ""
-        - "<gray>When disabled, water and lava</gray>"
-        - "<gray>can't flow inside this plot.</gray>"
-        - ""
-        - "<gradient:#ff7f50:#ff4500>Click</gradient> <gray>to toggle</gray>"
-    ice-form-melt:
-      name: "<gradient:#ff7f50:#ff4500>Ice / snow form & melt</gradient> <dark_gray>({value})</dark_gray>"
-      lore:
-        - ""
-        - "<gray>Status:</gray> <white>{value}</white> <dark_gray>({source})</dark_gray>"
-        - ""
-        - "<gray>When disabled, ice and snow stay</gray>"
-        - "<gray>where you placed them regardless</gray>"
-        - "<gray>of biome / light level.</gray>"
-        - ""
-        - "<gradient:#ff7f50:#ff4500>Click</gradient> <gray>to toggle</gray>"
-
-plot_members_ui:
-  title: "<gradient:#ff7f50:#ff4500>Members</gradient> <dark_gray>{grid_x},{grid_z}</dark_gray>"
-  entry:
-    trusted:
-      name: "<gradient:#32cd32:#228b22>{member_name}</gradient> <dark_gray>(trusted)</dark_gray>"
-      lore:
-        - ""
-        - "<gray>#{index} · trusted to build</gray>"
-        - ""
-        - "<gradient:#dc143c:#b22222>Click</gradient> <gray>to remove trust</gray>"
-    denied:
-      name: "<gradient:#dc143c:#b22222>{member_name}</gradient> <dark_gray>(denied)</dark_gray>"
-      lore:
-        - ""
-        - "<gray>#{index} · denied entry</gray>"
-        - ""
-        - "<gradient:#32cd32:#228b22>Click</gradient> <gray>to lift the deny</gray>"
-  page:
-    name: "<gradient:#ff7f50:#ff4500>Page {page}/{total_pages}</gradient>"
-    lore:
-      - "<gray>Page {current_page} of {max_page}</gray>"
-  previous: "<gradient:#ff7f50:#ff4500>← Previous</gradient>"
-  next: "<gradient:#ff7f50:#ff4500>Next →</gradient>"
-  back: "<gradient:#ffa500:#ff6347>← Back</gradient>"
-  loading: "<gray>Loading...</gray>"
 
 multiverse_list_ui:
   title: "<gradient:#ff7f50:#ff4500>Managed Worlds</gradient>"
@@ -579,3 +405,201 @@ jexcommand:
     invalid-boolean: "<gradient:#F87171:#DC2626><yellow>{value}</yellow></gradient> isn't valid - use true / false / yes / no / on / off."
     invalid-uuid: "<gradient:#dc143c:#b22222>Invalid UUID:</gradient> <white>{value}</white>"
     expected-single-word: "<gradient:#dc143c:#b22222>Expected a single word without spaces.</gradient>"
+
+mv_gui:
+  common:
+    card:
+      line: '<#94A3B8>{text}</#94A3B8>'
+      section: '<#FDBA74>{name}</#FDBA74>'
+      row: '<#94A3B8>{label}</#94A3B8> <dark_gray>|</dark_gray> {value}'
+      action: '<#FB923C>▸</#FB923C> <#F1F5F9>{text}</#F1F5F9>'
+    section:
+      plot: 'Plot'
+      members: 'Members'
+    label:
+      owner: 'Owner'
+      world: 'World'
+      grid: 'Grid'
+      merge: 'Merge'
+      trusted: 'Trusted'
+      denied: 'Denied'
+      members: 'Members'
+      changed: 'Changed flags'
+      status: 'Status'
+      source: 'Source'
+      role: 'Role'
+    value:
+      plain: '<#F1F5F9>{value}</#F1F5F9>'
+      accent: '<#FB923C>{value}</#FB923C>'
+      ok: '<#4ADE80>{value}</#4ADE80>'
+      bad: '<#F87171>{value}</#F87171>'
+      warn: '<#FBBF24>{value}</#FBBF24>'
+      muted: '<#94A3B8>{value}</#94A3B8>'
+      of-total: '<#F1F5F9>{have}</#F1F5F9> <#94A3B8>/</#94A3B8> <#F1F5F9>{total}</#F1F5F9>'
+    word:
+      enabled: 'Enabled'
+      disabled: 'Disabled'
+      override: 'Set on this plot'
+      default: 'Server default'
+      merged: 'Merged'
+      standalone: 'Standalone'
+      trusted: 'Trusted'
+      denied: 'Denied'
+      unlimited: '∞'
+    back:
+      name: '<#F1F5F9>← Back</#F1F5F9>'
+      plot-menu: 'Back to the plot menu.'
+    close:
+      name: '<#F1F5F9>✘ Close</#F1F5F9>'
+      description: 'Closes this menu.'
+    page:
+      previous:
+        name: '<#F1F5F9>← Previous page</#F1F5F9>'
+      next:
+        name: '<#F1F5F9>Next page »</#F1F5F9>'
+      lore: '<#94A3B8>Page {page} of {pages}</#94A3B8>'
+    filter:
+      name: '<#F1F5F9>Filter</#F1F5F9>'
+      title: '<#FDBA74>Show</#FDBA74>'
+      option: '<#94A3B8>○</#94A3B8> <#94A3B8>{name}</#94A3B8>'
+      option-active: '<#FB923C>●</#FB923C> <#F1F5F9>{name}</#F1F5F9>'
+      action: '<#FB923C>▸</#FB923C> <#F1F5F9>Left-click next, right-click back</#F1F5F9>'
+  plot_menu:
+    title: '<#FB923C>Plot</#FB923C> <dark_gray>|</dark_gray> <gray>{grid_x}, {grid_z}</gray>'
+    header:
+      name: '<#FB923C>{owner_name}''s plot</#FB923C>'
+      description: 'Manage who may build here, the plot rules and the plot itself.'
+    members:
+      name: '<#F1F5F9>Members</#F1F5F9>'
+      description: 'Players you trusted to build and players you denied entry.'
+      action: 'Click to open'
+    flags:
+      name: '<#F1F5F9>Flags</#F1F5F9>'
+      description: 'Rules for this plot: PvP, mobs, explosions, fire, entry and more.'
+      action: 'Click to open'
+    home:
+      name: '<#F1F5F9>Teleport home</#F1F5F9>'
+      description: 'Takes you to the centre of this plot.'
+      action: 'Click to teleport'
+      unavailable:
+        name: '<#F87171>Teleport home</#F87171>'
+        description: 'The plot world is not loaded right now, so the teleport is not available.'
+    unclaim:
+      name: '<#F87171>Unclaim plot</#F87171>'
+      description: 'Releases this plot. Members, flags and the wall colour are removed. This cannot be undone.'
+      action: 'Shift-click to unclaim'
+  plot_flags:
+    title: '<#FB923C>Plot flags</#FB923C> <dark_gray>|</dark_gray> <gray>{grid_x}, {grid_z}</gray>'
+    header:
+      name: '<#FB923C>Flags of plot {grid_x}, {grid_z}</#FB923C>'
+      description: 'Click a flag to switch it. Changes apply at once.'
+    turn-on: 'Click to enable'
+    turn-off: 'Click to disable'
+    flag:
+      pvp:
+        name: '<#F1F5F9>PvP</#F1F5F9>'
+        description: 'Players can fight each other on this plot.'
+      mob-spawning:
+        name: '<#F1F5F9>Mob spawning</#F1F5F9>'
+        description: 'Hostile mobs spawn naturally on this plot.'
+      explosion:
+        name: '<#F1F5F9>Explosions</#F1F5F9>'
+        description: 'Creepers and TNT break blocks on this plot.'
+      fire-spread:
+        name: '<#F1F5F9>Fire spread</#F1F5F9>'
+        description: 'Fire spreads and burns blocks on this plot.'
+      keep-inventory:
+        name: '<#F1F5F9>Keep inventory</#F1F5F9>'
+        description: 'Players keep their items and XP when they die here.'
+      entry:
+        name: '<#F1F5F9>Public entry</#F1F5F9>'
+        description: 'Everyone may enter. When disabled, only the owner and trusted members can.'
+      liquid-flow:
+        name: '<#F1F5F9>Liquid flow</#F1F5F9>'
+        description: 'Water and lava flow inside this plot.'
+      ice-form-melt:
+        name: '<#F1F5F9>Ice and snow</#F1F5F9>'
+        description: 'Ice and snow form and melt with biome and light level.'
+  plot_members:
+    title: '<#FB923C>Plot members</#FB923C> <dark_gray>|</dark_gray> <gray>{grid_x}, {grid_z}</gray>'
+    filter:
+      all: 'All members'
+      trusted: 'Trusted'
+      denied: 'Denied'
+    entry:
+      name: '<#F1F5F9>{member_name}</#F1F5F9>'
+      trusted: 'May build on this plot.'
+      denied: 'May not enter this plot.'
+    remove:
+      trusted: 'Click to remove the trust'
+      denied: 'Click to lift the deny'
+    empty:
+      name: '<#F1F5F9>Nobody here</#F1F5F9>'
+      description: 'No member matches this filter. Add players with /plot trust or /plot deny.'
+  bedrock:
+    row: '{label}: {value}'
+    flag:
+      pvp: 'PvP'
+      mob-spawning: 'Mob spawning'
+      explosion: 'Explosions'
+      fire-spread: 'Fire spread'
+      keep-inventory: 'Keep inventory'
+      entry: 'Public entry'
+      liquid-flow: 'Liquid flow'
+      ice-form-melt: 'Ice and snow'
+    plot:
+      back: 'Back'
+      menu:
+        title: 'Plot {grid_x}, {grid_z}'
+        members: 'Members'
+        flags: 'Flags'
+        home: 'Teleport home'
+        unclaim: 'Unclaim plot'
+      flags:
+        title: 'Flags of plot {grid_x}, {grid_z}'
+        intro: 'Switch the rules of this plot. Submit to save every change.'
+      members:
+        title: 'Members of plot {grid_x}, {grid_z}'
+        intro: 'Tap a member to remove the role.'
+        empty: 'Nobody is trusted or denied yet. Use /plot trust or /plot deny.'
+        entry: '{member_name} - {role}'
+      remove:
+        title: 'Remove member'
+        trusted: '{member_name} will no longer be able to build here.'
+        denied: '{member_name} will be able to enter this plot again.'
+        confirm: 'Remove'
+      unclaim:
+        title: 'Unclaim plot'
+        content: 'Release plot {grid_x}, {grid_z}? Members, flags and the wall colour are removed. This cannot be undone.'
+        confirm: 'Unclaim'
+
+mv_chat:
+  label: '<#94A3B8>{text}</#94A3B8>'
+  plot:
+    info:
+      header: '<#FB923C>Plot {grid_x}, {grid_z}</#FB923C>'
+      context: '<gray>in {world_name}</gray>'
+    list:
+      header: '<#FB923C>Your plots</#FB923C>'
+      context: '<gray>{count} of {max} plots claimed</gray>'
+      entry: '<#FB923C>#{n}</#FB923C> <white>{world_name}</white> <dark_gray>|</dark_gray> <gray>{grid_x}, {grid_z}</gray>'
+      footer: '<#FB923C>▸</#FB923C> <gray>/{alias} home <number> teleports you there</gray>'
+    flags:
+      header: '<#FB923C>Flags of plot {grid_x}, {grid_z}</#FB923C>'
+      footer: '<#FB923C>▸</#FB923C> <gray>/plot menu switches them with a click</gray>'
+    help:
+      header: '<#FB923C>Plot commands</#FB923C>'
+      context: '<gray>Most commands act on the plot you stand on</gray>'
+      claim: '<#FB923C>/{alias} claim</#FB923C> <gray>- claim this plot</gray>'
+      unclaim: '<#FB923C>/{alias} unclaim</#FB923C> <gray>- release this plot</gray>'
+      info: '<#FB923C>/{alias} info</#FB923C> <gray>- show plot details</gray>'
+      trust: '<#FB923C>/{alias} trust <player></#FB923C> <gray>- let a player build</gray>'
+      untrust: '<#FB923C>/{alias} untrust <player></#FB923C> <gray>- remove a trusted player</gray>'
+      deny: '<#FB923C>/{alias} deny <player></#FB923C> <gray>- keep a player out</gray>'
+      home: '<#FB923C>/{alias} home [n]</#FB923C> <gray>- teleport to your plot</gray>'
+      list: '<#FB923C>/{alias} list</#FB923C> <gray>- list your plots</gray>'
+      flag: '<#FB923C>/{alias} flag <set|remove|list></#FB923C> <gray>- manage plot flags</gray>'
+      merge: '<#FB923C>/{alias} merge</#FB923C> <gray>- merge with the plot you face</gray>'
+      unmerge: '<#FB923C>/{alias} unmerge</#FB923C> <gray>- split this plot off</gray>'
+      menu: '<#FB923C>/{alias} menu</#FB923C> <gray>- open the plot menu</gray>'
+      border: '<#FB923C>/{alias} border [material]</#FB923C> <gray>- change the plot wall</gray>'

@@ -1,216 +1,168 @@
 package de.jexcellence.multiverse.view;
 
-import de.jexcellence.jexplatform.view.BaseView;
-import de.jexcellence.jextranslate.R18nManager;
-import de.jexcellence.multiverse.api.MultiverseProvider;
+import de.jexcellence.jexplatform.gui.component.CardLore;
+import de.jexcellence.jexplatform.gui.style.LockedIcon;
 import de.jexcellence.multiverse.database.entity.MemberRole;
 import de.jexcellence.multiverse.database.entity.Plot;
 import de.jexcellence.multiverse.service.MultiverseService;
+import de.jexcellence.multiverse.service.PlotFlag;
 import de.jexcellence.multiverse.service.PlotService;
 import me.devnatan.inventoryframework.context.OpenContext;
 import me.devnatan.inventoryframework.context.RenderContext;
-import me.devnatan.inventoryframework.context.SlotClickContext;
 import me.devnatan.inventoryframework.state.State;
-import de.jexcellence.jexplatform.scheduler.PlatformScheduler;
-import org.bukkit.Bukkit;
+import net.kyori.adventure.text.Component;
 import org.bukkit.Material;
-import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.List;
 import java.util.Map;
 
 /**
- * Main {@code /plot menu} hub: shows owner + plot info and buttons to open
- * the members editor, the flags editor, teleport to plot, and unclaim.
+ * The {@code /plot menu} hub: a header card with the plot's owner, location and members, and four cards that
+ * open the members list, open the flags, teleport to the plot centre and unclaim the plot (shift-click).
  *
- * <p>Required initial-data keys: {@code plugin}, {@code plot},
- * {@code service}, {@code multiverse}.
+ * <p>Required initial-data keys: {@code plugin}, {@code plot}, {@code service}, {@code multiverse}.
  *
  * @author JExcellence
  * @since 3.2.0
  */
-public class PlotMenuView extends BaseView {
+public class PlotMenuView extends MultiverseBaseView {
 
-    static final String DATA_PLUGIN     = "plugin";
-    static final String DATA_PLOT       = "plot";
-    static final String DATA_SERVICE    = "service";
+    static final String DATA_PLUGIN = "plugin";
+    static final String DATA_PLOT = "plot";
+    static final String DATA_SERVICE = "service";
     static final String DATA_MULTIVERSE = "multiverse";
 
-    private static final String KEY_WORLD_NAME = "world_name";
-    private static final String KEY_GRID_X     = "grid_x";
-    private static final String KEY_GRID_Z     = "grid_z";
+    static final String KEY = MultiverseCards.ROOT + "plot_menu.";
+    private static final String GRID_X = "grid_x";
+    private static final String GRID_Z = "grid_z";
+    private static final String DESCRIPTION = ".description";
+    private static final String NAME = ".name";
+    private static final int HUB_ROW = 2;
 
-    private final State<JavaPlugin>        pluginState  = initialState(DATA_PLUGIN);
-    private final State<Plot>              plotState    = initialState(DATA_PLOT);
-    private final State<PlotService>       serviceState = initialState(DATA_SERVICE);
-    private final State<MultiverseService> mvState      = initialState(DATA_MULTIVERSE);
-
-    public PlotMenuView() {
-        super();
-    }
+    private final State<JavaPlugin> pluginState = initialState(DATA_PLUGIN);
+    private final State<Plot> plotState = initialState(DATA_PLOT);
+    private final State<PlotService> serviceState = initialState(DATA_SERVICE);
+    private final State<MultiverseService> mvState = initialState(DATA_MULTIVERSE);
 
     @Override
     protected String translationKey() {
-        return "plot_menu_ui";
-    }
-
-    @Override
-    protected String[] layout() {
-        return new String[]{
-                "    I    ",
-                " M F H U ",
-                "         "
-        };
+        return "mv_gui.plot_menu";
     }
 
     @Override
     protected Map<String, Object> titlePlaceholders(@NotNull OpenContext open) {
-        var plot = plotState.get(open);
-        return Map.of(
-                KEY_WORLD_NAME, plot.getWorldName(),
-                KEY_GRID_X, plot.getGridX(),
-                KEY_GRID_Z, plot.getGridZ());
+        Plot plot = plotState.get(open);
+        return Map.of(GRID_X, plot.getGridX(), GRID_Z, plot.getGridZ());
     }
 
     @Override
     protected void onRender(@NotNull RenderContext render, @NotNull Player player) {
-        var plot = plotState.get(render);
-        var service = serviceState.get(render);
-        var plugin = pluginState.get(render);
-        var mv = mvState.get(render);
+        Plot plot = plotState.get(render);
+        PlotService service = serviceState.get(render);
+        PlotActions actions = new PlotActions(pluginState.get(render), service, mvState.get(render));
+        Map<String, Object> data = dataMap(plot, pluginState.get(render), service, mvState.get(render));
 
-        renderInfo(render, player, plot, service);
-        renderMembers(render, player, plot, plugin, service, mv);
-        renderFlags(render, player, plot, plugin, service, mv);
-        renderHome(render, player, plot, plugin, service, mv);
-        renderUnclaim(render, player, plot, plugin, service, mv);
+        render.slot(MultiverseLayout.SLOT_HEADER, header(player, plot, service));
+        int[] hub = MultiverseLayout.spacedRow(4, HUB_ROW);
+        render.slot(hub[0], membersCard(player, plot, service))
+                .onClick(click -> click.openForPlayer(PlotMembersView.class, data));
+        render.slot(hub[1], flagsCard(player, plot, actions))
+                .onClick(click -> click.openForPlayer(PlotFlagsView.class, data));
+        renderHome(render, player, plot, actions, hub[2]);
+        render.slot(hub[3], unclaimCard(player)).onClick(click -> {
+            if (click.isShiftClick()) {
+                click.closeForPlayer();
+                actions.unclaim(click.getPlayer(), plot);
+            }
+        });
     }
 
-    // ── Info head ───────────────────────────────────────────────────────────────
-
-    private void renderInfo(@NotNull RenderContext render, @NotNull Player player,
-                            @NotNull Plot plot, @NotNull PlotService service) {
-        var members = service.getMembers(plot);
-        long trusted = members.values().stream().filter(r -> r == MemberRole.TRUSTED).count();
-        long denied  = members.values().stream().filter(r -> r == MemberRole.DENIED).count();
-        var owner = Bukkit.getOfflinePlayer(plot.getOwnerUuid());
-
-        var item = createItem(
-                Material.PLAYER_HEAD,
-                i18n("info.name", player)
-                        .withPlaceholder("owner_name", plot.getOwnerName())
-                        .build().component(),
-                i18n("info.lore", player)
-                        .withPlaceholders(Map.of(
-                                "owner_name", plot.getOwnerName(),
-                                KEY_WORLD_NAME, plot.getWorldName(),
-                                KEY_GRID_X, plot.getGridX(),
-                                KEY_GRID_Z, plot.getGridZ(),
-                                "trusted", trusted,
-                                "denied", denied,
-                                "merged", plot.getMergedGroupIdString() != null ? "yes" : "no"
-                        )).build().children()
-        );
-        if (item.getItemMeta() instanceof SkullMeta meta) {
-            meta.setOwningPlayer(owner);
-            item.setItemMeta(meta);
+    private void renderHome(@NotNull RenderContext render, @NotNull Player player, @NotNull Plot plot,
+                            @NotNull PlotActions actions, int slot) {
+        if (actions.homeOf(plot) == null) {
+            render.slot(slot, MultiverseCards.notice(player, LockedIcon.item(player), KEY + "home.unavailable"));
+            return;
         }
-        render.layoutSlot('I', item);
+        render.slot(slot, actionCard(player, Material.ENDER_PEARL, "home", List.of()))
+                .onClick(click -> {
+                    click.closeForPlayer();
+                    actions.teleportHome(click.getPlayer(), plot);
+                });
     }
 
-    // ── Members ─────────────────────────────────────────────────────────────────
-
-    private void renderMembers(@NotNull RenderContext render, @NotNull Player player,
-                               @NotNull Plot plot, @NotNull JavaPlugin plugin,
-                               @NotNull PlotService service, @NotNull MultiverseService mv) {
-        var item = createItem(
-                Material.PLAYER_HEAD,
-                i18n("members.name", player).build().component(),
-                i18n("members.lore", player).build().children()
-        );
-        render.layoutSlot('M', item).onClick(click -> {
-            click.setCancelled(true);
-            click.openForPlayer(PlotMembersView.class, dataMap(plot, plugin, service, mv));
-        });
+    /**
+     * The plot's header card: owner head, location rows and member counts.
+     *
+     * @param player  the viewer
+     * @param plot    the plot
+     * @param service the plot service
+     * @return the card
+     */
+    static @NotNull ItemStack header(@NotNull Player player, @NotNull Plot plot, @NotNull PlotService service) {
+        Map<?, MemberRole> members = service.getMembers(plot);
+        long trusted = members.values().stream().filter(role -> role == MemberRole.TRUSTED).count();
+        long denied = members.values().stream().filter(role -> role == MemberRole.DENIED).count();
+        String merged = plot.getMergedGroupIdString() != null ? "merged" : "standalone";
+        List<Component> location = List.of(
+                MultiverseCards.row(player, "owner", MultiverseCards.tone(player, "accent", plot.getOwnerName())),
+                MultiverseCards.row(player, "world", MultiverseCards.value(player, plot.getWorldName())),
+                MultiverseCards.row(player, "grid", MultiverseCards.value(player, grid(plot))),
+                MultiverseCards.row(player, "merge", MultiverseCards.word(player, "plain", merged)));
+        List<Component> memberRows = List.of(
+                MultiverseCards.row(player, "trusted", MultiverseCards.tone(player, "ok", String.valueOf(trusted))),
+                MultiverseCards.row(player, "denied", MultiverseCards.tone(player, "bad", String.valueOf(denied))));
+        return MultiverseCards.card(MultiverseCards.head(plot.getOwnerUuid()),
+                MultiverseCards.ic(MultiverseCards.msg(KEY + "header.name")
+                        .with("owner_name", MultiverseCards.escape(plot.getOwnerName())), player),
+                CardLore.create()
+                        .block(MultiverseCards.paragraphOf(player, KEY + "header" + DESCRIPTION))
+                        .section(MultiverseCards.section(player, "plot"), location)
+                        .section(MultiverseCards.section(player, "members"), memberRows)
+                        .build());
     }
 
-    // ── Flags ───────────────────────────────────────────────────────────────────
-
-    private void renderFlags(@NotNull RenderContext render, @NotNull Player player,
-                             @NotNull Plot plot, @NotNull JavaPlugin plugin,
-                             @NotNull PlotService service, @NotNull MultiverseService mv) {
-        var item = createItem(
-                Material.OAK_SIGN,
-                i18n("flags.name", player).build().component(),
-                i18n("flags.lore", player).build().children()
-        );
-        render.layoutSlot('F', item).onClick(click -> {
-            click.setCancelled(true);
-            click.openForPlayer(PlotFlagsView.class, dataMap(plot, plugin, service, mv));
-        });
+    private static @NotNull ItemStack membersCard(@NotNull Player player, @NotNull Plot plot,
+                                                  @NotNull PlotService service) {
+        String count = String.valueOf(service.getMembers(plot).size());
+        return actionCard(player, Material.PLAYER_HEAD, "members",
+                List.of(MultiverseCards.row(player, "members", MultiverseCards.value(player, count))));
     }
 
-    // ── Home (teleport) ─────────────────────────────────────────────────────────
-
-    private void renderHome(@NotNull RenderContext render, @NotNull Player player,
-                            @NotNull Plot plot, @NotNull JavaPlugin plugin,
-                            @NotNull PlotService service, @NotNull MultiverseService mv) {
-        var item = createItem(
-                Material.ENDER_PEARL,
-                i18n("home.name", player).build().component(),
-                i18n("home.lore", player).build().children()
-        );
-        render.layoutSlot('H', item).onClick(click -> {
-            click.setCancelled(true);
-            var p = click.getPlayer();
-            var bukkitWorld = Bukkit.getWorld(plot.getWorldName());
-            if (bukkitWorld == null) return;
-            var bounds = mv.plotBounds(plot.getWorldName(), plot.getGridX(), plot.getGridZ()).orElse(null);
-            if (bounds == null) return;
-            var loc = new org.bukkit.Location(bukkitWorld,
-                    bounds.centerX() + 0.5, bounds.surfaceY() + 1, bounds.centerZ() + 0.5);
-            click.closeForPlayer();
-            PlatformScheduler.of(plugin).runSync(() -> {
-                p.teleportAsync(loc);
-                R18nManager.getInstance().msg("plot.teleported").prefix()
-                        .with(KEY_GRID_X, String.valueOf(plot.getGridX()))
-                        .with(KEY_GRID_Z, String.valueOf(plot.getGridZ()))
-                        .with(KEY_WORLD_NAME, plot.getWorldName())
-                        .send(p);
-            });
-        });
+    private static @NotNull ItemStack flagsCard(@NotNull Player player, @NotNull Plot plot,
+                                                @NotNull PlotActions actions) {
+        String changed = MultiverseCards.msg(MultiverseCards.COMMON + "value.of-total")
+                .with("have", actions.overrides(plot)).with("total", PlotFlag.values().length)
+                .miniMessage(player);
+        return actionCard(player, Material.OAK_SIGN, "flags",
+                List.of(MultiverseCards.row(player, "changed", changed)));
     }
 
-    // ── Unclaim ─────────────────────────────────────────────────────────────────
-
-    private void renderUnclaim(@NotNull RenderContext render, @NotNull Player player,
-                               @NotNull Plot plot, @NotNull JavaPlugin plugin,
-                               @NotNull PlotService service, @NotNull MultiverseService mv) {
-        var item = createItem(
-                Material.BARRIER,
-                i18n("unclaim.name", player).build().component(),
-                i18n("unclaim.lore", player).build().children()
-        );
-        render.layoutSlot('U', item).onClick(click -> {
-            click.setCancelled(true);
-            var p = click.getPlayer();
-            click.closeForPlayer();
-            service.unclaim(plot).thenAccept(ok -> PlatformScheduler.of(plugin).runSync(() -> {
-                R18nManager.getInstance()
-                        .msg(ok ? "plot.unclaimed" : "plot.error.unclaim_failed")
-                        .prefix()
-                        .with(KEY_GRID_X, String.valueOf(plot.getGridX()))
-                        .with(KEY_GRID_Z, String.valueOf(plot.getGridZ()))
-                        .send(p);
-            }));
-        });
+    private static @NotNull ItemStack unclaimCard(@NotNull Player player) {
+        return MultiverseCards.card(Material.TNT, MultiverseCards.ic(player, KEY + "unclaim" + NAME),
+                CardLore.create()
+                        .block(MultiverseCards.paragraphOf(player, KEY + "unclaim" + DESCRIPTION))
+                        .block(List.of(MultiverseCards.action(player, KEY + "unclaim.action")))
+                        .build());
     }
 
-    // ── Helper ──────────────────────────────────────────────────────────────────
+    private static @NotNull ItemStack actionCard(@NotNull Player player, @NotNull Material icon,
+                                                 @NotNull String card, @NotNull List<Component> rows) {
+        CardLore lore = CardLore.create().block(MultiverseCards.paragraphOf(player, KEY + card + DESCRIPTION));
+        if (!rows.isEmpty()) {
+            lore.block(rows);
+        }
+        lore.block(List.of(MultiverseCards.action(player, KEY + card + ".action")));
+        return MultiverseCards.card(icon, MultiverseCards.ic(player, KEY + card + NAME), lore.build());
+    }
+
+    /** @return {@code x, z} of the plot's grid position. */
+    static @NotNull String grid(@NotNull Plot plot) {
+        return plot.getGridX() + ", " + plot.getGridZ();
+    }
 
     /**
      * Builds the initial-data map required to open any plot view.
@@ -222,7 +174,7 @@ public class PlotMenuView extends BaseView {
      * @return an immutable map keyed by the {@code DATA_*} constants
      */
     public static @NotNull Map<String, Object> dataMap(@NotNull Plot plot, @NotNull JavaPlugin plugin,
-                                                         @NotNull PlotService service, @NotNull MultiverseService mv) {
+                                                       @NotNull PlotService service, @NotNull MultiverseService mv) {
         return Map.of(
                 DATA_PLUGIN, plugin,
                 DATA_PLOT, plot,

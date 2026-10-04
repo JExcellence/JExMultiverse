@@ -342,188 +342,14 @@ plot:
   undenied: "<gradient:#ffa500:#ff8c00>Sperre aufgehoben:</gradient> <white><gradient:#ff7f50:#ff4500>{target_name}</gradient> darf den Plot wieder betreten.</white>"
   teleported: "<gradient:#32cd32:#228b22>Teleportiert:</gradient> <white>Plot <gradient:#ff7f50:#ff4500>{grid_x},{grid_z}</gradient> in <gradient:#ff7f50:#ff4500>{world_name}</gradient>.</white>"
 
-  info_header: "<gradient:#ff7f50:#ff4500>Plot {grid_x},{grid_z}</gradient> <dark_gray>in {world_name}</dark_gray>"
-  info_owner:  "  <gray>Besitzer:</gray> <gradient:#ffa500:#ff6347>{owner_name}</gradient>"
-  info_members: "  <gray>Vertraut:</gray> <white>{trusted}</white> <dark_gray>·</dark_gray> <gray>Gesperrt:</gray> <white>{denied}</white>"
-
   list_empty: "<gray>Du besitzt keine Plots.</gray>"
-  list_header: "<gradient:#ff7f50:#ff4500>Deine Plots</gradient> <dark_gray>({count}/{max})</dark_gray>"
-  list_entry: " <gray>{n}.</gray> <gradient:#ffa500:#ff6347>{world_name}</gradient> <dark_gray>@ {grid_x},{grid_z}</dark_gray>"
-
-  help_header: "<gradient:#ff7f50:#ff4500>Plot-Befehle</gradient>"
-  help_claim:   "<gradient:#ffa500:#ff6347>/{alias} claim</gradient> <gray>- den Plot beanspruchen, auf dem du stehst</gray>"
-  help_unclaim: "<gradient:#ffa500:#ff6347>/{alias} unclaim</gradient> <gray>- den Plot freigeben, auf dem du stehst</gray>"
-  help_info:    "<gradient:#ffa500:#ff6347>/{alias} info</gradient> <gray>- Plot-Info anzeigen</gray>"
-  help_trust:   "<gradient:#ffa500:#ff6347>/{alias} trust <spieler></gradient> <gray>- Spieler bauen lassen</gray>"
-  help_untrust: "<gradient:#ffa500:#ff6347>/{alias} untrust <spieler></gradient> <gray>- Vertrauen entziehen</gray>"
-  help_deny:    "<gradient:#ffa500:#ff6347>/{alias} deny <spieler></gradient> <gray>- Spieler vom Plot sperren</gray>"
-  help_home:    "<gradient:#ffa500:#ff6347>/{alias} home [n]</gradient> <gray>- zu deinem Plot teleportieren</gray>"
-  help_list:    "<gradient:#ffa500:#ff6347>/{alias} list</gradient> <gray>- deine Plots auflisten</gray>"
-  help_flag:    "<gradient:#ffa500:#ff6347>/{alias} flag <set|remove|list> [flag] [wert]</gradient> <gray>- Plot-Flags verwalten</gray>"
-  help_footer:  "<dark_gray>───────────────────────────────</dark_gray>"
-
-  flag_list_header: "<gradient:#ff7f50:#ff4500>Flags für Plot {grid_x},{grid_z}</gradient>"
-  flag_list_entry:  " <gray>•</gray> <gradient:#ffa500:#ff6347>{flag}</gradient> <dark_gray>=</dark_gray> <white>{value}</white> <dark_gray>({source})</dark_gray>"
   flag_set:         "<gradient:#32cd32:#228b22>Gesetzt:</gradient> <white>Flag <gradient:#ff7f50:#ff4500>{flag}</gradient> = <gradient:#ffa500:#ff6347>{value}</gradient>.</white>"
   flag_removed:     "<gradient:#ffa500:#ff8c00>Entfernt:</gradient> <white>Flag <gradient:#ff7f50:#ff4500>{flag}</gradient> auf Standard zurückgesetzt.</white>"
 
   merged: "<gradient:#32cd32:#228b22>Zusammengefügt:</gradient> <white>Mit dem Plot in Richtung <gradient:#ff7f50:#ff4500>{direction}</gradient> verbunden.</white>"
   unmerged: "<gradient:#ffa500:#ff8c00>Getrennt:</gradient> <white>Dieser Plot steht wieder alleine.</white>"
-  help_merge:   "<gradient:#ffa500:#ff6347>/{alias} merge</gradient> <gray>- mit dem Plot in Blickrichtung verbinden</gray>"
-  help_unmerge: "<gradient:#ffa500:#ff6347>/{alias} unmerge</gradient> <gray>- diesen Plot aus der Merge-Gruppe lösen</gray>"
-  help_menu:    "<gradient:#ffa500:#ff6347>/{alias} menu</gradient> <gray>- Plot-Verwaltung als GUI öffnen</gray>"
-  help_border:  "<gradient:#ffa500:#ff6347>/{alias} border [material]</gradient> <gray>- Wandmaterial deines Plots ändern</gray>"
-
   border_set:    "<gradient:#32cd32:#228b22>Border:</gradient> <white>Plot-Wand auf <gradient:#ff7f50:#ff4500>{material}</gradient> gesetzt.</white>"
   border_reset:  "<gradient:#ffa500:#ff8c00>Border:</gradient> <white>Plot-Wand auf das Standard-Material zurückgesetzt.</white>"
-
-plot_menu_ui:
-  title: "<gradient:#ff7f50:#ff4500>Plot</gradient> <dark_gray>{world_name} @ {grid_x},{grid_z}</dark_gray>"
-  info:
-    name: "<gradient:#ffa500:#ff6347>Plot von {owner_name}</gradient>"
-    lore:
-      - ""
-      - "<gray>Besitzer:</gray> <white>{owner_name}</white>"
-      - "<gray>Welt:</gray> <white>{world_name}</white>"
-      - "<gray>Raster:</gray> <white>{grid_x},{grid_z}</white>"
-      - "<gray>Vertraut:</gray> <white>{trusted}</white> <dark_gray>·</dark_gray> <gray>Gesperrt:</gray> <white>{denied}</white>"
-      - "<gray>Verbunden:</gray> <white>{merged}</white>"
-  members:
-    name: "<gradient:#ff7f50:#ff4500>Mitglieder</gradient>"
-    lore:
-      - ""
-      - "<gray>Klick um vertraute und</gray>"
-      - "<gray>gesperrte Spieler zu sehen.</gray>"
-  flags:
-    name: "<gradient:#ff7f50:#ff4500>Flags</gradient>"
-    lore:
-      - ""
-      - "<gray>Klick um Plot-Flags zu schalten:</gray>"
-      - "<gray>PvP, Mob-Spawning,</gray>"
-      - "<gray>Explosionen, Feuer.</gray>"
-  home:
-    name: "<gradient:#ff7f50:#ff4500>Zum Plot teleportieren</gradient>"
-    lore:
-      - ""
-      - "<gray>Klick um in die Mitte</gray>"
-      - "<gray>dieses Plots zu teleportieren.</gray>"
-  unclaim:
-    name: "<gradient:#dc143c:#b22222>Plot freigeben</gradient>"
-    lore:
-      - ""
-      - "<gray>Gibt diesen Plot frei.</gray>"
-      - "<gray>Alle Mitglieder und Flags werden entfernt.</gray>"
-
-plot_flags_ui:
-  title: "<gradient:#ff7f50:#ff4500>Flags</gradient> <dark_gray>{grid_x},{grid_z}</dark_gray>"
-  flag:
-    pvp:
-      name: "<gradient:#ff7f50:#ff4500>PvP</gradient> <dark_gray>({value})</dark_gray>"
-      lore:
-        - ""
-        - "<gray>Status:</gray> <white>{value}</white> <dark_gray>({source})</dark_gray>"
-        - ""
-        - "<gray>Wenn aktiviert, kann jeder</gray>"
-        - "<gray>in diesem Plot kämpfen.</gray>"
-        - ""
-        - "<gradient:#ff7f50:#ff4500>Klick</gradient> <gray>zum Umschalten</gray>"
-    mob-spawning:
-      name: "<gradient:#ff7f50:#ff4500>Mob-Spawning</gradient> <dark_gray>({value})</dark_gray>"
-      lore:
-        - ""
-        - "<gray>Status:</gray> <white>{value}</white> <dark_gray>({source})</dark_gray>"
-        - ""
-        - "<gray>Steuert ob feindliche Mobs</gray>"
-        - "<gray>natürlich spawnen.</gray>"
-        - ""
-        - "<gradient:#ff7f50:#ff4500>Klick</gradient> <gray>zum Umschalten</gray>"
-    explosion:
-      name: "<gradient:#ff7f50:#ff4500>Explosionen</gradient> <dark_gray>({value})</dark_gray>"
-      lore:
-        - ""
-        - "<gray>Status:</gray> <white>{value}</white> <dark_gray>({source})</dark_gray>"
-        - ""
-        - "<gray>Wenn deaktiviert, überleben</gray>"
-        - "<gray>Blöcke Creeper und TNT.</gray>"
-        - ""
-        - "<gradient:#ff7f50:#ff4500>Klick</gradient> <gray>zum Umschalten</gray>"
-    fire-spread:
-      name: "<gradient:#ff7f50:#ff4500>Feuerausbreitung</gradient> <dark_gray>({value})</dark_gray>"
-      lore:
-        - ""
-        - "<gray>Status:</gray> <white>{value}</white> <dark_gray>({source})</dark_gray>"
-        - ""
-        - "<gray>Wenn deaktiviert, breitet sich</gray>"
-        - "<gray>Feuer nicht aus und brennt nichts.</gray>"
-        - ""
-        - "<gradient:#ff7f50:#ff4500>Klick</gradient> <gray>zum Umschalten</gray>"
-    keep-inventory:
-      name: "<gradient:#ff7f50:#ff4500>Inventar behalten</gradient> <dark_gray>({value})</dark_gray>"
-      lore:
-        - ""
-        - "<gray>Status:</gray> <white>{value}</white> <dark_gray>({source})</dark_gray>"
-        - ""
-        - "<gray>Wenn aktiviert, behalten Spieler</gray>"
-        - "<gray>ihre Items + XP beim Tod hier.</gray>"
-        - ""
-        - "<gradient:#ff7f50:#ff4500>Klick</gradient> <gray>zum Umschalten</gray>"
-    entry:
-      name: "<gradient:#ff7f50:#ff4500>Öffentlicher Zugang</gradient> <dark_gray>({value})</dark_gray>"
-      lore:
-        - ""
-        - "<gray>Status:</gray> <white>{value}</white> <dark_gray>({source})</dark_gray>"
-        - ""
-        - "<gray>Wenn deaktiviert, dürfen nur</gray>"
-        - "<gray>Besitzer + Vertraute betreten.</gray>"
-        - ""
-        - "<gradient:#ff7f50:#ff4500>Klick</gradient> <gray>zum Umschalten</gray>"
-    liquid-flow:
-      name: "<gradient:#ff7f50:#ff4500>Flüssigkeitsfluss</gradient> <dark_gray>({value})</dark_gray>"
-      lore:
-        - ""
-        - "<gray>Status:</gray> <white>{value}</white> <dark_gray>({source})</dark_gray>"
-        - ""
-        - "<gray>Wenn deaktiviert, fließen Wasser</gray>"
-        - "<gray>und Lava nicht in diesem Plot.</gray>"
-        - ""
-        - "<gradient:#ff7f50:#ff4500>Klick</gradient> <gray>zum Umschalten</gray>"
-    ice-form-melt:
-      name: "<gradient:#ff7f50:#ff4500>Eis / Schnee bilden & schmelzen</gradient> <dark_gray>({value})</dark_gray>"
-      lore:
-        - ""
-        - "<gray>Status:</gray> <white>{value}</white> <dark_gray>({source})</dark_gray>"
-        - ""
-        - "<gray>Wenn deaktiviert, bleiben Eis und</gray>"
-        - "<gray>Schnee unabhängig von Biom oder</gray>"
-        - "<gray>Lichtstärke wo platziert.</gray>"
-        - ""
-        - "<gradient:#ff7f50:#ff4500>Klick</gradient> <gray>zum Umschalten</gray>"
-
-plot_members_ui:
-  title: "<gradient:#ff7f50:#ff4500>Mitglieder</gradient> <dark_gray>{grid_x},{grid_z}</dark_gray>"
-  entry:
-    trusted:
-      name: "<gradient:#32cd32:#228b22>{member_name}</gradient> <dark_gray>(vertraut)</dark_gray>"
-      lore:
-        - ""
-        - "<gray>#{index} · darf bauen</gray>"
-        - ""
-        - "<gradient:#dc143c:#b22222>Klick</gradient> <gray>um Vertrauen zu entziehen</gray>"
-    denied:
-      name: "<gradient:#dc143c:#b22222>{member_name}</gradient> <dark_gray>(gesperrt)</dark_gray>"
-      lore:
-        - ""
-        - "<gray>#{index} · darf nicht betreten</gray>"
-        - ""
-        - "<gradient:#32cd32:#228b22>Klick</gradient> <gray>um Sperre aufzuheben</gray>"
-  page:
-    name: "<gradient:#ff7f50:#ff4500>Seite {page}/{total_pages}</gradient>"
-    lore:
-      - "<gray>Seite {current_page} von {max_page}</gray>"
-  previous: "<gradient:#ff7f50:#ff4500>← Zurück</gradient>"
-  next: "<gradient:#ff7f50:#ff4500>Weiter →</gradient>"
-  back: "<gradient:#ffa500:#ff6347>← Zurück</gradient>"
-  loading: "<gray>Lädt...</gray>"
 
 multiverse_list_ui:
   title: "<gradient:#ff7f50:#ff4500>Verwaltete Welten</gradient>"
@@ -579,3 +405,201 @@ jexcommand:
     invalid-boolean: "<red><yellow>{value}</yellow> ist ungültig - nutze true / false / yes / no / on / off.</red>"
     invalid-uuid: "<gradient:#dc143c:#b22222>Ungültige UUID:</gradient> <white>{value}</white>"
     expected-single-word: "<gradient:#dc143c:#b22222>Einzelnes Wort ohne Leerzeichen erwartet.</gradient>"
+
+mv_gui:
+  common:
+    card:
+      line: '<#94A3B8>{text}</#94A3B8>'
+      section: '<#FDBA74>{name}</#FDBA74>'
+      row: '<#94A3B8>{label}</#94A3B8> <dark_gray>|</dark_gray> {value}'
+      action: '<#FB923C>▸</#FB923C> <#F1F5F9>{text}</#F1F5F9>'
+    section:
+      plot: 'Plot'
+      members: 'Mitglieder'
+    label:
+      owner: 'Besitzer'
+      world: 'Welt'
+      grid: 'Raster'
+      merge: 'Verbund'
+      trusted: 'Vertraut'
+      denied: 'Gesperrt'
+      members: 'Mitglieder'
+      changed: 'Geänderte Flags'
+      status: 'Status'
+      source: 'Quelle'
+      role: 'Rolle'
+    value:
+      plain: '<#F1F5F9>{value}</#F1F5F9>'
+      accent: '<#FB923C>{value}</#FB923C>'
+      ok: '<#4ADE80>{value}</#4ADE80>'
+      bad: '<#F87171>{value}</#F87171>'
+      warn: '<#FBBF24>{value}</#FBBF24>'
+      muted: '<#94A3B8>{value}</#94A3B8>'
+      of-total: '<#F1F5F9>{have}</#F1F5F9> <#94A3B8>/</#94A3B8> <#F1F5F9>{total}</#F1F5F9>'
+    word:
+      enabled: 'Aktiv'
+      disabled: 'Inaktiv'
+      override: 'Auf diesem Plot gesetzt'
+      default: 'Server-Standard'
+      merged: 'Verbunden'
+      standalone: 'Einzeln'
+      trusted: 'Vertraut'
+      denied: 'Gesperrt'
+      unlimited: '∞'
+    back:
+      name: '<#F1F5F9>← Zurück</#F1F5F9>'
+      plot-menu: 'Zurück zum Plot-Menü.'
+    close:
+      name: '<#F1F5F9>✘ Schließen</#F1F5F9>'
+      description: 'Schließt dieses Menü.'
+    page:
+      previous:
+        name: '<#F1F5F9>← Vorherige Seite</#F1F5F9>'
+      next:
+        name: '<#F1F5F9>Nächste Seite »</#F1F5F9>'
+      lore: '<#94A3B8>Seite {page} von {pages}</#94A3B8>'
+    filter:
+      name: '<#F1F5F9>Filter</#F1F5F9>'
+      title: '<#FDBA74>Anzeigen</#FDBA74>'
+      option: '<#94A3B8>○</#94A3B8> <#94A3B8>{name}</#94A3B8>'
+      option-active: '<#FB923C>●</#FB923C> <#F1F5F9>{name}</#F1F5F9>'
+      action: '<#FB923C>▸</#FB923C> <#F1F5F9>Linksklick weiter, Rechtsklick zurück</#F1F5F9>'
+  plot_menu:
+    title: '<#FB923C>Plot</#FB923C> <dark_gray>|</dark_gray> <gray>{grid_x}, {grid_z}</gray>'
+    header:
+      name: '<#FB923C>Plot von {owner_name}</#FB923C>'
+      description: 'Lege fest, wer hier bauen darf, welche Regeln gelten, und verwalte den Plot.'
+    members:
+      name: '<#F1F5F9>Mitglieder</#F1F5F9>'
+      description: 'Spieler, denen du vertraust, und Spieler, die du gesperrt hast.'
+      action: 'Klicken zum Öffnen'
+    flags:
+      name: '<#F1F5F9>Flags</#F1F5F9>'
+      description: 'Regeln für diesen Plot: PvP, Mobs, Explosionen, Feuer, Zutritt und mehr.'
+      action: 'Klicken zum Öffnen'
+    home:
+      name: '<#F1F5F9>Zum Plot teleportieren</#F1F5F9>'
+      description: 'Bringt dich in die Mitte dieses Plots.'
+      action: 'Klicken zum Teleportieren'
+      unavailable:
+        name: '<#F87171>Zum Plot teleportieren</#F87171>'
+        description: 'Die Plot-Welt ist gerade nicht geladen, deshalb ist der Teleport nicht verfügbar.'
+    unclaim:
+      name: '<#F87171>Plot freigeben</#F87171>'
+      description: 'Gibt diesen Plot frei. Mitglieder, Flags und die Wandfarbe werden entfernt. Das lässt sich nicht rückgängig machen.'
+      action: 'Shift-Klick zum Freigeben'
+  plot_flags:
+    title: '<#FB923C>Plot-Flags</#FB923C> <dark_gray>|</dark_gray> <gray>{grid_x}, {grid_z}</gray>'
+    header:
+      name: '<#FB923C>Flags von Plot {grid_x}, {grid_z}</#FB923C>'
+      description: 'Klicke auf eine Flag, um sie umzuschalten. Änderungen gelten sofort.'
+    turn-on: 'Klicken zum Aktivieren'
+    turn-off: 'Klicken zum Deaktivieren'
+    flag:
+      pvp:
+        name: '<#F1F5F9>PvP</#F1F5F9>'
+        description: 'Spieler können auf diesem Plot gegeneinander kämpfen.'
+      mob-spawning:
+        name: '<#F1F5F9>Mob-Spawning</#F1F5F9>'
+        description: 'Feindliche Mobs spawnen auf diesem Plot von selbst.'
+      explosion:
+        name: '<#F1F5F9>Explosionen</#F1F5F9>'
+        description: 'Creeper und TNT zerstören Blöcke auf diesem Plot.'
+      fire-spread:
+        name: '<#F1F5F9>Feuerausbreitung</#F1F5F9>'
+        description: 'Feuer breitet sich aus und verbrennt Blöcke auf diesem Plot.'
+      keep-inventory:
+        name: '<#F1F5F9>Inventar behalten</#F1F5F9>'
+        description: 'Spieler behalten Items und XP, wenn sie hier sterben.'
+      entry:
+        name: '<#F1F5F9>Öffentlicher Zutritt</#F1F5F9>'
+        description: 'Jeder darf den Plot betreten. Deaktiviert dürfen nur Besitzer und vertraute Mitglieder hinein.'
+      liquid-flow:
+        name: '<#F1F5F9>Flüssigkeiten</#F1F5F9>'
+        description: 'Wasser und Lava fließen auf diesem Plot.'
+      ice-form-melt:
+        name: '<#F1F5F9>Eis und Schnee</#F1F5F9>'
+        description: 'Eis und Schnee bilden sich und schmelzen je nach Biom und Licht.'
+  plot_members:
+    title: '<#FB923C>Plot-Mitglieder</#FB923C> <dark_gray>|</dark_gray> <gray>{grid_x}, {grid_z}</gray>'
+    filter:
+      all: 'Alle Mitglieder'
+      trusted: 'Vertraut'
+      denied: 'Gesperrt'
+    entry:
+      name: '<#F1F5F9>{member_name}</#F1F5F9>'
+      trusted: 'Darf auf diesem Plot bauen.'
+      denied: 'Darf diesen Plot nicht betreten.'
+    remove:
+      trusted: 'Klicken, um das Vertrauen zu entziehen'
+      denied: 'Klicken, um die Sperre aufzuheben'
+    empty:
+      name: '<#F1F5F9>Niemand hier</#F1F5F9>'
+      description: 'Kein Mitglied passt zu diesem Filter. Füge Spieler mit /plot trust oder /plot deny hinzu.'
+  bedrock:
+    row: '{label}: {value}'
+    flag:
+      pvp: 'PvP'
+      mob-spawning: 'Mob-Spawning'
+      explosion: 'Explosionen'
+      fire-spread: 'Feuerausbreitung'
+      keep-inventory: 'Inventar behalten'
+      entry: 'Öffentlicher Zutritt'
+      liquid-flow: 'Flüssigkeiten'
+      ice-form-melt: 'Eis und Schnee'
+    plot:
+      back: 'Zurück'
+      menu:
+        title: 'Plot {grid_x}, {grid_z}'
+        members: 'Mitglieder'
+        flags: 'Flags'
+        home: 'Zum Plot teleportieren'
+        unclaim: 'Plot freigeben'
+      flags:
+        title: 'Flags von Plot {grid_x}, {grid_z}'
+        intro: 'Schalte die Regeln dieses Plots um. Absenden speichert jede Änderung.'
+      members:
+        title: 'Mitglieder von Plot {grid_x}, {grid_z}'
+        intro: 'Tippe auf ein Mitglied, um die Rolle zu entfernen.'
+        empty: 'Noch niemand ist vertraut oder gesperrt. Nutze /plot trust oder /plot deny.'
+        entry: '{member_name} - {role}'
+      remove:
+        title: 'Mitglied entfernen'
+        trusted: '{member_name} kann hier dann nicht mehr bauen.'
+        denied: '{member_name} kann diesen Plot dann wieder betreten.'
+        confirm: 'Entfernen'
+      unclaim:
+        title: 'Plot freigeben'
+        content: 'Plot {grid_x}, {grid_z} freigeben? Mitglieder, Flags und die Wandfarbe werden entfernt. Das lässt sich nicht rückgängig machen.'
+        confirm: 'Freigeben'
+
+mv_chat:
+  label: '<#94A3B8>{text}</#94A3B8>'
+  plot:
+    info:
+      header: '<#FB923C>Plot {grid_x}, {grid_z}</#FB923C>'
+      context: '<gray>in {world_name}</gray>'
+    list:
+      header: '<#FB923C>Deine Plots</#FB923C>'
+      context: '<gray>{count} von {max} Plots belegt</gray>'
+      entry: '<#FB923C>#{n}</#FB923C> <white>{world_name}</white> <dark_gray>|</dark_gray> <gray>{grid_x}, {grid_z}</gray>'
+      footer: '<#FB923C>▸</#FB923C> <gray>/{alias} home <nummer> teleportiert dich dorthin</gray>'
+    flags:
+      header: '<#FB923C>Flags von Plot {grid_x}, {grid_z}</#FB923C>'
+      footer: '<#FB923C>▸</#FB923C> <gray>/plot menu schaltet sie per Klick um</gray>'
+    help:
+      header: '<#FB923C>Plot-Befehle</#FB923C>'
+      context: '<gray>Die meisten Befehle wirken auf den Plot, auf dem du stehst</gray>'
+      claim: '<#FB923C>/{alias} claim</#FB923C> <gray>- diesen Plot beanspruchen</gray>'
+      unclaim: '<#FB923C>/{alias} unclaim</#FB923C> <gray>- diesen Plot freigeben</gray>'
+      info: '<#FB923C>/{alias} info</#FB923C> <gray>- Plot-Details anzeigen</gray>'
+      trust: '<#FB923C>/{alias} trust <spieler></#FB923C> <gray>- Spieler bauen lassen</gray>'
+      untrust: '<#FB923C>/{alias} untrust <spieler></#FB923C> <gray>- Vertrauen entziehen</gray>'
+      deny: '<#FB923C>/{alias} deny <spieler></#FB923C> <gray>- Spieler aussperren</gray>'
+      home: '<#FB923C>/{alias} home [n]</#FB923C> <gray>- zu deinem Plot teleportieren</gray>'
+      list: '<#FB923C>/{alias} list</#FB923C> <gray>- deine Plots auflisten</gray>'
+      flag: '<#FB923C>/{alias} flag <set|remove|list></#FB923C> <gray>- Plot-Flags verwalten</gray>'
+      merge: '<#FB923C>/{alias} merge</#FB923C> <gray>- mit dem Plot in Blickrichtung verbinden</gray>'
+      unmerge: '<#FB923C>/{alias} unmerge</#FB923C> <gray>- diesen Plot abtrennen</gray>'
+      menu: '<#FB923C>/{alias} menu</#FB923C> <gray>- Plot-Menü öffnen</gray>'
+      border: '<#FB923C>/{alias} border [material]</#FB923C> <gray>- Plot-Wand ändern</gray>'

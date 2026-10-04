@@ -27,6 +27,7 @@ dependencies {
     compileOnly(libs.placeholderapi)
     compileOnly(libs.vault.api) { isTransitive = false }
     compileOnly(libs.luckperms.api)
+    compileOnly(libs.floodgate.api)
 
     // Logging & utils
     compileOnly(libs.slf4j.api)
