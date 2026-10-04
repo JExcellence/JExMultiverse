@@ -1,76 +1,72 @@
 package de.jexcellence.multiverse.view;
 
-import de.jexcellence.jexplatform.view.PaginatedView;
-import de.jexcellence.jextranslate.R18nManager;
+import de.jexcellence.jexplatform.gui.component.CardLore;
+import de.jexcellence.jexplatform.gui.component.FilterHopperButton;
 import de.jexcellence.multiverse.database.entity.MVWorld;
 import de.jexcellence.multiverse.factory.WorldFactory;
-import de.jexcellence.multiverse.service.MultiverseService;
-import me.devnatan.inventoryframework.component.BukkitItemComponentBuilder;
-import me.devnatan.inventoryframework.context.Context;
 import me.devnatan.inventoryframework.context.OpenContext;
+import me.devnatan.inventoryframework.context.RenderContext;
+import me.devnatan.inventoryframework.context.SlotClickContext;
 import me.devnatan.inventoryframework.state.State;
+import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.GameRule;
 import org.bukkit.Material;
 import org.bukkit.Registry;
+import org.bukkit.World;
 import org.bukkit.entity.Player;
-import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 
 /**
- * Paginated per-world gamerule editor.
+ * Per-world gamerule editor: every boolean gamerule the running server knows (read from
+ * {@code Registry.GAME_RULE}), 28 per page, filterable by managed and unmanaged.
  *
- * <p>Lists every boolean gamerule the running server knows about, read from
- * {@code Registry.GAME_RULE} rather than a hard-coded list, so a server on a newer
- * Minecraft version picks up new rules without a plugin change. Integer gamerules are
- * deliberately excluded: they cannot be edited by clicking, and showing them as
- * unclickable entries would be worse than leaving them to {@code /gamerule}.
+ * <p>Each rule has three states: <b>unmanaged</b> (JExMultiverse leaves it alone, not persisted),
+ * <b>managed on</b> and <b>managed off</b> (stored on the world and re-applied on every load). Left-click
+ * cycles unmanaged, on, off; right-click drops straight back to unmanaged.
  *
- * <p>Each entry has three states rather than two:
- * <ul>
- *   <li><b>Unmanaged</b> - JExMultiverse does not touch the rule, and the world keeps
- *       whatever the server gives it. This is the default and is not persisted.</li>
- *   <li><b>Managed true</b> / <b>Managed false</b> - the value is stored on the world
- *       and re-applied every time it loads.</li>
- * </ul>
- *
- * <p>Left-click cycles unmanaged to true to false and back. Right-click drops straight
- * back to unmanaged, which is otherwise two clicks away.
- *
- * <p>Changes are staged on the in-memory {@link MVWorld} and previewed on the live
- * world, matching {@link MultiverseEditorView}. Nothing is written to the database
- * until Save is pressed back in the editor.
+ * <p>Changes are staged on the in-memory {@link MVWorld} and previewed on the live world, matching
+ * {@link MultiverseEditorView}. Nothing is written to the database until Save is pressed in the editor.
  *
  * @author JExcellence
  * @since 3.7.0
  */
-public class MultiverseGameRulesView extends PaginatedView<GameRule<?>> {
+public class MultiverseGameRulesView extends MultiverseBaseView {
 
-    private static final String KEY_RULE   = "rule";
-    private static final String KEY_VALUE  = "value";
-    private static final String VAL_TRUE      = "true";
-    private static final String VAL_FALSE     = "false";
-    private static final String VAL_UNMANAGED = "unmanaged";
+    static final String KEY = MultiverseCards.ROOT + "gamerules.";
+    static final List<String> FILTERS = List.of("all", "managed", "unmanaged");
+    static final FilterHopperButton FILTER = new FilterHopperButton("jexmultiverse:gamerules", FILTERS.size());
 
-    private final State<JavaPlugin>        pluginState  = initialState(MultiverseEditorView.DATA_PLUGIN);
-    private final State<MVWorld>           worldState   = initialState(MultiverseEditorView.DATA_WORLD);
-    private final State<MultiverseService> serviceState = initialState(MultiverseEditorView.DATA_SERVICE);
-    private final State<WorldFactory>      factoryState = initialState(MultiverseEditorView.DATA_FACTORY);
+    private static final String VAL_TRUE = "true";
+    private static final String VAL_FALSE = "false";
+    private static final String UNMANAGED = "unmanaged";
+    private static final String MUTED = "muted";
 
-    public MultiverseGameRulesView() {
-        super(MultiverseEditorView.class);
-    }
+    private final State<MVWorld> worldState = initialState(MultiverseEditorView.DATA_WORLD);
+    private final State<WorldFactory> factoryState = initialState(MultiverseEditorView.DATA_FACTORY);
 
     @Override
     protected String translationKey() {
-        return "multiverse_gamerules_ui";
+        return "mv_gui.gamerules";
+    }
+
+    @Override
+    protected String backDestination() {
+        return "world-editor";
+    }
+
+    @Override
+    protected void onBack(@NotNull SlotClickContext click) {
+        Map<String, Object> data = copyData(click);
+        data.remove(DATA_PAGE);
+        click.openForPlayer(MultiverseEditorView.class, data);
     }
 
     @Override
@@ -79,59 +75,75 @@ public class MultiverseGameRulesView extends PaginatedView<GameRule<?>> {
     }
 
     @Override
-    protected CompletableFuture<List<GameRule<?>>> loadData(@NotNull Context ctx) {
-        // Registry rather than GameRule.values(): the constants are deprecated for
-        // removal, and the registry reflects what this server build actually has.
-        List<GameRule<?>> rules = Registry.GAME_RULE.stream()
+    protected void onRender(@NotNull RenderContext render, @NotNull Player player) {
+        MVWorld world = worldState.get(render);
+        int filter = FILTER.index(player.getUniqueId());
+        List<GameRule<?>> rules = rules(world, filter);
+
+        render.slot(MultiverseLayout.SLOT_HEADER, header(player, world));
+        render.slot(MultiverseLayout.SLOT_FILTER, MultiverseCards.filter(player, filterLabels(player), filter))
+                .onClick(click -> {
+                    FILTER.cycle(click.getPlayer().getUniqueId(), !click.isRightClick());
+                    reopen(click, 0);
+                });
+        if (rules.isEmpty()) {
+            render.slot(MultiverseLayout.centreSlot(),
+                    MultiverseCards.notice(player, new ItemStack(Material.PAPER), KEY + "empty"));
+            return;
+        }
+        int pages = MultiverseLayout.pageCount(rules.size());
+        int page = MultiverseLayout.clampPage(requestedPage(render), pages);
+        int from = page * MultiverseLayout.PAGE_SIZE;
+        int to = Math.min(rules.size(), from + MultiverseLayout.PAGE_SIZE);
+        int[] slots = MultiverseLayout.centred(to - from);
+        for (int i = 0; i < slots.length; i++) {
+            GameRule<?> rule = rules.get(from + i);
+            render.slot(slots[i], ruleCard(player, world, rule)).onClick(click -> onRuleClick(click, rule));
+        }
+        pagination(render, player, page, pages);
+    }
+
+    private void onRuleClick(@NotNull SlotClickContext click, @NotNull GameRule<?> rule) {
+        MVWorld target = worldState.get(click);
+        String name = WorldFactory.gameRuleName(rule);
+        Map<String, String> staged = new HashMap<>(target.getGameRules());
+        if (click.isRightClick()) {
+            staged.remove(name);
+        } else {
+            cycle(staged, name);
+        }
+        target.setGameRules(staged);
+        World live = Bukkit.getWorld(target.getIdentifier());
+        if (live != null) {
+            factoryState.get(click).applyWorldSettings(live, target);
+        }
+        MultiverseCards.msg("multiverse_gamerules_ui.updated").prefix()
+                .with("rule", name)
+                .with("value", MultiverseCards.text(click.getPlayer(), WorldEditorCards.WORD + stateWord(staged.get(name))))
+                .send(click.getPlayer());
+        click.getClickedContainer().renderItem(click.getClickedSlot(), ruleCard(click.getPlayer(), target, rule));
+        click.getClickedContainer().renderItem(MultiverseLayout.SLOT_HEADER, header(click.getPlayer(), target));
+    }
+
+    private static @NotNull List<GameRule<?>> rules(@NotNull MVWorld world, int filter) {
+        Map<String, String> stored = world.getGameRules();
+        return Registry.GAME_RULE.stream()
                 .filter(rule -> rule.getType() == Boolean.class)
+                .filter(rule -> matches(filter, stored.containsKey(WorldFactory.gameRuleName(rule))))
                 .sorted(Comparator.comparing(WorldFactory::gameRuleName))
                 .toList();
-        return CompletableFuture.completedFuture(rules);
     }
 
-    @Override
-    protected void renderItem(@NotNull Context ctx,
-                              @NotNull BukkitItemComponentBuilder builder,
-                              int index,
-                              @NotNull GameRule<?> rule) {
-        var player = ctx.getPlayer();
-        var world  = worldState.get(ctx);
-
-        builder.withItem(ruleIcon(player, world, rule)).onClick(click -> {
-            click.setCancelled(true);
-            var target = worldState.get(click);
-            var rules  = new HashMap<>(target.getGameRules());
-
-            if (click.isRightClick()) {
-                rules.remove(WorldFactory.gameRuleName(rule));
-            } else {
-                cycle(rules, WorldFactory.gameRuleName(rule));
-            }
-            target.setGameRules(rules);
-
-            var live = Bukkit.getWorld(target.getIdentifier());
-            if (live != null) {
-                factoryState.get(click).applyWorldSettings(live, target);
-            }
-
-            R18nManager.getInstance()
-                    .msg("multiverse_gamerules_ui.updated").prefix()
-                    .with(KEY_RULE, WorldFactory.gameRuleName(rule))
-                    .with(KEY_VALUE, describe(rules.get(WorldFactory.gameRuleName(rule))))
-                    .send(click.getPlayer());
-
-            click.update();
-        });
+    private static boolean matches(int filter, boolean managed) {
+        return switch (filter) {
+            case 1 -> managed;
+            case 2 -> !managed;
+            default -> true;
+        };
     }
 
-    /**
-     * Advances a rule through unmanaged, true, false and back to unmanaged.
-     *
-     * @param rules the mutable staged rule map
-     * @param name  the gamerule name
-     */
     private static void cycle(@NotNull Map<String, String> rules, @NotNull String name) {
-        var current = rules.get(name);
+        String current = rules.get(name);
         if (current == null) {
             rules.put(name, VAL_TRUE);
         } else if (VAL_TRUE.equalsIgnoreCase(current)) {
@@ -141,71 +153,75 @@ public class MultiverseGameRulesView extends PaginatedView<GameRule<?>> {
         }
     }
 
-    private @NotNull org.bukkit.inventory.ItemStack ruleIcon(@NotNull Player player,
-                                                             @NotNull MVWorld world,
-                                                             @NotNull GameRule<?> rule) {
-        var stored = world.getGameRules().get(WorldFactory.gameRuleName(rule));
-        var live = liveValue(world, rule);
-        var material = materialFor(stored, live);
+    private static @NotNull List<String> filterLabels(@NotNull Player player) {
+        return FILTERS.stream().map(option -> MultiverseCards.text(player, KEY + "filter." + option)).toList();
+    }
 
-        var placeholders = new HashMap<String, Object>();
-        placeholders.put(KEY_RULE, WorldFactory.gameRuleName(rule));
-        placeholders.put(KEY_VALUE, describe(stored));
-        placeholders.put("effective", effectiveValue(world, rule));
+    private static @NotNull ItemStack header(@NotNull Player player, @NotNull MVWorld world) {
+        return MultiverseCards.card(Material.COMMAND_BLOCK, MultiverseCards.ic(MultiverseCards.msg(KEY + "header.name")
+                        .with("world_name", MultiverseCards.escape(world.getIdentifier())), player),
+                CardLore.create()
+                        .block(MultiverseCards.paragraphOf(player, KEY + "header.description"))
+                        .block(List.of(MultiverseCards.row(player, "managed",
+                                MultiverseCards.value(player, String.valueOf(world.getGameRules().size())))))
+                        .build());
+    }
 
-        return createItem(
-                material,
-                i18n("entry.name", player).withPlaceholders(placeholders).build().component(),
-                i18n("entry.lore", player).withPlaceholders(placeholders).build().children()
-        );
+    private static @NotNull ItemStack ruleCard(@NotNull Player player, @NotNull MVWorld world,
+                                               @NotNull GameRule<?> rule) {
+        String name = WorldFactory.gameRuleName(rule);
+        String stored = world.getGameRules().get(name);
+        Boolean live = liveValue(world, rule);
+        List<Component> rows = List.of(
+                MultiverseCards.row(player, "managed", storedValue(player, stored)),
+                MultiverseCards.row(player, "live", liveText(player, live)));
+        return MultiverseCards.card(icon(stored, live),
+                MultiverseCards.ic(MultiverseCards.msg(KEY + "entry.name").with("rule", name), player),
+                CardLore.create()
+                        .block(MultiverseCards.paragraphOf(player, KEY + "entry.description"))
+                        .block(rows)
+                        .block(List.of(MultiverseCards.action(player, KEY + "entry.left"),
+                                MultiverseCards.action(player, KEY + "entry.right")))
+                        .build());
+    }
+
+    private static @NotNull String storedValue(@NotNull Player player, @Nullable String stored) {
+        if (stored == null) {
+            return MultiverseCards.word(player, MUTED, UNMANAGED);
+        }
+        return MultiverseCards.state(player, VAL_TRUE.equalsIgnoreCase(stored));
+    }
+
+    private static @NotNull String liveText(@NotNull Player player, @Nullable Boolean live) {
+        return live == null ? MultiverseCards.word(player, MUTED, "not-loaded") : MultiverseCards.state(player, live);
+    }
+
+    private static @NotNull String stateWord(@Nullable String stored) {
+        if (stored == null) {
+            return UNMANAGED;
+        }
+        return VAL_TRUE.equalsIgnoreCase(stored) ? "enabled" : "disabled";
     }
 
     /**
-     * Managed rules use their stored value's colour so the click state is obvious.
-     * Unmanaged rules fall through to the LIVE value so an admin can see at a
-     * glance which rules the world currently reports as enabled, instead of every
-     * unmanaged rule being gray (which used to hide whether mobGriefing was actually
-     * on or off on that world). GRAY only when the world is unloaded.
+     * Managed rules show their stored value; unmanaged rules show the live value so an admin sees what the
+     * world reports, and gray only when the world is not loaded.
      */
-    private static @NotNull Material materialFor(String stored, @org.jetbrains.annotations.Nullable Boolean live) {
+    private static @NotNull Material icon(@Nullable String stored, @Nullable Boolean live) {
         if (stored != null) {
             return VAL_TRUE.equalsIgnoreCase(stored) ? Material.LIME_DYE : Material.RED_DYE;
         }
         if (live == null) {
             return Material.GRAY_DYE;
         }
-        return live ? Material.LIME_DYE : Material.RED_DYE;
+        return Boolean.TRUE.equals(live) ? Material.LIME_DYE : Material.RED_DYE;
     }
 
-    private static @org.jetbrains.annotations.Nullable Boolean liveValue(@NotNull MVWorld world, @NotNull GameRule<?> rule) {
-        var live = Bukkit.getWorld(world.getIdentifier());
+    private static @Nullable Boolean liveValue(@NotNull MVWorld world, @NotNull GameRule<?> rule) {
+        World live = Bukkit.getWorld(world.getIdentifier());
         if (live == null) {
             return null;
         }
-        var value = live.getGameRuleValue(rule);
-        return value instanceof Boolean b ? b : null;
-    }
-
-    private static @NotNull String describe(String stored) {
-        return stored == null ? VAL_UNMANAGED : stored.toLowerCase(Locale.ROOT);
-    }
-
-    /**
-     * Returns the value the live world currently reports for a rule.
-     *
-     * <p>Shown alongside the managed value so an admin can see when a rule was
-     * changed out from under JExMultiverse, for example by {@code /gamerule}.
-     *
-     * @param world the managed world
-     * @param rule  the gamerule
-     * @return the live value, or {@code "-"} when the world is not loaded
-     */
-    private static @NotNull String effectiveValue(@NotNull MVWorld world, @NotNull GameRule<?> rule) {
-        var live = Bukkit.getWorld(world.getIdentifier());
-        if (live == null) {
-            return "-";
-        }
-        var value = live.getGameRuleValue(rule);
-        return value == null ? "-" : String.valueOf(value).toLowerCase(Locale.ROOT);
+        return live.getGameRuleValue(rule) instanceof Boolean value ? value : null;
     }
 }

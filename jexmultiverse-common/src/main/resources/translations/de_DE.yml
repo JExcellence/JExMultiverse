@@ -4,14 +4,6 @@ prefix:
 # Shared chrome-Fallbacks für BaseView / PaginatedView, wenn eine View ihre
 # eigenen back/page-Keys weglässt. Ohne diese rendern die mv edit / gamerules
 # GUIs die rohen i18n-Keys statt der Tile-Namen.
-_defaults:
-  back: "<gradient:#ffa500:#ff6347>← Zurück</gradient>"
-  page:
-    name: "<gradient:#ff7f50:#ff4500>Seite {current}</gradient> <dark_gray>/</dark_gray> <gradient:#ffa500:#ff6347>{total}</gradient>"
-    lore:
-      - "<gray>Linksklick: vorherige Seite</gray>"
-      - "<gray>Rechtsklick: nächste Seite</gray>"
-
 multiverse:
   invalid_environment: "<gradient:#dc143c:#b22222>Fehler:</gradient> <white>Unbekannte Umgebung <gradient:#ff7f50:#ff4500>{environment}</gradient>. Erlaubt: NORMAL, NETHER, THE_END.</white>"
   invalid_type: "<gradient:#dc143c:#b22222>Fehler:</gradient> <white>Unbekannter Welttyp <gradient:#ff7f50:#ff4500>{type}</gradient>. Erlaubt: DEFAULT, VOID, PLOT.</white>"
@@ -71,22 +63,6 @@ multiverse:
     plots_not_copied: "<gradient:#ffa500:#ff8c00>Hinweis:</gradient> <white>Plot-Ansprüche wurden nicht kopiert - <gradient:#ff7f50:#ff4500>{target}</gradient> startet unbeansprucht.</white>"
 
   list_empty: "<gray>Keine verwalteten Welten gefunden.</gray>"
-  list_header: "<gradient:#ff7f50:#ff4500>Verwaltete Welten</gradient> <dark_gray>({count})</dark_gray>"
-  list_entry: " <gray>-</gray> <gradient:#ffa500:#ff6347>{world_name}</gradient> <dark_gray>[{type} / {environment}]</dark_gray> <gray>{status}</gray> <dark_gray>global:</dark_gray> <gray>{global_spawn}</gray>"
-  list_footer: "<dark_gray>{count}/{max} Welten</dark_gray>"
-
-  help_header: "<gradient:#ff7f50:#ff4500>Multiverse Befehle</gradient>"
-  help_create: "<gradient:#ffa500:#ff6347>/{alias} create <name> [env] [typ]</gradient> <gray>- Neue Welt erstellen</gray>"
-  help_delete: "<gradient:#ffa500:#ff6347>/{alias} delete <welt></gradient> <gray>- Welt löschen</gray>"
-  help_edit: "<gradient:#ffa500:#ff6347>/{alias} edit <welt></gradient> <gray>- Welt-Einstellungen bearbeiten</gray>"
-  help_teleport: "<gradient:#ffa500:#ff6347>/{alias} teleport <welt></gradient> <gray>- Zu einer Welt teleportieren</gray>"
-  help_load: "<gradient:#ffa500:#ff6347>/{alias} load <welt></gradient> <gray>- Welt aus der Datenbank laden</gray>"
-  help_unload: "<gradient:#ffa500:#ff6347>/{alias} unload <welt> [save]</gradient> <gray>- Welt entladen, ohne sie zu löschen</gray>"
-  help_reset: "<gradient:#ffa500:#ff6347>/{alias} reset <welt> confirm</gradient> <gray>- Terrain neu generieren, Einstellungen behalten</gray>"
-  help_clone: "<gradient:#ffa500:#ff6347>/{alias} clone <welt> <ziel></gradient> <gray>- Welt unter neuem Namen kopieren</gray>"
-  help_list: "<gradient:#ffa500:#ff6347>/{alias} list</gradient> <gray>- Alle Welten auflisten</gray>"
-  help_footer: "<dark_gray>───────────────────────────────</dark_gray>"
-
   applyschematic_not_plot: "<gradient:#dc143c:#b22222>Fehler:</gradient> <white><gradient:#ff7f50:#ff4500>{world_name}</gradient> ist keine PLOT-Welt.</white>"
   applyschematic_missing_name: "<gradient:#dc143c:#b22222>Fehler:</gradient> <white><gradient:#ff7f50:#ff4500>{world_name}</gradient> hat kein Schematic konfiguriert. Übergib einen Namen als zweites Argument.</white>"
   applyschematic_not_found: "<gradient:#dc143c:#b22222>Fehler:</gradient> <white>Schematic <gradient:#ff7f50:#ff4500>{schematic}</gradient> wurde in plugins/JExMultiverse/schematics/ nicht gefunden.</white>"
@@ -122,185 +98,37 @@ multiverse:
     undo_skipped: "<gradient:#f59e0b:#d97706>Achtung:</gradient> <white>Auswahl ist zu groß ({count} Blöcke) - Undo-Snapshot wird übersprungen, /mv undo wird die Aktion nicht wiederherstellen.</white>"
 
 multiverse_editor_ui:
-  title: "<gradient:#ff7f50:#ff4500>Welt bearbeiten</gradient> <dark_gray>({world_name})</dark_gray>"
-  info:
-    name: "<gradient:#ff7f50:#ff4500>{world_name}</gradient>"
-    lore:
-      - ""
-      - "<gray>Typ:</gray> <gradient:#ffa500:#ff6347>{type}</gradient>"
-      - "<gray>Umgebung:</gray> <gradient:#ffa500:#ff6347>{environment}</gradient>"
-      - "<gray>Geladen:</gray> <gradient:#ffa500:#ff6347>{loaded}</gradient>"
-      - "<gray>Verwaltete Gamerules:</gray> <gradient:#ffa500:#ff6347>{game_rules}</gradient>"
-      - ""
-      - "<gray>Änderungen werden erst beim Speichern</gray>"
-      - "<gray>übernommen. Ausnahme: der globale Spawn</gray>"
-      - "<gray>wirkt sofort.</gray>"
   keep_spawn:
-    name: "<gradient:#ff7f50:#ff4500>Spawn geladen halten</gradient> <dark_gray>({value})</dark_gray>"
-    lore:
-      - ""
-      - "<gray>Status:</gray> <gradient:#ffa500:#ff6347>{value}</gradient>"
-      - ""
-      - "<gray>Hält die Spawn-Chunks im Speicher.</gray>"
-      - "<gray>Kostet RAM - nur sinnvoll bei Welten mit</gray>"
-      - "<gray>Redstone oder Farmen am Spawn.</gray>"
-      - ""
-      - "<gradient:#ff7f50:#ff4500>Klicke</gradient> <gray>zum Umschalten</gray>"
     toggled: "<gradient:#32cd32:#228b22>Spawn-Chunks:</gradient> <white>Spawn-Chunks in <gradient:#ff7f50:#ff4500>{world_name}</gradient> sind jetzt <gradient:#ffa500:#ff6347>{value}</gradient>.</white>"
   time_lock:
-    name: "<gradient:#ff7f50:#ff4500>Zeit fixieren</gradient> <dark_gray>({value})</dark_gray>"
-    lore:
-      - ""
-      - "<gray>Fixiert auf:</gray> <gradient:#ffa500:#ff6347>{value}</gradient>"
-      - ""
-      - "<gray>Friert die Uhr auf der aktuellen Zeit ein</gray>"
-      - "<gray>und hält sie über Neustarts hinweg.</gray>"
-      - "<gray>Deaktiviert auch den Tag-Nacht-Zyklus.</gray>"
-      - ""
-      - "<gradient:#ff7f50:#ff4500>Klicke</gradient> <gray>zum Fixieren oder Lösen</gray>"
     toggled: "<gradient:#32cd32:#228b22>Zeit-Fixierung:</gradient> <white>Zeit in <gradient:#ff7f50:#ff4500>{world_name}</gradient> ist jetzt <gradient:#ffa500:#ff6347>{value}</gradient>.</white>"
   weather_lock:
-    name: "<gradient:#ff7f50:#ff4500>Wetter fixieren</gradient> <dark_gray>({value})</dark_gray>"
-    lore:
-      - ""
-      - "<gray>Fixiert auf:</gray> <gradient:#ffa500:#ff6347>{value}</gradient>"
-      - ""
-      - "<gray>Hält das aktuelle Wetter und behält es</gray>"
-      - "<gray>über Neustarts hinweg. Deaktiviert auch</gray>"
-      - "<gray>den Wetterzyklus.</gray>"
-      - ""
-      - "<gradient:#ff7f50:#ff4500>Klicke</gradient> <gray>zum Fixieren oder Lösen</gray>"
     toggled: "<gradient:#32cd32:#228b22>Wetter-Fixierung:</gradient> <white>Wetter in <gradient:#ff7f50:#ff4500>{world_name}</gradient> ist jetzt <gradient:#ffa500:#ff6347>{value}</gradient>.</white>"
-  game_rules:
-    name: "<gradient:#ff7f50:#ff4500>Gamerules</gradient> <dark_gray>({value} verwaltet)</dark_gray>"
-    lore:
-      - ""
-      - "<gray>Verwaltet:</gray> <gradient:#ffa500:#ff6347>{value}</gradient>"
-      - ""
-      - "<gray>Weltspezifische Gamerules, werden bei</gray>"
-      - "<gray>jedem Laden der Welt neu gesetzt.</gray>"
-      - ""
-      - "<gradient:#ff7f50:#ff4500>Klicke</gradient> <gray>zum Öffnen</gray>"
   not_loaded: "<gradient:#dc143c:#b22222>Fehler:</gradient> <white>Welt <gradient:#ff7f50:#ff4500>{world_name}</gradient> ist nicht geladen, Live-Einstellungen können nicht geändert werden.</white>"
   spawn:
-    name: "<gradient:#ff7f50:#ff4500>Spawnpunkt setzen</gradient>"
-    lore:
-      - ""
-      - "<gray>Aktuell:</gray> <gradient:#ffa500:#ff6347>{value}</gradient>"
-      - ""
-      - "<gradient:#ff7f50:#ff4500>Klick</gradient> <gray>um Spawn auf deine Position zu setzen</gray>"
     updated: "<gradient:#32cd32:#228b22>Spawn aktualisiert:</gradient> <white>Spawn für <gradient:#ff7f50:#ff4500>{world_name}</gradient> auf deine Position gesetzt.</white>"
     wrong_world: "<gradient:#dc143c:#b22222>Fehler:</gradient> <white>Du musst in <gradient:#ff7f50:#ff4500>{world_name}</gradient> sein, um deren Spawn zu setzen.</white>"
   global_spawn:
-    name: "<gradient:#ff7f50:#ff4500>Globaler Spawn</gradient> <dark_gray>({value})</dark_gray>"
-    lore:
-      - ""
-      - "<gray>Status:</gray> <gradient:#ffa500:#ff6347>{value}</gradient>"
-      - ""
-      - "<gray>Wenn aktiviert, spawnen alle</gray>"
-      - "<gray>Spieler in dieser Welt.</gray>"
-      - ""
-      - "<gradient:#ff7f50:#ff4500>Klick</gradient> <gray>zum Umschalten</gray>"
     toggled: "<gradient:#32cd32:#228b22>Globaler Spawn:</gradient> <white><gradient:#ff7f50:#ff4500>{world_name}</gradient> ist jetzt <gradient:#ffa500:#ff6347>{value}</gradient>.</white>"
     replaced: "<gradient:#ffa500:#ff8c00>Globaler Spawn:</gradient> <white>Vorheriger globaler Spawn (<gradient:#ff7f50:#ff4500>{previous}</gradient>) durch <gradient:#ff7f50:#ff4500>{world_name}</gradient> ersetzt.</white>"
   pvp:
-    name: "<gradient:#ff7f50:#ff4500>PvP-Schalter</gradient> <dark_gray>({value})</dark_gray>"
-    lore:
-      - ""
-      - "<gray>Status:</gray> <gradient:#ffa500:#ff6347>{value}</gradient>"
-      - ""
-      - "<gray>Steuert ob Spieler sich</gray>"
-      - "<gray>in dieser Welt bekämpfen können.</gray>"
-      - ""
-      - "<gradient:#ff7f50:#ff4500>Klick</gradient> <gray>zum Umschalten</gray>"
     toggled: "<gradient:#32cd32:#228b22>PvP:</gradient> <white>PvP in <gradient:#ff7f50:#ff4500>{world_name}</gradient> ist jetzt <gradient:#ffa500:#ff6347>{value}</gradient>.</white>"
   time:
-    name: "<gradient:#ff7f50:#ff4500>Tageszeit</gradient> <dark_gray>({value})</dark_gray>"
-    lore:
-      - ""
-      - "<gray>Aktuell:</gray> <gradient:#ffa500:#ff6347>{value}</gradient>"
-      - ""
-      - "<gray>Wechselt Morgen → Mittag → Abend → Nacht.</gray>"
-      - "<gray>Mit den Fixieren-Buttons dauerhaft.</gray>"
-      - ""
-      - "<gradient:#ff7f50:#ff4500>Klick</gradient> <gray>um weiterzuschalten</gray>"
     updated: "<gradient:#32cd32:#228b22>Zeit:</gradient> <white>Tageszeit in <gradient:#ff7f50:#ff4500>{world_name}</gradient> auf <gradient:#ffa500:#ff6347>{value}</gradient> gesetzt.</white>"
   weather:
-    name: "<gradient:#ff7f50:#ff4500>Wetter</gradient> <dark_gray>({value})</dark_gray>"
-    lore:
-      - ""
-      - "<gray>Aktuell:</gray> <gradient:#ffa500:#ff6347>{value}</gradient>"
-      - ""
-      - "<gray>Wechselt klar → Regen → Sturm.</gray>"
-      - "<gray>Mit den Fixieren-Buttons dauerhaft.</gray>"
-      - ""
-      - "<gradient:#ff7f50:#ff4500>Klick</gradient> <gray>um weiterzuschalten</gray>"
     updated: "<gradient:#32cd32:#228b22>Wetter:</gradient> <white>Wetter in <gradient:#ff7f50:#ff4500>{world_name}</gradient> auf <gradient:#ffa500:#ff6347>{value}</gradient> gesetzt.</white>"
   difficulty:
-    name: "<gradient:#ff7f50:#ff4500>Schwierigkeit</gradient> <dark_gray>({value})</dark_gray>"
-    lore:
-      - ""
-      - "<gray>Aktuell:</gray> <gradient:#ffa500:#ff6347>{value}</gradient>"
-      - ""
-      - "<gray>Wechselt friedlich → einfach → normal → schwer.</gray>"
-      - "<gray>Mit den Fixieren-Buttons dauerhaft.</gray>"
-      - ""
-      - "<gradient:#ff7f50:#ff4500>Klick</gradient> <gray>um weiterzuschalten</gray>"
     updated: "<gradient:#32cd32:#228b22>Schwierigkeit:</gradient> <white>Schwierigkeit in <gradient:#ff7f50:#ff4500>{world_name}</gradient> auf <gradient:#ffa500:#ff6347>{value}</gradient> gesetzt.</white>"
   build_lock:
-    name: "<gradient:#ff7f50:#ff4500>Build-Sperre</gradient> <dark_gray>({value})</dark_gray>"
-    lore:
-      - ""
-      - "<gray>Status:</gray> <gradient:#ffa500:#ff6347>{value}</gradient>"
-      - ""
-      - "<gray>Blockt Bauen, ausser Staff nutzt /mv build.</gray>"
-      - "<gray>Speichern, um diese Einstellung zu behalten.</gray>"
-      - ""
-      - "<gradient:#ff7f50:#ff4500>Klick</gradient> <gray>zum Umschalten</gray>"
     toggled: "<gradient:#32cd32:#228b22>Build-Sperre:</gradient> <white><gradient:#ff7f50:#ff4500>{world_name}</gradient> ist jetzt <gradient:#ffa500:#ff6347>{value}</gradient>.</white>"
   interactions:
-    name: "<gradient:#ff7f50:#ff4500>Gesperrte Interaktionen</gradient> <dark_gray>({value})</dark_gray>"
-    lore:
-      - ""
-      - "<gray>Modus:</gray> <gradient:#ffa500:#ff6347>{value}</gradient>"
-      - ""
-      - "<gray>open = altes Verhalten, safe = Tueren/Schilder/Eier/Trampeln blockiert,</gray>"
-      - "<gray>locked = alle Block-Interaktionen blockiert.</gray>"
-      - "<gray>Speichern, um diese Einstellung zu behalten.</gray>"
-      - ""
-      - "<gradient:#ff7f50:#ff4500>Klick</gradient> <gray>zum Wechseln</gray>"
     toggled: "<gradient:#32cd32:#228b22>Interaktionen:</gradient> <white><gradient:#ff7f50:#ff4500>{world_name}</gradient> nutzt jetzt <gradient:#ffa500:#ff6347>{value}</gradient>.</white>"
   save:
-    name: "<gradient:#32cd32:#228b22>Änderungen speichern</gradient>"
-    lore:
-      - ""
-      - "<gray>Speichert alle Änderungen an <gradient:#ff7f50:#ff4500>{world_name}</gradient> in die Datenbank.</gray>"
-      - ""
-      - "<gradient:#32cd32:#228b22>Klick</gradient> <gray>zum Speichern</gray>"
     success: "<gradient:#32cd32:#228b22>Gespeichert:</gradient> <white>Änderungen an <gradient:#ff7f50:#ff4500>{world_name}</gradient> gespeichert.</white>"
     failed: "<gradient:#dc143c:#b22222>Speichern fehlgeschlagen:</gradient> <white>Änderungen an <gradient:#ff7f50:#ff4500>{world_name}</gradient>: <gray>{error}</gray></white>"
 
 multiverse_gamerules_ui:
-  title: "<gradient:#ff7f50:#ff4500>Gamerules</gradient> <dark_gray>({world_name})</dark_gray>"
-  entry:
-    name: "<gradient:#ffa500:#ff6347>{rule}</gradient>"
-    lore:
-      - ""
-      - "<gray>Verwaltet:</gray> <gradient:#ffa500:#ff6347>{value}</gradient>"
-      - "<gray>Live-Wert:</gray> <gradient:#ffa500:#ff6347>{effective}</gradient>"
-      - ""
-      - "<gray>Unverwaltet heisst, JExMultiverse fasst</gray>"
-      - "<gray>diese Regel nicht an. Ein verwalteter Wert</gray>"
-      - "<gray>wird bei jedem Laden neu gesetzt.</gray>"
-      - ""
-      - "<gradient:#ff7f50:#ff4500>Linksklick</gradient> <gray>unverwaltet -> true -> false</gray>"
-      - "<gradient:#ff7f50:#ff4500>Rechtsklick</gradient> <gray>zurück auf unverwaltet</gray>"
   updated: "<gradient:#32cd32:#228b22>Gamerule:</gradient> <white><gradient:#ffa500:#ff6347>{rule}</gradient> ist jetzt <gradient:#ffa500:#ff6347>{value}</gradient>. Zum Behalten im Editor speichern.</white>"
-  previous: "<gray>Vorherige Seite</gray>"
-  next: "<gray>Nächste Seite</gray>"
-  page: "<dark_gray>Seite {current}/{total}</dark_gray>"
-  loading: "<gray>Lade Gamerules...</gray>"
-
 plot:
   protection:
     denied: "<gradient:#dc143c:#b22222>Verweigert:</gradient> <white>Dieser Plot gehört <gradient:#ff7f50:#ff4500>{owner_name}</gradient>.</white>"
@@ -351,29 +179,6 @@ plot:
   border_set:    "<gradient:#32cd32:#228b22>Border:</gradient> <white>Plot-Wand auf <gradient:#ff7f50:#ff4500>{material}</gradient> gesetzt.</white>"
   border_reset:  "<gradient:#ffa500:#ff8c00>Border:</gradient> <white>Plot-Wand auf das Standard-Material zurückgesetzt.</white>"
 
-multiverse_list_ui:
-  title: "<gradient:#ff7f50:#ff4500>Verwaltete Welten</gradient>"
-  entry:
-    name: "<gradient:#ffa500:#ff6347>{world_name}</gradient>"
-    lore:
-      - ""
-      - "<gray>Typ:</gray> <white>{type}</white>"
-      - "<gray>Umgebung:</gray> <white>{environment}</white>"
-      - "<gray>Status:</gray> <white>{status}</white>"
-      - "<gray>Globaler Spawn:</gray> <white>{global_spawn}</white>"
-      - "<gray>PvP:</gray> <white>{pvp}</white>"
-      - "<gray>Spawn:</gray> <white>{spawn}</white>"
-      - ""
-      - "<gradient:#ff7f50:#ff4500>Linksklick</gradient> <gray>- hierher teleportieren</gray>"
-      - "<gradient:#ff7f50:#ff4500>Rechtsklick</gradient> <gray>- Einstellungen bearbeiten</gray>"
-  page:
-    name: "<gradient:#ff7f50:#ff4500>Seite {page}/{total_pages}</gradient>"
-    lore:
-      - "<gray>Zeige Seite {current_page} von {max_page}</gray>"
-  previous: "<gradient:#ff7f50:#ff4500>← Zurück</gradient>"
-  next: "<gradient:#ff7f50:#ff4500>Weiter →</gradient>"
-  loading: "<gray>Lädt...</gray>"
-
 spawn:
   teleporting_to_spawn: "<gradient:#ffa500:#ff8c00>Teleportiere:</gradient> <white>Teleportiere zum Spawn...</white>"
   spawn_not_found: "<gradient:#dc143c:#b22222>Fehler:</gradient> <white>Kein Spawnpunkt konfiguriert.</white>"
@@ -416,6 +221,7 @@ mv_gui:
     section:
       plot: 'Plot'
       members: 'Mitglieder'
+      world: 'Welt'
     label:
       owner: 'Besitzer'
       world: 'Welt'
@@ -428,6 +234,20 @@ mv_gui:
       status: 'Status'
       source: 'Quelle'
       role: 'Rolle'
+      type: 'Typ'
+      environment: 'Umgebung'
+      loaded: 'Geladen'
+      gamerules: 'Verwaltete Spielregeln'
+      spawn: 'Spawn'
+      now: 'Jetzt'
+      pinned: 'Fixiert'
+      difficulty: 'Schwierigkeit'
+      mode: 'Modus'
+      managed: 'Verwaltet'
+      live: 'Live-Wert'
+      worlds: 'Welten'
+      global-spawn: 'Globaler Spawn'
+      pvp: 'PvP'
     value:
       plain: '<#F1F5F9>{value}</#F1F5F9>'
       accent: '<#FB923C>{value}</#FB923C>'
@@ -446,9 +266,36 @@ mv_gui:
       trusted: 'Vertraut'
       denied: 'Gesperrt'
       unlimited: '∞'
+      loaded: 'Geladen'
+      unloaded: 'Nicht geladen'
+      not-loaded: 'Welt nicht geladen'
+      unmanaged: 'Nicht verwaltet'
+      morning: 'Morgen'
+      noon: 'Mittag'
+      evening: 'Abend'
+      night: 'Nacht'
+      clear: 'Klar'
+      rain: 'Regen'
+      storm: 'Gewitter'
+      peaceful: 'Friedlich'
+      easy: 'Einfach'
+      normal: 'Normal'
+      hard: 'Schwer'
+      mode-open: 'Offen'
+      mode-safe: 'Sicher'
+      mode-locked: 'Gesperrt'
+      type-default: 'Standard'
+      type-void: 'Leer'
+      type-plot: 'Plot'
+      env-normal: 'Oberwelt'
+      env-nether: 'Nether'
+      env-the-end: 'Das Ende'
+      env-custom: 'Eigene'
     back:
       name: '<#F1F5F9>← Zurück</#F1F5F9>'
       plot-menu: 'Zurück zum Plot-Menü.'
+      world-list: 'Zurück zur Weltenliste.'
+      world-editor: 'Zurück zum Welt-Editor.'
     close:
       name: '<#F1F5F9>✘ Schließen</#F1F5F9>'
       description: 'Schließt dieses Menü.'
@@ -536,6 +383,96 @@ mv_gui:
     empty:
       name: '<#F1F5F9>Niemand hier</#F1F5F9>'
       description: 'Kein Mitglied passt zu diesem Filter. Füge Spieler mit /plot trust oder /plot deny hinzu.'
+  world_list:
+    title: '<#FB923C>Welten</#FB923C>'
+    header:
+      name: '<#FB923C>Verwaltete Welten</#FB923C>'
+      description: 'Alle Welten, die JExMultiverse verwaltet. Löschen bleibt bei /mv delete.'
+    filter:
+      all: 'Alle Welten'
+      loaded: 'Geladen'
+      unloaded: 'Nicht geladen'
+    entry:
+      name: '<#F1F5F9>{world_name}</#F1F5F9>'
+      left: 'Linksklick zum Teleportieren'
+      right: 'Rechtsklick zum Bearbeiten'
+    empty:
+      name: '<#F1F5F9>Keine Welten hier</#F1F5F9>'
+      description: 'Keine Welt passt zu diesem Filter. Erstelle eine mit /mv create oder importiere eine mit /mv import.'
+  world_editor:
+    title: '<#FB923C>Welt bearbeiten</#FB923C> <dark_gray>|</dark_gray> <gray>{world_name}</gray>'
+    header:
+      name: '<#FB923C>{world_name}</#FB923C>'
+      description: 'Änderungen werden erst mit Speichern übernommen. Nur der globale Spawn gilt sofort.'
+    spawn:
+      name: '<#F1F5F9>Spawnpunkt</#F1F5F9>'
+      description: 'Hier kommen Spieler in dieser Welt an.'
+      action: 'Klicken, um ihn auf deine Position zu setzen'
+    global-spawn:
+      name: '<#F1F5F9>Globaler Spawn</#F1F5F9>'
+      description: 'Aktiv spawnen alle Spieler in dieser Welt.'
+      action: 'Klicken zum Umschalten'
+    pvp:
+      name: '<#F1F5F9>PvP</#F1F5F9>'
+      description: 'Spieler können in dieser Welt gegeneinander kämpfen.'
+      action: 'Klicken zum Umschalten'
+    keep-spawn:
+      name: '<#F1F5F9>Spawn geladen halten</#F1F5F9>'
+      description: 'Hält die Spawn-Chunks im Speicher. Kostet RAM, lohnt sich nur für Redstone oder Farmen am Spawn.'
+      action: 'Klicken zum Umschalten'
+    time:
+      name: '<#F1F5F9>Tageszeit</#F1F5F9>'
+      description: 'Wechselt zwischen Morgen, Mittag, Abend und Nacht. Fixiere die Zeit, damit sie Neustarts übersteht.'
+      action: 'Klicken zum Weiterschalten'
+    time-lock:
+      name: '<#F1F5F9>Zeit fixieren</#F1F5F9>'
+      description: 'Hält die Uhr über Neustarts bei der aktuellen Zeit an und stoppt den Tageszyklus.'
+      action: 'Klicken zum Fixieren oder Lösen'
+    weather:
+      name: '<#F1F5F9>Wetter</#F1F5F9>'
+      description: 'Wechselt zwischen klar, Regen und Gewitter. Fixiere das Wetter, damit es Neustarts übersteht.'
+      action: 'Klicken zum Weiterschalten'
+    weather-lock:
+      name: '<#F1F5F9>Wetter fixieren</#F1F5F9>'
+      description: 'Hält das aktuelle Wetter über Neustarts und stoppt den Wetterzyklus.'
+      action: 'Klicken zum Fixieren oder Lösen'
+    difficulty:
+      name: '<#F1F5F9>Schwierigkeit</#F1F5F9>'
+      description: 'Wechselt zwischen friedlich, einfach, normal, schwer und nicht verwaltet (Server-Standard).'
+      action: 'Klicken zum Weiterschalten'
+    build-lock:
+      name: '<#F1F5F9>Bausperre</#F1F5F9>'
+      description: 'Verhindert das Bauen, außer das Team nutzt /mv build.'
+      action: 'Klicken zum Umschalten'
+    interactions:
+      name: '<#F1F5F9>Gesperrte Interaktionen</#F1F5F9>'
+      description: 'Offen erlaubt normale Nutzung, Sicher sperrt Türen, Schilder, Eier und Zertrampeln, Gesperrt sperrt jede Block-Interaktion.'
+      action: 'Klicken zum Wechseln'
+    gamerules:
+      name: '<#F1F5F9>Spielregeln</#F1F5F9>'
+      description: 'Spielregeln pro Welt, die bei jedem Laden der Welt erneut gesetzt werden.'
+      action: 'Klicken zum Öffnen'
+    save:
+      name: '<#4ADE80>Änderungen speichern</#4ADE80>'
+      description: 'Schreibt alle vorgemerkten Änderungen dieser Welt in die Datenbank.'
+      action: 'Klicken zum Speichern'
+  gamerules:
+    title: '<#FB923C>Spielregeln</#FB923C> <dark_gray>|</dark_gray> <gray>{world_name}</gray>'
+    header:
+      name: '<#FB923C>Spielregeln von {world_name}</#FB923C>'
+      description: 'Änderungen sind sofort sichtbar und bleiben erhalten, wenn du im Editor speicherst.'
+    filter:
+      all: 'Alle Regeln'
+      managed: 'Verwaltet'
+      unmanaged: 'Nicht verwaltet'
+    entry:
+      name: '<#F1F5F9>{rule}</#F1F5F9>'
+      description: 'Nicht verwaltete Regeln bleiben unberührt. Ein verwalteter Wert wird bei jedem Laden der Welt erneut gesetzt.'
+      left: 'Linksklick: nicht verwaltet, aktiv, inaktiv'
+      right: 'Rechtsklick: zurück auf nicht verwaltet'
+    empty:
+      name: '<#F1F5F9>Keine Regeln hier</#F1F5F9>'
+      description: 'Keine Spielregel passt zu diesem Filter.'
   bedrock:
     row: '{label}: {value}'
     flag:
@@ -575,6 +512,24 @@ mv_gui:
 
 mv_chat:
   label: '<#94A3B8>{text}</#94A3B8>'
+  world:
+    list:
+      header: '<#FB923C>Verwaltete Welten</#FB923C>'
+      context: '<gray>{count} von {max} Welten</gray>'
+      entry: '<white>{world_name}</white> <dark_gray>|</dark_gray> <gray>{type}, {status}</gray>'
+    help:
+      header: '<#FB923C>Multiverse-Befehle</#FB923C>'
+      context: '<gray>Weltverwaltung für das Team</gray>'
+      create: '<#FB923C>/{alias} create <name> [env] [typ]</#FB923C> <gray>- Welt erstellen</gray>'
+      import: '<#FB923C>/{alias} import <name></#FB923C> <gray>- Weltordner registrieren</gray>'
+      delete: '<#FB923C>/{alias} delete <welt></#FB923C> <gray>- Welt löschen</gray>'
+      edit: '<#FB923C>/{alias} edit <welt></#FB923C> <gray>- Welt-Einstellungen bearbeiten</gray>'
+      teleport: '<#FB923C>/{alias} teleport <welt></#FB923C> <gray>- zu einer Welt teleportieren</gray>'
+      load: '<#FB923C>/{alias} load <welt></#FB923C> <gray>- Welt laden</gray>'
+      unload: '<#FB923C>/{alias} unload <welt> [save]</#FB923C> <gray>- entladen ohne zu löschen</gray>'
+      reset: '<#FB923C>/{alias} reset <welt> confirm</#FB923C> <gray>- neues Terrain, gleiche Einstellungen</gray>'
+      clone: '<#FB923C>/{alias} clone <welt> <ziel></#FB923C> <gray>- Welt kopieren</gray>'
+      list: '<#FB923C>/{alias} list</#FB923C> <gray>- alle Welten auflisten</gray>'
   plot:
     info:
       header: '<#FB923C>Plot {grid_x}, {grid_z}</#FB923C>'

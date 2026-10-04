@@ -2,6 +2,11 @@ package de.jexcellence.multiverse.command;
 
 import com.raindropcentral.commands.v2.CommandContext;
 import com.raindropcentral.commands.v2.CommandHandler;
+import java.util.logging.Level;
+import java.util.Locale;
+import org.bukkit.command.CommandSender;
+import de.jexcellence.multiverse.view.MultiverseCards;
+import de.jexcellence.jexplatform.gui.chat.ChatPanel;
 import de.jexcellence.jexplatform.schematic.PlacedSchematic;
 import de.jexcellence.jexplatform.schematic.edit.SchematicEditor;
 import de.jexcellence.jexplatform.schematic.edit.Selection;
@@ -58,6 +63,10 @@ public final class MultiverseHandler {
     private static final String KEY_WORLD       = "world";
     private static final String KEY_COUNT       = "count";
     private static final String KEY_ALIAS       = "alias";
+    private static final String LIST_PANEL      = ChatPanels.ROOT + "world.list.";
+    private static final String HELP_PANEL      = ChatPanels.ROOT + "world.help.";
+    private static final List<String> HELP_COMMANDS = List.of(
+            "create", "import", "delete", "edit", "teleport", "load", "unload", "reset", "clone", "list");
 
     /** Literal a resetting admin must type out; a flag is too easy to fire by accident. */
     private static final String CONFIRM_LITERAL = "confirm";
@@ -126,13 +135,9 @@ public final class MultiverseHandler {
         );
     }
 
-    // ── Root ────────────────────────────────────────────────────────────────────
-
     private void onRoot(@NotNull CommandContext ctx) {
         onHelp(ctx);
     }
-
-    // ── Build-lock (a lightweight per-world protection) ───────────────────────────
 
     private void onLock(@NotNull CommandContext ctx) {
         setBuildLock(ctx, true);
@@ -190,8 +195,6 @@ public final class MultiverseHandler {
         boolean enabled = service.buildMode().toggle(player);
         r18n().msg(enabled ? "multiverse.build_enabled" : "multiverse.build_disabled").prefix().send(player);
     }
-
-    // ── Create ──────────────────────────────────────────────────────────────────
 
     private void onCreate(@NotNull CommandContext ctx) {
         var sender = ctx.sender();
@@ -258,8 +261,6 @@ public final class MultiverseHandler {
         });
     }
 
-    // ── Import ──────────────────────────────────────────────────────────────────
-
     /**
      * Registers an EXISTING world folder into the registry: loads it (applying the given
      * environment + type/generator) and persists an {@link MVWorld} row via
@@ -278,8 +279,6 @@ public final class MultiverseHandler {
             r18n().msg("multiverse.import_already_managed").prefix().with(KEY_WORLD_NAME, name).send(sender);
             return;
         }
-        // The folder must exist on disk (or the world must be live in Bukkit). Import registers an
-        // EXISTING world; it never creates a new one.
         var folder = new java.io.File(Bukkit.getWorldContainer(), name);
         if (Bukkit.getWorld(name) == null && !new java.io.File(folder, "level.dat").isFile()) {
             r18n().msg("multiverse.import_folder_not_found").prefix().with(KEY_WORLD_NAME, name).send(sender);
@@ -306,8 +305,6 @@ public final class MultiverseHandler {
                 });
     }
 
-    // ── Unload ──────────────────────────────────────────────────────────────────
-
     private void onUnload(@NotNull CommandContext ctx) {
         var sender = ctx.sender();
         var world = ctx.require(KEY_WORLD, MVWorld.class);
@@ -330,15 +327,15 @@ public final class MultiverseHandler {
                                 .send(sender)));
     }
 
-    // ── Reset ───────────────────────────────────────────────────────────────────
-
+    /**
+     * Regenerates a world's terrain and keeps its settings. Destroying every block on one mistyped
+     * tab-complete is not acceptable, so the literal word {@code confirm} is required instead of a flag.
+     */
     private void onReset(@NotNull CommandContext ctx) {
         var sender = ctx.sender();
         var world = ctx.require(KEY_WORLD, MVWorld.class);
         var identifier = world.getIdentifier();
 
-        // Destroying every block in a world on a single mistyped tab-complete is not
-        // acceptable, so the literal word is required rather than a flag.
         if (!CONFIRM_LITERAL.equalsIgnoreCase(ctx.get("confirm", String.class).orElse(""))) {
             r18n().msg("multiverse.reset.confirm_required").prefix()
                     .with(KEY_WORLD_NAME, identifier)
@@ -359,8 +356,6 @@ public final class MultiverseHandler {
                                 .with(KEY_WORLD_NAME, identifier)
                                 .send(sender)));
     }
-
-    // ── Clone ───────────────────────────────────────────────────────────────────
 
     private void onClone(@NotNull CommandContext ctx) {
         var sender = ctx.sender();
@@ -401,8 +396,6 @@ public final class MultiverseHandler {
                 }));
     }
 
-    // ── Delete ──────────────────────────────────────────────────────────────────
-
     private void onDelete(@NotNull CommandContext ctx) {
         var sender = ctx.sender();
         var world = ctx.require(KEY_WORLD, MVWorld.class);
@@ -432,11 +425,11 @@ public final class MultiverseHandler {
         });
     }
 
-    // ── Edit ────────────────────────────────────────────────────────────────────
-
     private void onEdit(@NotNull CommandContext ctx) {
         var player = ctx.asPlayer().orElse(null);
-        if (player == null) return;
+        if (player == null) {
+            return;
+        }
 
         var world = ctx.require(KEY_WORLD, MVWorld.class);
 
@@ -448,11 +441,15 @@ public final class MultiverseHandler {
         ));
     }
 
-    // ── Teleport ────────────────────────────────────────────────────────────────
-
+    /**
+     * Teleports to a world's spawn. The stored spawn may carry a null world (deserialized before the
+     * world loaded), so it is rebound to the loaded world first.
+     */
     private void onTeleport(@NotNull CommandContext ctx) {
         var player = ctx.asPlayer().orElse(null);
-        if (player == null) return;
+        if (player == null) {
+            return;
+        }
 
         var world = ctx.require(KEY_WORLD, MVWorld.class);
         var bukkitWorld = worldFactory.getBukkitWorld(world.getIdentifier());
@@ -464,8 +461,6 @@ public final class MultiverseHandler {
             return;
         }
 
-        // The stored spawn may carry a null world (deserialized before the world
-        // loaded); rebind it to the now-loaded world before teleporting.
         final var target = liveSpawn(world.getSpawnLocation(), bukkitWorld.get());
 
         r18n().msg("multiverse.teleporting").prefix()
@@ -496,8 +491,6 @@ public final class MultiverseHandler {
         return loc;
     }
 
-    // ── Load ────────────────────────────────────────────────────────────────────
-
     private void onLoad(@NotNull CommandContext ctx) {
         var sender = ctx.sender();
         var world = ctx.require(KEY_WORLD, MVWorld.class);
@@ -527,64 +520,58 @@ public final class MultiverseHandler {
         });
     }
 
-    // ── List ────────────────────────────────────────────────────────────────────
-
+    /**
+     * Opens the world list GUI for players (also when empty) and prints the world list panel for the console.
+     */
     private void onList(@NotNull CommandContext ctx) {
         var sender = ctx.sender();
-        var worlds = worldFactory.getAllCachedWorlds();
-
-        // Players: open the paginated GUI even when empty - pagination handles
-        // the empty state gracefully and the user can see they have 0 worlds.
-        // Console: print the text view.
         var playerOpt = ctx.asPlayer();
         if (playerOpt.isPresent()) {
             try {
                 viewFrame.open(MultiverseListView.class, playerOpt.get(), Map.of(
-                        "plugin",  plugin,
+                        "plugin", plugin,
                         "service", service,
                         "factory", worldFactory
                 ));
-            } catch (Throwable t) {
-                plugin.getLogger().log(java.util.logging.Level.SEVERE,
-                        "Failed to open multiverse list view", t);
-                r18n().msg("multiverse.list_header").prefix()
-                        .with(KEY_COUNT, String.valueOf(worlds.size()))
-                        .send(sender);
-                if (worlds.isEmpty()) {
-                    r18n().msg("multiverse.list_empty").prefix().send(sender);
-                }
+            } catch (Exception e) {
+                plugin.getLogger().log(Level.SEVERE, "Failed to open multiverse list view", e);
+                sendWorldList(sender);
             }
             return;
         }
+        sendWorldList(sender);
+    }
 
+    private void sendWorldList(@NotNull CommandSender sender) {
+        var worlds = worldFactory.getAllCachedWorlds();
         if (worlds.isEmpty()) {
             r18n().msg("multiverse.list_empty").prefix().send(sender);
             return;
         }
-
-        r18n().msg("multiverse.list_header").prefix()
-                .with(KEY_COUNT, String.valueOf(worlds.size()))
-                .send(sender);
-
+        var viewer = ChatPanels.viewer(sender);
+        var max = service.getMaxWorlds() < 0
+                ? MultiverseCards.text(viewer, MultiverseCards.COMMON + "word.unlimited")
+                : String.valueOf(service.getMaxWorlds());
+        var panel = ChatPanel.create()
+                .header(ChatPanels.line(sender, LIST_PANEL + "header"))
+                .context(ChatPanels.line(sender, r18n().msg(LIST_PANEL + "context")
+                        .with(KEY_COUNT, worlds.size()).with("max", max)))
+                .gap();
         for (var world : worlds) {
-            var loaded = worldFactory.isWorldLoaded(world.getIdentifier());
-            r18n().msg("multiverse.list_entry")
-                    .with(KEY_WORLD_NAME, world.getIdentifier())
-                    .with("type", world.getType().name())
-                    .with(KEY_ENVIRONMENT, world.getEnvironment().name())
-                    .with("status", loaded ? "loaded" : "unloaded")
-                    .with("global_spawn", world.isGlobalizedSpawn() ? "yes" : "no")
-                    .send(sender);
+            var status = worldFactory.isWorldLoaded(world.getIdentifier()) ? "loaded" : "unloaded";
+            panel.line(ChatPanels.line(sender, r18n().msg(LIST_PANEL + "entry")
+                    .with(KEY_WORLD_NAME, MultiverseCards.escape(world.getIdentifier()))
+                    .with("type", MultiverseCards.text(viewer, MultiverseCards.COMMON + "word.type-"
+                            + world.getType().name().toLowerCase(Locale.ROOT)))
+                    .with("status", MultiverseCards.text(viewer, MultiverseCards.COMMON + "word." + status))));
         }
-
-        r18n().msg("multiverse.list_footer")
-                .with(KEY_COUNT, String.valueOf(worlds.size()))
-                .with("max", service.getMaxWorlds() < 0 ? "unlimited" : String.valueOf(service.getMaxWorlds()))
-                .send(sender);
+        panel.send(sender);
     }
 
-    // ── Apply schematic ─────────────────────────────────────────────────────────
-
+    /**
+     * Pastes a world's schematic again. PLOT worlds tile it across the plot grid in loaded chunks; other
+     * worlds get a single paste at the world spawn, matching the create-time behaviour.
+     */
     private void onApplySchematic(@NotNull CommandContext ctx) {
         var sender = ctx.sender();
         var world = ctx.require(KEY_WORLD, MVWorld.class);
@@ -619,7 +606,6 @@ public final class MultiverseHandler {
                 .send(sender);
 
         if (world.getType() == MVWorldType.PLOT) {
-            // PLOT worlds: tile the schematic across the plot grid in loaded chunks.
             int plotSize = worldFactory.effectivePlotSize(world);
             int roadWidth = worldFactory.effectiveRoadWidth(world);
             int plotHeight = worldFactory.plotConfig().plotHeight();
@@ -634,8 +620,6 @@ public final class MultiverseHandler {
                             .with("chunks", String.valueOf(chunks.length))
                             .send(sender));
         } else {
-            // Non-PLOT worlds (VOID / NORMAL hub builds): single paste at the
-            // world spawn, mirroring the create-time non-plot behaviour.
             var spawn = bukkit.getSpawnLocation();
             loaded.placeAsync(bukkit, spawn.getBlockX(), spawn.getBlockY(), spawn.getBlockZ(), workloadExecutor)
                     .thenRun(() -> r18n().msg("multiverse.applyschematic_done_single").prefix()
@@ -695,8 +679,10 @@ public final class MultiverseHandler {
         return chain.thenApply(v -> total);
     }
 
-    // ── Paste schematic (anywhere) ───────────────────────────────────────────────
-
+    /**
+     * Pastes a schematic where the player stands: centred horizontally on them, bottom layer at their feet.
+     * Works in any world.
+     */
     private void onPaste(@NotNull CommandContext ctx) {
         var sender = ctx.sender();
         if (!(sender instanceof Player player)) {
@@ -715,8 +701,6 @@ public final class MultiverseHandler {
                     .send(player);
             return;
         }
-        // Paste directly where the player stands: centered horizontally on them,
-        // bottom layer at their feet. Works in any world (no plot-world needed).
         var world = player.getWorld();
         var loc = player.getLocation().getBlock().getLocation();
         var size = placed.size();
@@ -749,8 +733,6 @@ public final class MultiverseHandler {
         }
     }
 
-    // ── WorldEdit-free region toolkit ────────────────────────────────────────────
-
     private void onWand(@NotNull CommandContext ctx) {
         if (!(ctx.sender() instanceof Player player)) {
             return;
@@ -775,7 +757,10 @@ public final class MultiverseHandler {
         sendCorner(player, "multiverse.edit.pos2_set", set);
     }
 
-    /** Fills the current selection with a single block ({@code /mv set <block>}). */
+    /**
+     * Fills the current selection with a single block ({@code /mv set <block>}). Regions above the editor's
+     * snapshot limit skip the undo snapshot, and the player is warned before the fill starts.
+     */
     private void onSet(@NotNull CommandContext ctx) {
         if (!(ctx.sender() instanceof Player player)) {
             return;
@@ -794,9 +779,6 @@ public final class MultiverseHandler {
         r18n().msg(MSG_EDIT_WORKING).prefix()
                 .with(KEY_COUNT, String.valueOf(count)).send(player);
         if (count > SchematicEditor.SNAPSHOT_MAX_VOLUME) {
-            // Undo snapshot skipped for regions this large - see SchematicEditor's
-            // SNAPSHOT_MAX_VOLUME. Warn the player before the fill starts so they
-            // know /mv undo won't restore it.
             r18n().msg("multiverse.edit.undo_skipped").prefix()
                     .with(KEY_COUNT, String.valueOf(count)).send(player);
         }
@@ -882,6 +864,10 @@ public final class MultiverseHandler {
                         .send(player)));
     }
 
+    /**
+     * Saves the selection as a schematic and reports progress every 10% (the callback fires per chunk
+     * column and is throttled to decile boundaries), so a large save does not look frozen.
+     */
     private void onSave(@NotNull CommandContext ctx) {
         if (!(ctx.sender() instanceof Player player)) {
             return;
@@ -894,8 +880,6 @@ public final class MultiverseHandler {
         final boolean includeAir = ctx.get("include_air", Boolean.class).orElse(Boolean.TRUE);
         r18n().msg(MSG_EDIT_WORKING).prefix()
                 .with(KEY_COUNT, String.valueOf(selection.blockCount())).send(player);
-        // Report progress every 10% so a large save doesn't look frozen. The
-        // callback fires per chunk column; throttle to decile boundaries.
         final int[] lastDecile = {0};
         editor.save(selection, name, includeAir, fraction -> {
             int decile = (int) (fraction * 10);
@@ -908,7 +892,7 @@ public final class MultiverseHandler {
             }
         }).whenComplete((count, error) -> {
             if (error != null) {
-                plugin.getLogger().log(java.util.logging.Level.SEVERE, error,
+                plugin.getLogger().log(Level.SEVERE, error,
                         () -> "Failed to save schematic " + name);
                 r18n().msg("multiverse.edit.save_failed").prefix()
                         .with(KEY_SCHEMATIC, name).send(player);
@@ -946,7 +930,7 @@ public final class MultiverseHandler {
         if (!(ctx.sender() instanceof Player player)) {
             return;
         }
-        String axis = ctx.get("axis", String.class).orElse("x").trim().toLowerCase(java.util.Locale.ROOT);
+        String axis = ctx.get("axis", String.class).orElse("x").trim().toLowerCase(Locale.ROOT);
         boolean flipX = !axis.startsWith("z") && !axis.startsWith("n");
         if (!editor.flip(player.getUniqueId(), flipX)) {
             r18n().msg(MSG_EDIT_NO_CLIPBOARD).prefix().send(player);
@@ -992,48 +976,21 @@ public final class MultiverseHandler {
                 .send(player);
     }
 
-    // ── Help ────────────────────────────────────────────────────────────────────
-
     private void onHelp(@NotNull CommandContext ctx) {
         var sender = ctx.sender();
-        var alias = ctx.alias();
-
-        r18n().msg("multiverse.help_header").send(sender);
-
-        if (hasPerm(sender, "jexmultiverse.command.create")) {
-            r18n().msg("multiverse.help_create").with(KEY_ALIAS, alias).send(sender);
+        var panel = ChatPanel.create()
+                .header(ChatPanels.line(sender, HELP_PANEL + "header"))
+                .context(ChatPanels.line(sender, HELP_PANEL + "context"))
+                .gap();
+        for (var command : HELP_COMMANDS) {
+            if (hasPerm(sender, "jexmultiverse.command." + command)) {
+                panel.line(ChatPanels.line(sender, r18n().msg(HELP_PANEL + command).with(KEY_ALIAS, ctx.alias())));
+            }
         }
-        if (hasPerm(sender, "jexmultiverse.command.delete")) {
-            r18n().msg("multiverse.help_delete").with(KEY_ALIAS, alias).send(sender);
-        }
-        if (hasPerm(sender, "jexmultiverse.command.edit")) {
-            r18n().msg("multiverse.help_edit").with(KEY_ALIAS, alias).send(sender);
-        }
-        if (hasPerm(sender, "jexmultiverse.command.teleport")) {
-            r18n().msg("multiverse.help_teleport").with(KEY_ALIAS, alias).send(sender);
-        }
-        if (hasPerm(sender, "jexmultiverse.command.load")) {
-            r18n().msg("multiverse.help_load").with(KEY_ALIAS, alias).send(sender);
-        }
-        if (hasPerm(sender, "jexmultiverse.command.unload")) {
-            r18n().msg("multiverse.help_unload").with(KEY_ALIAS, alias).send(sender);
-        }
-        if (hasPerm(sender, "jexmultiverse.command.reset")) {
-            r18n().msg("multiverse.help_reset").with(KEY_ALIAS, alias).send(sender);
-        }
-        if (hasPerm(sender, "jexmultiverse.command.clone")) {
-            r18n().msg("multiverse.help_clone").with(KEY_ALIAS, alias).send(sender);
-        }
-        if (hasPerm(sender, "jexmultiverse.command.list")) {
-            r18n().msg("multiverse.help_list").with(KEY_ALIAS, alias).send(sender);
-        }
-
-        r18n().msg("multiverse.help_footer").send(sender);
+        panel.send(sender);
     }
 
-    // ── Helpers ─────────────────────────────────────────────────────────────────
-
-    private static boolean hasPerm(@NotNull org.bukkit.command.CommandSender sender,
+    private static boolean hasPerm(@NotNull CommandSender sender,
                                    @NotNull String node) {
         return sender instanceof Player p && (p.isOp() || p.hasPermission(node));
     }
