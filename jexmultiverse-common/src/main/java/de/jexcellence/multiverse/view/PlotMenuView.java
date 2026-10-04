@@ -73,6 +73,10 @@ public class PlotMenuView extends MultiverseBaseView {
         render.slot(hub[1], flagsCard(player, plot, actions))
                 .onClick(click -> click.openForPlayer(PlotFlagsView.class, data));
         renderHome(render, player, plot, actions, hub[2]);
+        if (!PlotActions.canManage(player, plot)) {
+            render.slot(hub[3], lockedUnclaimCard(player));
+            return;
+        }
         render.slot(hub[3], unclaimCard(player)).onClick(click -> {
             if (click.isShiftClick()) {
                 click.closeForPlayer();
@@ -146,6 +150,14 @@ public class PlotMenuView extends MultiverseBaseView {
                 CardLore.create()
                         .block(MultiverseCards.paragraphOf(player, KEY + "unclaim" + DESCRIPTION))
                         .block(List.of(MultiverseCards.action(player, KEY + "unclaim.action")))
+                        .build());
+    }
+
+    private static @NotNull ItemStack lockedUnclaimCard(@NotNull Player player) {
+        return MultiverseCards.card(LockedIcon.item(player), MultiverseCards.ic(player, KEY + "unclaim" + NAME),
+                CardLore.create()
+                        .block(MultiverseCards.paragraphOf(player, KEY + "unclaim" + DESCRIPTION))
+                        .block(List.of(MultiverseCards.ownerOnly(player)))
                         .build());
     }
 

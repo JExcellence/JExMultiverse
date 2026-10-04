@@ -218,6 +218,7 @@ mv_gui:
       section: '<#FDBA74>{name}</#FDBA74>'
       row: '<#94A3B8>{label}</#94A3B8> <dark_gray>|</dark_gray> {value}'
       action: '<#FB923C>▸</#FB923C> <#F1F5F9>{text}</#F1F5F9>'
+      locked: '<#F87171>[X]</#F87171> <#F1F5F9>{text}</#F1F5F9>'
     section:
       plot: 'Plot'
       members: 'Members'
@@ -296,6 +297,8 @@ mv_gui:
       plot-menu: 'Back to the plot menu.'
       world-list: 'Back to the world list.'
       world-editor: 'Back to the world editor.'
+    locked:
+      owner-only: 'Owner only'
     close:
       name: '<#F1F5F9>✘ Close</#F1F5F9>'
       description: 'Closes this menu.'
@@ -485,6 +488,7 @@ mv_gui:
       liquid-flow: 'Liquid flow'
       ice-form-melt: 'Ice and snow'
     plot:
+      owner-only: 'Only the plot owner can change this.'
       back: 'Back'
       menu:
         title: 'Plot {grid_x}, {grid_z}'

@@ -1,6 +1,7 @@
 package de.jexcellence.multiverse.view;
 
 import de.jexcellence.jexplatform.gui.component.CardLore;
+import de.jexcellence.jexplatform.gui.style.LockedIcon;
 import de.jexcellence.multiverse.database.entity.Plot;
 import de.jexcellence.multiverse.service.MultiverseService;
 import de.jexcellence.multiverse.service.PlotFlag;
@@ -66,9 +67,14 @@ public class PlotFlagsView extends MultiverseBaseView {
         render.slot(MultiverseLayout.SLOT_HEADER, header(player, plot, actions));
         PlotFlag[] flags = PlotFlag.values();
         int[] slots = MultiverseLayout.centred(flags.length);
+        boolean manage = PlotActions.canManage(player, plot);
         for (int i = 0; i < slots.length; i++) {
             PlotFlag flag = flags[i];
             int slot = slots[i];
+            if (!manage) {
+                render.slot(slot, lockedFlagCard(player, plot, service, flag));
+                continue;
+            }
             render.slot(slot, flagCard(player, plot, service, flag)).onClick(click -> {
                 Player clicker = click.getPlayer();
                 actions.setFlag(clicker, plot, flag, !service.getFlag(plot, flag), () -> {
@@ -93,6 +99,25 @@ public class PlotFlagsView extends MultiverseBaseView {
                         .build());
     }
 
+    private static @NotNull ItemStack lockedFlagCard(@NotNull Player player, @NotNull Plot plot,
+                                                     @NotNull PlotService service, @NotNull PlotFlag flag) {
+        String base = KEY + "flag." + flag.key();
+        return MultiverseCards.card(LockedIcon.item(player), MultiverseCards.ic(player, base + ".name"),
+                CardLore.create()
+                        .block(MultiverseCards.paragraphOf(player, base + ".description"))
+                        .block(rows(player, plot, service, flag))
+                        .block(List.of(MultiverseCards.ownerOnly(player)))
+                        .build());
+    }
+
+    private static @NotNull List<Component> rows(@NotNull Player player, @NotNull Plot plot,
+                                                 @NotNull PlotService service, @NotNull PlotFlag flag) {
+        String source = service.hasFlagOverride(plot, flag) ? "override" : "default";
+        return List.of(
+                MultiverseCards.row(player, "status", MultiverseCards.state(player, service.getFlag(plot, flag))),
+                MultiverseCards.row(player, "source", MultiverseCards.word(player, "muted", source)));
+    }
+
     /**
      * The card of one flag: what it does, its state, where the value comes from and what a click does.
      *
@@ -105,11 +130,8 @@ public class PlotFlagsView extends MultiverseBaseView {
     static @NotNull ItemStack flagCard(@NotNull Player player, @NotNull Plot plot, @NotNull PlotService service,
                                        @NotNull PlotFlag flag) {
         boolean enabled = service.getFlag(plot, flag);
-        String source = service.hasFlagOverride(plot, flag) ? "override" : "default";
         String base = KEY + "flag." + flag.key();
-        List<Component> rows = List.of(
-                MultiverseCards.row(player, "status", MultiverseCards.state(player, enabled)),
-                MultiverseCards.row(player, "source", MultiverseCards.word(player, "muted", source)));
+        List<Component> rows = rows(player, plot, service, flag);
         ItemStack card = MultiverseCards.card(icon(flag, enabled), MultiverseCards.ic(player, base + ".name"),
                 CardLore.create()
                         .block(MultiverseCards.paragraphOf(player, base + ".description"))

@@ -36,6 +36,9 @@ public record PlotActions(@NotNull JavaPlugin plugin, @NotNull PlotService plots
     private static final String GRID_Z = "grid_z";
     private static final String TARGET_NAME = "target_name";
 
+    /** Permission that lets staff manage any plot; the same node {@code PlotHandler} checks. */
+    public static final String PERM_BYPASS = "jexplots.bypass.protect";
+
     /**
      * The centre of the plot one block above the surface, or {@code null} when its world is not loaded.
      *
@@ -77,12 +80,34 @@ public record PlotActions(@NotNull JavaPlugin plugin, @NotNull PlotService plots
     }
 
     /**
+     * Whether the player may change the plot: its owner, or staff with {@link #PERM_BYPASS}.
+     *
+     * @param player the player
+     * @param plot   the plot
+     * @return {@code true} when flags, members and the claim may be changed
+     */
+    public static boolean canManage(@NotNull Player player, @NotNull Plot plot) {
+        return plot.isOwner(player.getUniqueId()) || player.hasPermission(PERM_BYPASS);
+    }
+
+    private static boolean allowed(@NotNull Player player, @NotNull Plot plot) {
+        if (canManage(player, plot)) {
+            return true;
+        }
+        MultiverseCards.msg("plot.error.not_owner").prefix().with("owner_name", plot.getOwnerName()).send(player);
+        return false;
+    }
+
+    /**
      * Releases the plot and reports the result.
      *
      * @param player the player who asked
      * @param plot   the plot
      */
     public void unclaim(@NotNull Player player, @NotNull Plot plot) {
+        if (!allowed(player, plot)) {
+            return;
+        }
         plots.unclaim(plot).thenAccept(ok -> PlatformScheduler.of(plugin).runSync(() ->
                 MultiverseCards.msg(Boolean.TRUE.equals(ok) ? "plot.unclaimed" : "plot.error.unclaim_failed")
                         .prefix()
@@ -102,6 +127,9 @@ public record PlotActions(@NotNull JavaPlugin plugin, @NotNull PlotService plots
      */
     public void setFlag(@NotNull Player player, @NotNull Plot plot, @NotNull PlotFlag flag, boolean value,
                         @NotNull Runnable after) {
+        if (!allowed(player, plot)) {
+            return;
+        }
         plots.setFlag(plot, flag, value).thenAccept(ok -> PlatformScheduler.of(plugin).runSync(() -> {
             boolean saved = Boolean.TRUE.equals(ok);
             MultiverseCards.msg(saved ? "plot.flag_set" : "plot.error.flag_failed").prefix()
@@ -124,6 +152,9 @@ public record PlotActions(@NotNull JavaPlugin plugin, @NotNull PlotService plots
      */
     public void removeMember(@NotNull Player player, @NotNull Plot plot, @NotNull Member member,
                              @NotNull Runnable after) {
+        if (!allowed(player, plot)) {
+            return;
+        }
         plots.removeMember(plot, member.uuid()).thenAccept(ok -> PlatformScheduler.of(plugin).runSync(() -> {
             String key;
             if (!Boolean.TRUE.equals(ok)) {

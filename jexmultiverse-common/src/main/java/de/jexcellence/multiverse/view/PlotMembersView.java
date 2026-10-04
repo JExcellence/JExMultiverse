@@ -88,9 +88,14 @@ public class PlotMembersView extends MultiverseBaseView {
         int from = page * MultiverseLayout.PAGE_SIZE;
         int to = Math.min(shown.size(), from + MultiverseLayout.PAGE_SIZE);
         int[] slots = MultiverseLayout.centred(to - from);
+        boolean manage = PlotActions.canManage(player, plot);
         for (int i = 0; i < slots.length; i++) {
             PlotActions.Member member = shown.get(from + i);
-            render.slot(slots[i], memberCard(player, member)).onClick(click ->
+            if (!manage) {
+                render.slot(slots[i], memberCard(player, member, false));
+                continue;
+            }
+            render.slot(slots[i], memberCard(player, member, true)).onClick(click ->
                     actions.removeMember(click.getPlayer(), plot, member, () -> reopen(click, page)));
         }
         pagination(render, player, page, pages);
@@ -115,7 +120,8 @@ public class PlotMembersView extends MultiverseBaseView {
         return FILTERS.stream().map(option -> MultiverseCards.text(player, KEY + "filter." + option)).toList();
     }
 
-    private static @NotNull ItemStack memberCard(@NotNull Player player, @NotNull PlotActions.Member member) {
+    private static @NotNull ItemStack memberCard(@NotNull Player player, @NotNull PlotActions.Member member,
+                                                 boolean manage) {
         boolean trusted = member.role() == MemberRole.TRUSTED;
         String role = trusted ? "trusted" : "denied";
         return MultiverseCards.card(MultiverseCards.head(member.uuid()),
@@ -125,7 +131,9 @@ public class PlotMembersView extends MultiverseBaseView {
                         .block(MultiverseCards.paragraphOf(player, KEY + "entry." + role))
                         .block(List.of(MultiverseCards.row(player, "role",
                                 MultiverseCards.word(player, trusted ? "ok" : "bad", role))))
-                        .block(List.of(MultiverseCards.action(player, KEY + "remove." + role)))
+                        .block(List.of(manage
+                                ? MultiverseCards.action(player, KEY + "remove." + role)
+                                : MultiverseCards.ownerOnly(player)))
                         .build());
     }
 }

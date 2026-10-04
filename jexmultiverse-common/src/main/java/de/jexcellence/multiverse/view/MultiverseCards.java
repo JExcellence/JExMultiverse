@@ -100,6 +100,11 @@ public final class MultiverseCards {
         return ic(msg(COMMON + "card.action").with("text", text(viewer, key)), viewer);
     }
 
+    /** The reason line of a card the viewer may not use: {@code [X] Owner only}. */
+    public static @NotNull Component ownerOnly(@Nullable Player viewer) {
+        return ic(msg(COMMON + "card.locked").with("text", text(viewer, COMMON + "locked.owner-only")), viewer);
+    }
+
     /** A highlighted plain value. */
     public static @NotNull String value(@Nullable Player viewer, @NotNull String raw) {
         return tone(viewer, "plain", raw);

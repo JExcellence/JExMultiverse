@@ -66,8 +66,10 @@ public final class PlotForms {
             form.button(text(player, KEY + "menu.home"));
             buttons.add(() -> actions.teleportHome(player, plot));
         }
-        form.button(text(player, KEY + "menu.unclaim"));
-        buttons.add(() -> confirmUnclaim(player, plot));
+        if (PlotActions.canManage(player, plot)) {
+            form.button(text(player, KEY + "menu.unclaim"));
+            buttons.add(() -> confirmUnclaim(player, plot));
+        }
         form.validResultHandler(response -> onPlayer(player, buttons.get(response.clickedButtonId())));
         send(player, form.build());
     }
@@ -80,6 +82,10 @@ public final class PlotForms {
      */
     public void openFlags(@NotNull Player player, @NotNull Plot plot) {
         PlotFlag[] flags = PlotFlag.values();
+        if (!PlotActions.canManage(player, plot)) {
+            sendReadOnlyFlags(player, plot, flags);
+            return;
+        }
         CustomForm.Builder form = CustomForm.builder()
                 .title(gridText(player, KEY + "flags.title", plot))
                 .label(text(player, KEY + "flags.intro"));
@@ -89,6 +95,29 @@ public final class PlotForms {
         }
         form.validResultHandler(response -> onPlayer(player, () -> applyFlags(player, plot, flags, response)));
         send(player, form.build());
+    }
+
+    private void sendReadOnlyFlags(@NotNull Player player, @NotNull Plot plot, @NotNull PlotFlag[] flags) {
+        List<String> lines = new ArrayList<>();
+        lines.add(ownerOnly(player));
+        for (PlotFlag flag : flags) {
+            String state = actions.plots().getFlag(plot, flag) ? "enabled" : "disabled";
+            lines.add(msg(MultiverseCards.ROOT + "bedrock.row")
+                    .with("label", text(player, MultiverseCards.ROOT + "bedrock.flag." + flag.key()))
+                    .with("value", text(player, MultiverseCards.COMMON + "word." + state))
+                    .plain(player));
+        }
+        SimpleForm form = SimpleForm.builder()
+                .title(gridText(player, KEY + "flags.title", plot))
+                .content(String.join(NEWLINE, lines))
+                .button(text(player, KEY + BACK))
+                .validResultHandler(response -> onPlayer(player, () -> openMenu(player, plot)))
+                .build();
+        send(player, form);
+    }
+
+    private static @NotNull String ownerOnly(@NotNull Player player) {
+        return msg(KEY + "owner-only").plain(player);
     }
 
     private void applyFlags(@NotNull Player player, @NotNull Plot plot, @NotNull PlotFlag[] flags,
@@ -108,14 +137,16 @@ public final class PlotForms {
      * @param plot   the plot
      */
     public void openMembers(@NotNull Player player, @NotNull Plot plot) {
+        if (!PlotActions.canManage(player, plot)) {
+            sendReadOnlyMembers(player, plot);
+            return;
+        }
         List<PlotActions.Member> members = actions.members(plot);
         SimpleForm.Builder form = SimpleForm.builder()
                 .title(gridText(player, KEY + "members.title", plot))
                 .content(text(player, KEY + (members.isEmpty() ? "members.empty" : "members.intro")));
         for (PlotActions.Member member : members) {
-            String role = member.role() == MemberRole.TRUSTED ? "trusted" : "denied";
-            form.button(msg(KEY + "members.entry").with("member_name", member.name())
-                    .with("role", text(player, MultiverseCards.COMMON + "word." + role)).plain(player));
+            form.button(memberLine(player, member));
         }
         form.button(text(player, KEY + BACK));
         form.validResultHandler(response -> onPlayer(player, () -> {
@@ -127,6 +158,27 @@ public final class PlotForms {
             }
         }));
         send(player, form.build());
+    }
+
+    private void sendReadOnlyMembers(@NotNull Player player, @NotNull Plot plot) {
+        List<String> lines = new ArrayList<>();
+        lines.add(ownerOnly(player));
+        for (PlotActions.Member member : actions.members(plot)) {
+            lines.add(memberLine(player, member));
+        }
+        SimpleForm form = SimpleForm.builder()
+                .title(gridText(player, KEY + "members.title", plot))
+                .content(String.join(NEWLINE, lines))
+                .button(text(player, KEY + BACK))
+                .validResultHandler(response -> onPlayer(player, () -> openMenu(player, plot)))
+                .build();
+        send(player, form);
+    }
+
+    private static @NotNull String memberLine(@NotNull Player player, @NotNull PlotActions.Member member) {
+        String role = member.role() == MemberRole.TRUSTED ? "trusted" : "denied";
+        return msg(KEY + "members.entry").with("member_name", member.name())
+                .with("role", text(player, MultiverseCards.COMMON + "word." + role)).plain(player);
     }
 
     private void confirmRemove(@NotNull Player player, @NotNull Plot plot, @NotNull PlotActions.Member member) {

@@ -43,7 +43,7 @@ public final class PlotHandler {
 
     private static final String KEY_NOT_ON_PLOT = "plot.error.not_on_plot";
     private static final String KEY_NOT_OWNER = "plot.error.not_owner";
-    private static final String PERM_BYPASS = "jexplots.bypass.protect";
+    private static final String PERM_BYPASS = PlotActions.PERM_BYPASS;
     private static final String KEY_OWNER_NAME = "owner_name";
     private static final String KEY_GRID_X = "grid_x";
     private static final String KEY_GRID_Z = "grid_z";
