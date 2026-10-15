@@ -132,6 +132,16 @@ subcommands:
     argumentSchema:
       - { name: block, type: string, required: true, description: "Block material to fill with (e.g. STONE)" }
 
+  - name: circle
+    description: "Draw a perfect circle around the block you stand in (outline, or filled)"
+    permission: "jexmultiverse.command.schematic"
+    senders: [player]
+    argumentSchema:
+      - { name: radius, type: positive_long, required: true, description: "Radius in blocks (max 500)" }
+      - { name: block, type: string, required: true, description: "Block material (e.g. STONE)" }
+      - { name: filled, type: boolean, required: false, description: "true = filled disc, false = outline only (default)" }
+      - { name: height, type: positive_long, required: false, description: "Layers upwards from your feet (default 1)" }
+
   - name: copy
     description: "Copy the current selection (blocks + entities) to your clipboard"
     permission: "jexmultiverse.command.schematic"

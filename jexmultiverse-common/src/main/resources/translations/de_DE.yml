@@ -84,6 +84,8 @@ multiverse:
     selection_hidden: "<gradient:#2dd4bf:#a855f7>Auswahl-Umriss:</gradient> <white>ausgeblendet.</white>"
     set_done: "<gradient:#32cd32:#228b22>Gefüllt:</gradient> <white><gradient:#ff7f50:#ff4500>{count}</gradient> Blöcke auf <gradient:#ff7f50:#ff4500>{material}</gradient> gesetzt.</white>"
     bad_material: "<gradient:#dc143c:#b22222>Fehler:</gradient> <white>Unbekannter Block <gradient:#ff7f50:#ff4500>{material}</gradient>.</white>"
+    circle_done: "<gradient:#32cd32:#228b22>Kreis:</gradient> <white><gradient:#ff7f50:#ff4500>{count}</gradient> Blöcke <gradient:#ff7f50:#ff4500>{material}</gradient>, Radius <gradient:#ff7f50:#ff4500>{radius}</gradient> um <gradient:#ff7f50:#ff4500>{x}, {y}, {z}</gradient>. <gray>/mv undo macht ihn rückgängig.</gray></white>"
+    circle_too_big: "<gradient:#dc143c:#b22222>Fehler:</gradient> <white>Der Radius darf höchstens <gradient:#ff7f50:#ff4500>{max}</gradient> sein.</white>"
     copy_done: "<gradient:#32cd32:#228b22>Kopiert:</gradient> <white><gradient:#ff7f50:#ff4500>{count}</gradient> Blöcke in die Zwischenablage.</white>"
     cut_done: "<gradient:#32cd32:#228b22>Ausgeschnitten:</gradient> <white><gradient:#ff7f50:#ff4500>{count}</gradient> Blöcke in die Zwischenablage verschoben.</white>"
     paste_done: "<gradient:#32cd32:#228b22>Eingefügt:</gradient> <white>Zwischenablage (<gradient:#ff7f50:#ff4500>{width}x{height}x{length}</gradient>) bei <gradient:#ff7f50:#ff4500>{x}, {y}, {z}</gradient>.</white>"

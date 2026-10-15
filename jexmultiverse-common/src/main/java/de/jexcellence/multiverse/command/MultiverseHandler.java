@@ -8,8 +8,10 @@ import org.bukkit.command.CommandSender;
 import de.jexcellence.multiverse.view.MultiverseCards;
 import de.jexcellence.jexplatform.gui.chat.ChatPanel;
 import de.jexcellence.jexplatform.schematic.PlacedSchematic;
+import de.jexcellence.jexplatform.schematic.edit.CircleShape;
 import de.jexcellence.jexplatform.schematic.edit.SchematicEditor;
 import de.jexcellence.jexplatform.schematic.edit.Selection;
+import de.jexcellence.jexplatform.schematic.edit.SelectionBorderService;
 import de.jexcellence.jexplatform.schematic.edit.SelectionService;
 import de.jexcellence.jexplatform.utility.workload.WorkloadExecutor;
 import de.jexcellence.jextranslate.R18nManager;
@@ -62,6 +64,9 @@ public final class MultiverseHandler {
     private static final String KEY_SCHEMATIC   = "schematic";
     private static final String KEY_WORLD       = "world";
     private static final String KEY_COUNT       = "count";
+    private static final String KEY_MATERIAL    = "material";
+    private static final String KEY_RADIUS      = "radius";
+    private static final String MSG_BAD_MATERIAL = "multiverse.edit.bad_material";
     private static final String KEY_ALIAS       = "alias";
     private static final String LIST_PANEL      = ChatPanels.ROOT + "world.list.";
     private static final String HELP_PANEL      = ChatPanels.ROOT + "world.help.";
@@ -81,7 +86,7 @@ public final class MultiverseHandler {
     private final SelectionService selections;
     private final SchematicEditor editor;
     private final WorkloadExecutor workloadExecutor;
-    private final de.jexcellence.jexplatform.schematic.edit.SelectionBorderService selectionBorder;
+    private final SelectionBorderService selectionBorder;
 
     public MultiverseHandler(@NotNull MultiverseService service,
                              @NotNull WorldFactory worldFactory,
@@ -90,7 +95,7 @@ public final class MultiverseHandler {
                              @NotNull SelectionService selections,
                              @NotNull SchematicEditor editor,
                              @NotNull WorkloadExecutor workloadExecutor,
-                             @NotNull de.jexcellence.jexplatform.schematic.edit.SelectionBorderService selectionBorder) {
+                             @NotNull SelectionBorderService selectionBorder) {
         this.service = service;
         this.worldFactory = worldFactory;
         this.viewFrame = viewFrame;
@@ -123,6 +128,7 @@ public final class MultiverseHandler {
                 Map.entry("multiverse.pos2",           this::onPos2),
                 Map.entry("multiverse.selection",      this::onSelectionToggle),
                 Map.entry("multiverse.set",            this::onSet),
+                Map.entry("multiverse.circle",         this::onCircle),
                 Map.entry("multiverse.copy",           this::onCopy),
                 Map.entry("multiverse.cut",            this::onCut),
                 Map.entry("multiverse.save",           this::onSave),
@@ -772,7 +778,7 @@ public final class MultiverseHandler {
         String raw = ctx.require("block", String.class);
         Material material = Material.matchMaterial(raw);
         if (material == null || !material.isBlock()) {
-            r18n().msg("multiverse.edit.bad_material").prefix().with("material", raw).send(player);
+            r18n().msg(MSG_BAD_MATERIAL).prefix().with(KEY_MATERIAL, raw).send(player);
             return;
         }
         long count = selection.blockCount();
@@ -785,7 +791,44 @@ public final class MultiverseHandler {
         editor.fill(player.getUniqueId(), selection, material.createBlockData()).thenRun(() ->
                 r18n().msg("multiverse.edit.set_done").prefix()
                         .with(KEY_COUNT, String.valueOf(count))
-                        .with("material", material.name()).send(player));
+                        .with(KEY_MATERIAL, material.name()).send(player));
+    }
+
+    /**
+     * Draws a horizontal circle around the block the player stands in ({@code /mv circle <radius> <block> [filled]
+     * [height]}): the outline by default, the full disc with {@code filled}. {@code /mv undo} reverts it.
+     */
+    private void onCircle(@NotNull CommandContext ctx) {
+        if (!(ctx.sender() instanceof Player player)) {
+            return;
+        }
+        long radius = ctx.require(KEY_RADIUS, Long.class);
+        if (radius > CircleShape.MAX_RADIUS) {
+            r18n().msg("multiverse.edit.circle_too_big").prefix()
+                    .with("max", String.valueOf(CircleShape.MAX_RADIUS)).send(player);
+            return;
+        }
+        String raw = ctx.require("block", String.class);
+        Material material = Material.matchMaterial(raw);
+        if (material == null || !material.isBlock()) {
+            r18n().msg(MSG_BAD_MATERIAL).prefix().with(KEY_MATERIAL, raw).send(player);
+            return;
+        }
+        boolean filled = ctx.get("filled", Boolean.class).orElse(false);
+        int height = ctx.get("height", Long.class).map(Long::intValue).orElse(1);
+        CircleShape shape = new CircleShape((int) radius, filled);
+        Location feet = player.getLocation();
+        BlockVector centre = new BlockVector(feet.getBlockX(), feet.getBlockY(), feet.getBlockZ());
+        long planned = (long) shape.offsets().size() * Math.max(1, height);
+        r18n().msg(MSG_EDIT_WORKING).prefix().with(KEY_COUNT, String.valueOf(planned)).send(player);
+        editor.circle(player.getUniqueId(), player.getWorld(), centre, shape, height, material.createBlockData())
+                .thenAccept(count -> r18n().msg("multiverse.edit.circle_done").prefix()
+                        .with(KEY_COUNT, String.valueOf(count))
+                        .with(KEY_RADIUS, String.valueOf(radius))
+                        .with(KEY_MATERIAL, material.name())
+                        .with("x", String.valueOf(centre.getBlockX()))
+                        .with("y", String.valueOf(centre.getBlockY()))
+                        .with("z", String.valueOf(centre.getBlockZ())).send(player));
     }
 
     /** Toggles the live particle outline of the player's pos1↔pos2 selection. */
