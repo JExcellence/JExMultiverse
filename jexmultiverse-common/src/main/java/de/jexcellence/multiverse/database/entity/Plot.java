@@ -143,6 +143,11 @@ public class Plot extends LongIdEntity {
     /**
      * Fluent builder for {@link Plot}.
      */
+
+    /** Copies the row version a save wrote back onto this cached plot, so its next save is not stale. */
+    public void applyPersistedVersion(int version) {
+        setVersion(version);
+    }
     public static final class Builder {
         private String worldName;
         private int gridX;

@@ -123,6 +123,18 @@ public class PlotService {
         });
     }
 
+    /**
+     * Saves a cached plot and copies the new row version back onto it. The update merges and bumps the version but
+     * returns a separate copy; without the copy-back every later save of the same cached plot (merge, then unmerge,
+     * or merging a group whose plots were saved before) failed and left cache and database apart.
+     */
+    private @NotNull CompletableFuture<Plot> savePlot(@NotNull Plot plot) {
+        return plots.updateAsync(plot).thenApply(saved -> {
+            plot.applyPersistedVersion(saved.getVersion());
+            return plot;
+        });
+    }
+
     private void cachePlot(@NotNull Plot plot) {
         byId.put(plot.getId(), plot);
         byCoord.put(new PlotCoord(plot.getWorldName(), plot.getGridX(), plot.getGridZ()), plot);
@@ -677,7 +689,7 @@ public class PlotService {
         CompletableFuture<Void> chain = CompletableFuture.completedFuture(null);
         for (var p : toUpdate) {
             p.setMergedGroupId(groupId);
-            chain = chain.thenCompose(v -> plots.updateAsync(p).thenApply(x -> null));
+            chain = chain.thenCompose(v -> savePlot(p).thenApply(x -> null));
         }
         return chain;
     }
@@ -705,7 +717,7 @@ public class PlotService {
         var others = collectAdjacentGroupMembers(plot, groupId);
 
         plot.setMergedGroupId(null);
-        return plots.updateAsync(plot).thenApply(v -> {
+        return savePlot(plot).thenApply(v -> {
             clearSoloGroupIfNeeded(groupId);
             applyUnmergeVisuals(plot, others);
             return true;
@@ -734,7 +746,10 @@ public class PlotService {
         if (remaining.size() == 1) {
             var solo = remaining.get(0);
             solo.setMergedGroupId(null);
-            plots.updateAsync(solo);
+            savePlot(solo).exceptionally(ex -> {
+                logger.error("Could not clear the merge group of plot {}", solo.getId(), ex);
+                return null;
+            });
         }
     }
 
