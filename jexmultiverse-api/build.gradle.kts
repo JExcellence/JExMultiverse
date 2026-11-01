@@ -3,7 +3,7 @@ plugins {
 }
 
 group = "de.jexcellence.multiverse"
-version = "3.7.0"
+version = libs.versions.jexmultiverse.get()
 description = "JExMultiverse API - Public API for third-party plugin integration"
 
 dependencies {

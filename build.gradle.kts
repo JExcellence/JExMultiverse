@@ -5,14 +5,16 @@ plugins {
 }
 
 group = "de.jexcellence.multiverse"
-version = "3.7.0"
+version = libs.versions.jexmultiverse.get()
 description = "JExMultiverse - World management system"
 
 ext["vendor"] = "JExcellence"
 
+val moduleVersion = version
+
 subprojects {
     group = rootProject.group
-    version = rootProject.version
+    version = moduleVersion
 }
 
 tasks.register("buildAll") {

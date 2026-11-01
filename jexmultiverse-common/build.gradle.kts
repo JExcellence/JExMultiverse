@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "de.jexcellence.multiverse"
-version = "3.7.0"
+version = libs.versions.jexmultiverse.get()
 description = "JExMultiverse Common - Shared library for JExMultiverse"
 
 dependenciesYml {
