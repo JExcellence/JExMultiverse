@@ -1364,9 +1364,10 @@ public class MultiverseService implements MultiverseProvider {
 
     @Override
     public boolean canBuild(@NotNull Player player, @NotNull Location location) {
-        if (plotService == null) return true; // plots not initialized - fail open
+        // plots not initialized - fail open
+        if (plotService == null) return true;
         var plot = plotService.getPlotAt(location).orElse(null);
-        if (plot == null) return true; // unclaimed / road / non-plot world
+        if (plot == null) return true;
         return plotService.canBuild(player, plot);
     }
 

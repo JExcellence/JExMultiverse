@@ -5,6 +5,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Optional;
+import java.util.ServiceConfigurationError;
 import java.util.ServiceLoader;
 
 /**
@@ -55,7 +56,7 @@ public final class RuntimeWorldLoaderResolver {
                         () -> logger.debug("[worlds] no runtime loader backend on classpath - restart-only mode"));
             }
             return loader;
-        } catch (final Throwable ex) {
+        } catch (final Exception | ServiceConfigurationError | LinkageError ex) {
             // ServiceLoader can throw ServiceConfigurationError on malformed
             // descriptors or class-init failures. We swallow + log; a
             // missing backend is not a fatal error.

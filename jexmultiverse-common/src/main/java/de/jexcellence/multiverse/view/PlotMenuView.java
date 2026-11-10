@@ -171,7 +171,7 @@ public class PlotMenuView extends MultiverseBaseView {
         return MultiverseCards.card(icon, MultiverseCards.ic(player, KEY + card + NAME), lore.build());
     }
 
-    /** @return {@code x, z} of the plot's grid position. */
+    /** Returns {@code x, z} of the plot's grid position. */
     static @NotNull String grid(@NotNull Plot plot) {
         return plot.getGridX() + ", " + plot.getGridZ();
     }

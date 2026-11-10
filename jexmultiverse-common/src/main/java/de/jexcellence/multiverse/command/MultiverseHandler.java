@@ -88,22 +88,33 @@ public final class MultiverseHandler {
     private final WorkloadExecutor workloadExecutor;
     private final SelectionBorderService selectionBorder;
 
+    /**
+     * The region-selection tooling the edit commands share.
+     *
+     * @param selections       per-player selections
+     * @param editor           schematic copy and paste
+     * @param workloadExecutor spreads block edits across ticks
+     * @param selectionBorder  draws the selection outline
+     */
+    public record SelectionTools(@NotNull SelectionService selections,
+                                 @NotNull SchematicEditor editor,
+                                 @NotNull WorkloadExecutor workloadExecutor,
+                                 @NotNull SelectionBorderService selectionBorder) {
+    }
+
     public MultiverseHandler(@NotNull MultiverseService service,
                              @NotNull WorldFactory worldFactory,
                              @NotNull ViewFrame viewFrame,
                              @NotNull JavaPlugin plugin,
-                             @NotNull SelectionService selections,
-                             @NotNull SchematicEditor editor,
-                             @NotNull WorkloadExecutor workloadExecutor,
-                             @NotNull SelectionBorderService selectionBorder) {
+                             @NotNull SelectionTools tools) {
         this.service = service;
         this.worldFactory = worldFactory;
         this.viewFrame = viewFrame;
         this.plugin = plugin;
-        this.selections = selections;
-        this.editor = editor;
-        this.workloadExecutor = workloadExecutor;
-        this.selectionBorder = selectionBorder;
+        this.selections = tools.selections();
+        this.editor = tools.editor();
+        this.workloadExecutor = tools.workloadExecutor();
+        this.selectionBorder = tools.selectionBorder();
     }
 
     /** Returns the path to handler map for registration. */

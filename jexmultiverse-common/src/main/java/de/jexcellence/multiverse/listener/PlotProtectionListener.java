@@ -118,7 +118,8 @@ public class PlotProtectionListener implements Listener {
         Player attacker = attackerFrom(event.getDamager());
         if (attacker == null) return;
         var plot = plots.getPlotAt(victim.getLocation()).orElse(null);
-        if (plot == null) return; // road or unclaimed = vanilla rules apply
+        // road or unclaimed = vanilla rules apply
+        if (plot == null) return;
         // PvP allowed when: both are owner/trusted (any PvP among friends), OR
         // the plot's `pvp` flag is enabled (anyone can fight here).
         if (plots.canBuild(attacker, plot) && plots.canBuild(victim, plot)) return;

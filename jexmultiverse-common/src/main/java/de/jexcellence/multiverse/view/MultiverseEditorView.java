@@ -9,6 +9,7 @@ import me.devnatan.inventoryframework.context.RenderContext;
 import me.devnatan.inventoryframework.context.SlotClickContext;
 import me.devnatan.inventoryframework.state.State;
 import org.bukkit.Bukkit;
+import org.bukkit.GameRules;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -155,7 +156,7 @@ public class MultiverseEditorView extends MultiverseBaseView {
         world.setPvpEnabled(!world.isPvpEnabled());
         World live = Bukkit.getWorld(world.getIdentifier());
         if (live != null) {
-            live.setPVP(world.isPvpEnabled());
+            live.setGameRule(GameRules.PVP, world.isPvpEnabled());
         }
         notify(click.getPlayer(), "pvp" + TOGGLED, world, stateWord(world.isPvpEnabled()));
         refresh(click, world, WorldEditorCards::pvp);

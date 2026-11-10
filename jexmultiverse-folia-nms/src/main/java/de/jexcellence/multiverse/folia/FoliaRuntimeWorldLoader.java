@@ -78,7 +78,7 @@ public final class FoliaRuntimeWorldLoader implements RuntimeWorldLoader {
             try {
                 final World loaded = FoliaNmsWorldFactory.registerWorld(worldName, environment);
                 result.complete(loaded);
-            } catch (final Throwable ex) {
+            } catch (final Exception | LinkageError ex) {
                 // Wrap in a top-level exception so the caller's exceptionally
                 // handler doesn't have to unwrap reflection-specific cause
                 // chains to read a sensible message.
@@ -125,7 +125,7 @@ public final class FoliaRuntimeWorldLoader implements RuntimeWorldLoader {
             // Not Folia - the caller decides whether they need region-thread
             // affinity for the underlying createWorld. We just inline.
             task.run();
-        } catch (final Throwable ex) {
+        } catch (final Exception | LinkageError ex) {
             throw new IllegalStateException("Failed to schedule world load on global region", ex);
         }
     }

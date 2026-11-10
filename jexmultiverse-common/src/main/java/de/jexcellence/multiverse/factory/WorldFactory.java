@@ -110,10 +110,8 @@ public class WorldFactory {
         this.plotConfig = PlotWorldConfig.load(plugin.getDataFolder());
         this.schematics = new SchematicService(plugin, logger, plotConfig);
         this.plotGenerator = new PlotChunkGenerator(
-                plotConfig.plotSize(),
-                plotConfig.roadWidth(),
-                plotConfig.plotHeight(),
-                plotConfig.wallHeight(),
+                new PlotChunkGenerator.Dimensions(plotConfig.plotSize(), plotConfig.roadWidth(),
+                        plotConfig.plotHeight(), plotConfig.wallHeight()),
                 plotConfig.roadMaterial(),
                 plotConfig.wallMaterialUnclaimed(),
                 plotConfig.layers(),
@@ -269,7 +267,7 @@ public class WorldFactory {
                 int ps = plotSizeOverride != null ? plotSizeOverride : plotConfig.plotSize();
                 int rw = roadWidthOverride != null ? roadWidthOverride : plotConfig.roadWidth();
                 yield new PlotChunkGenerator(
-                        ps, rw, plotConfig.plotHeight(), plotConfig.wallHeight(),
+                        new PlotChunkGenerator.Dimensions(ps, rw, plotConfig.plotHeight(), plotConfig.wallHeight()),
                         plotConfig.roadMaterial(), plotConfig.wallMaterialUnclaimed(),
                         plotConfig.layers(),
                         schematics, schematicName);

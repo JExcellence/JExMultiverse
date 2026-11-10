@@ -29,7 +29,7 @@ final class ChatPanels {
     private ChatPanels() {
     }
 
-    /** @return the player behind the sender, {@code null} for the console. */
+    /** Returns the player behind the sender, {@code null} for the console. */
     static @Nullable Player viewer(@NotNull CommandSender sender) {
         return sender instanceof Player player ? player : null;
     }

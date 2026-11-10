@@ -91,7 +91,7 @@ public final class LevelDatBuilder {
         File container;
         try {
             container = Bukkit.getWorldContainer();
-        } catch (final Throwable ignored) {
+        } catch (final Exception ignored) {
             container = new File(".");
         }
         writeSkeletonAt(new File(container, worldName).getAbsoluteFile(), worldName, environment);
@@ -236,7 +236,7 @@ public final class LevelDatBuilder {
     private static int currentDataVersion() {
         try {
             return Bukkit.getUnsafe().getDataVersion();
-        } catch (final Throwable ignored) {
+        } catch (final Exception | LinkageError ignored) {
             return 4438;
         }
     }

@@ -221,7 +221,7 @@ public class PlotFlagListener implements Listener {
         // permission provider, giving two lookups per block-boundary crossing.
         var player = event.getPlayer();
         var bypass = plots.hasProtectBypass(player);
-        if (plots.canBuild(player, plot, bypass)) return; // owner / trusted / bypass
+        if (plots.canBuild(player, plot, bypass)) return;
         if (plots.isDenied(player, plot, bypass)) {
             event.setTo(from);
             return;

@@ -45,7 +45,7 @@ public final class MultiverseCards {
     private MultiverseCards() {
     }
 
-    /** @return a message builder for {@code key}. */
+    /** Returns a message builder for {@code key}. */
     public static @NotNull MessageBuilder msg(@NotNull String key) {
         return R18nManager.getInstance().msg(key);
     }

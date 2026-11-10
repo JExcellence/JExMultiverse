@@ -246,7 +246,7 @@ public abstract class JExMultiverse {
     private File resolveWorldContainer() {
         try {
             return Bukkit.getWorldContainer();
-        } catch (final Throwable ignored) {
+        } catch (final Exception ignored) {
             return new File(".");
         }
     }
@@ -390,7 +390,8 @@ public abstract class JExMultiverse {
         reportTree("multiverse", factory.registerTree("commands/multiverse.yml",
                 new MultiverseHandler(
                         multiverseService, worldFactory, viewFrame, plugin,
-                        selectionService, schematicEditor, workloadExecutor, selectionBorder).handlerMap(),
+                        new MultiverseHandler.SelectionTools(
+                                selectionService, schematicEditor, workloadExecutor, selectionBorder)).handlerMap(),
                 messages, registry));
         reportTree("spawn", factory.registerTree("commands/spawn.yml",
                 new SpawnHandler(

@@ -88,7 +88,8 @@ public final class WallMaterialArgumentType {
                     if (lower.isEmpty()) return CURATED;
                     return allBlocks().stream()
                             .filter(name -> name.startsWith(lower))
-                            .limit(64) // brigadier hard-caps tab suggestions; keep below.
+                            // brigadier hard-caps tab suggestions; keep below.
+                            .limit(64)
                             .toList();
                 });
     }

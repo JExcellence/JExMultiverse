@@ -201,9 +201,9 @@ final class FoliaNmsWorldFactory {
             cFeatureHooks.getMethod("tickEntityManager", cServerLevel).invoke(null, serverLevel);
         } catch (final NoSuchMethodException ignored) {
             // Paper without Folia patches - tickEntityManager doesn't exist, fine.
-        } catch (final Throwable t) {
-            java.util.logging.Logger.getLogger(FoliaNmsWorldFactory.class.getName())
-                    .warning("[JExMultiverse] [folia-nms] FeatureHooks.tickEntityManager skipped: " + t.getMessage());
+        } catch (final Exception | LinkageError t) {
+            java.util.logging.Logger.getLogger(FoliaNmsWorldFactory.class.getName()).log(java.util.logging.Level.WARNING,
+                    () -> "[JExMultiverse] [folia-nms] FeatureHooks.tickEntityManager skipped: " + t.getMessage());
         }
     }
 
@@ -231,7 +231,9 @@ final class FoliaNmsWorldFactory {
     // ─────────────────────────────────────────────────────────────────────
 
     /**
-     * Equivalent of:
+     * Creates fresh primary level data the way the dedicated server does.
+     *
+     * <p>Equivalent of:
      * <pre>{@code
      * Main.createNewWorldData(
      *     ((DedicatedServer) server).settings,
@@ -272,7 +274,9 @@ final class FoliaNmsWorldFactory {
     }
 
     /**
-     * Equivalent of:
+     * Reads primary level data from an existing level.dat tag the way the server does.
+     *
+     * <p>Equivalent of:
      * <pre>{@code
      * (PrimaryLevelData) LevelStorageSource.getLevelDataAndDimensions(
      *     dataTag,
@@ -357,10 +361,10 @@ final class FoliaNmsWorldFactory {
         throw new NmsWorldLoadException("Field not found on " + instance.getClass() + ": " + fieldName);
     }
 
-    /** Only calls {@code setAccessible(true)} when the member is not already accessible. */
+    /** Only calls {@code setAccessible(true)} when the member is not public; NMS reflection needs non-public members. */
     private static void makeAccessible(@NotNull java.lang.reflect.AccessibleObject member) {
         if (!java.lang.reflect.Modifier.isPublic(((java.lang.reflect.Member) member).getModifiers())) {
-            member.setAccessible(true); // NOSONAR java:S3011 - NMS reflection requires access to non-public members
+            member.setAccessible(true);
         }
     }
 
@@ -446,7 +450,7 @@ final class FoliaNmsWorldFactory {
         return result;
     }
 
-    /** RegistryAccess#lookupOrThrow(ResourceKey<Registry<X>>) - found by name+arity. */
+    /** Calls {@code RegistryAccess#lookupOrThrow(ResourceKey<Registry<X>>)}, found by name and arity. */
     private static Object invokeLookupOrThrow(@NotNull Object registryAccess,
                                                 @NotNull Object registryKey) throws Exception {
         for (final Method m : registryAccess.getClass().getMethods()) {

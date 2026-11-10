@@ -33,25 +33,36 @@ public class PlotChunkGenerator extends ChunkGenerator {
     private final SchematicService schematics;
     private final String schematicName;
 
+    /**
+     * The grid measurements of a plot world, in blocks.
+     *
+     * @param plotSize   edge length of one plot
+     * @param roadWidth  width of the road between plots
+     * @param plotHeight surface height of the plots
+     * @param wallHeight height of the border wall
+     */
+    public record Dimensions(int plotSize, int roadWidth, int plotHeight, int wallHeight) {
+    }
+
     public PlotChunkGenerator(int plotSize, int roadWidth, int plotHeight,
                               @NotNull Material roadMaterial, @NotNull Material wallMaterial,
                               @NotNull List<PlotLayer> layers) {
-        this(plotSize, roadWidth, plotHeight, 1, roadMaterial, wallMaterial, layers, null, null);
+        this(new Dimensions(plotSize, roadWidth, plotHeight, 1), roadMaterial, wallMaterial, layers, null, null);
     }
 
-    public PlotChunkGenerator(int plotSize, int roadWidth, int plotHeight, int wallHeight,
+    public PlotChunkGenerator(@NotNull Dimensions dimensions,
                               @NotNull Material roadMaterial, @NotNull Material wallMaterial,
                               @NotNull List<PlotLayer> layers,
                               @Nullable SchematicService schematics,
                               @Nullable String schematicName) {
-        this.plotSize = plotSize;
-        this.roadWidth = roadWidth;
-        this.plotHeight = plotHeight;
-        this.wallHeight = wallHeight;
+        this.plotSize = dimensions.plotSize();
+        this.roadWidth = dimensions.roadWidth();
+        this.plotHeight = dimensions.plotHeight();
+        this.wallHeight = dimensions.wallHeight();
         this.roadMaterial = roadMaterial;
         this.wallMaterial = wallMaterial;
         this.layers = layers;
-        this.totalInterval = plotSize + roadWidth;
+        this.totalInterval = this.plotSize + this.roadWidth;
         this.schematics = schematics;
         this.schematicName = schematicName;
     }
@@ -119,11 +130,6 @@ public class PlotChunkGenerator extends ChunkGenerator {
 
     @Override
     public boolean shouldGenerateSurface() {
-        return false;
-    }
-
-    @Override
-    public boolean shouldGenerateBedrock() {
         return false;
     }
 

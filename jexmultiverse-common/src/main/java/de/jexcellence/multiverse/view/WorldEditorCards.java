@@ -179,7 +179,7 @@ final class WorldEditorCards {
                         .build());
     }
 
-    /** @return the translated, plain word for {@code word}. */
+    /** Returns the translated, plain word for {@code word}. */
     static @NotNull String plainWord(@Nullable Player player, @NotNull String word) {
         return MultiverseCards.text(player, WORD + word);
     }

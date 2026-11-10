@@ -95,17 +95,17 @@ public final class MultiverseLayout {
         return slots;
     }
 
-    /** @return the page count for {@code entries} body cards (at least one). */
+    /** Returns the page count for {@code entries} body cards (at least one). */
     public static int pageCount(int entries) {
         return Math.max(1, (entries + PAGE_SIZE - 1) / PAGE_SIZE);
     }
 
-    /** @return {@code page} clamped into {@code [0, pages)}. */
+    /** Returns {@code page} clamped into {@code [0, pages)}. */
     public static int clampPage(int page, int pages) {
         return Math.clamp(page, 0, Math.max(0, pages - 1));
     }
 
-    /** @return the centre slot of the body, for a single notice card. */
+    /** Returns the centre slot of the body, for a single notice card. */
     public static int centreSlot() {
         return 2 * ROW_WIDTH + 4;
     }
