@@ -157,6 +157,8 @@ Full tree: `jexmultiverse-common/src/main/resources/commands/multiverse.yml`.
 
 Resolution order: global-spawn world → current world's MV-set spawn → Bukkit default-world spawn. Each tier validates the world is loaded.
 
+Players also log in at this spawn, after leaving, a crash or a restart. A bed or respawn anchor only decides where a player respawns after death.
+
 ### Plot commands (`/plot`)
 
 Aliases: `/p`, `/plots`.

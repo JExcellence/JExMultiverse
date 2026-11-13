@@ -9,7 +9,6 @@ import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
-import org.bukkit.block.Block;
 import org.bukkit.block.data.type.Bed;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -18,9 +17,6 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerRespawnEvent;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import java.util.Optional;
-import java.util.UUID;
 
 /**
  * Listener that overrides player spawn and respawn locations using the
@@ -51,21 +47,18 @@ public class SpawnListener implements Listener {
     // ── Initial join spawn ──────────────────────────────────────────────────────
 
     /**
-     * Overrides the spawn location when a player joins the server. A personal bed or
-     * respawn-anchor spawn always wins; otherwise the global spawn, then the multiverse
-     * spawn of the world the player logged out in, else the vanilla default stays.
+     * Sends every joining player to the spawn, whether they left, crashed or were kicked by a
+     * restart: the global spawn, then the multiverse spawn of the world they logged out in, else
+     * the vanilla default stays. A bed or respawn anchor only decides where a player respawns after
+     * death, never where they log in (owner decision 2026-11-12). Plugins that resume a player in
+     * an instance (for example a running Rift) set the location at a later priority.
      *
      * <p>Paper fires this during the configuration phase, off the main thread, before a
-     * {@link Player} exists, so it reads only the concurrent world cache and the stored
-     * respawn point.
+     * {@link Player} exists, so it reads only the concurrent world cache.
      */
     @EventHandler(priority = EventPriority.NORMAL)
     public void onPlayerSpawnLocation(@NotNull AsyncPlayerSpawnLocationEvent event) {
         PlayerProfile profile = event.getConnection().getProfile();
-        UUID playerId = profile.getId();
-        if (playerId == null || hasStoredRespawn(playerId)) {
-            return;
-        }
         World joinWorld = event.getSpawnLocation().getWorld();
         var resolved = resolveGlobalSpawn();
         if (resolved == null && joinWorld != null) {
@@ -76,12 +69,6 @@ public class SpawnListener implements Listener {
             logger.debug("Set join spawn for '{}' to {} spawn", profile.getName(),
                     resolved.getWorld() != null ? resolved.getWorld().getName() : "unknown");
         }
-    }
-
-    /** Whether the player has a stored bed or anchor spawn, read without loading its chunk. */
-    private static boolean hasStoredRespawn(@NotNull UUID playerId) {
-        Location respawn = Bukkit.getOfflinePlayer(playerId).getRespawnLocation(false);
-        return respawn != null && respawn.getWorld() != null;
     }
 
     // ── Respawn ─────────────────────────────────────────────────────────────────
